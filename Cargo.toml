@@ -1,0 +1,14 @@
+[package]
+name = "poi-to-mimir"
+version = "0.1.0"
+authors = ["Adrien Matissart <a.matissart@qwantresearch.com>"]
+
+[dependencies]
+log = "0.4"
+env_logger = ""
+geo = "0.4.7"
+postgres = "0.15"
+mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
+mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
+structopt = "0.1"
+structopt-derive = "0.1"
