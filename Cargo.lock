@@ -257,6 +257,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "fafnir"
+version = "0.1.0"
+dependencies = [
+ "fallible-iterator 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "geo 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mimir 1.2.0 (git+https://github.com/CanalTP/mimirsbrunn.git)",
+ "mimirsbrunn 1.2.0 (git+https://github.com/CanalTP/mimirsbrunn.git)",
+ "postgres 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structopt 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structopt-derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -856,20 +870,6 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "typemap 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "poi-to-mimir"
-version = "0.1.0"
-dependencies = [
- "fallible-iterator 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "geo 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mimir 1.2.0 (git+https://github.com/CanalTP/mimirsbrunn.git)",
- "mimirsbrunn 1.2.0 (git+https://github.com/CanalTP/mimirsbrunn.git)",
- "postgres 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "structopt 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "structopt-derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 [package]
-name = "poi-to-mimir"
+name = "fafnir"
 version = "0.1.0"
 authors = ["Adrien Matissart <a.matissart@qwantresearch.com>"]
 
