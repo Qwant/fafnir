@@ -45,26 +45,42 @@ fn build_poi_properties(row: &Row) -> Result<Vec<Property>, String> {
         .collect())
 }
 
-fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Poi {
+fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
     let name: String = row.get("name");
     let class: String = row.get("class");
-    let lat = row.get("lat");
-    let lon = row.get("lon");
-    let admins = geofinder.get(&geo::Coordinate { x: lat, y: lon });
+    let lat: Option<f64> = match row.get_opt("lat") {
+        None => None,
+        Some(Err(_)) => None,
+        Some(Ok(latitude)) => Some(latitude),
+    };
+    let lon: Option<f64> = match row.get_opt("lon") {
+        None => None,
+        Some(Err(_)) => None,
+        Some(Ok(longitude)) => Some(longitude),
+    };
 
-    Poi {
-        id: build_poi_id(&row),
-        coord: Coord::new(lat, lon),
-        administrative_regions: admins,
-        poi_type: PoiType {
-            id: class.clone(),
-            name: class,
-        },
-        label: name.clone(),
-        name: name,
-        weight: 0.,
-        zip_codes: vec![],
-        properties: build_poi_properties(&row).unwrap_or(vec![]),
+    if let Some(lat) = lat {
+        if let Some(lon) = lon {
+            let admins = geofinder.get(&geo::Coordinate { x: lat, y: lon });
+            Some(Poi {
+                id: build_poi_id(&row),
+                coord: Coord::new(lat, lon),
+                administrative_regions: admins,
+                poi_type: PoiType {
+                    id: class.clone(),
+                    name: class,
+                },
+                label: name.clone(),
+                name: name,
+                weight: 0.,
+                zip_codes: vec![],
+                properties: build_poi_properties(&row).unwrap_or(vec![]),
+            })
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
 
@@ -105,7 +121,7 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
             name,
             tags,
             'osm_poi_point' as source
-            FROM osm_poi_point 
+            FROM osm_poi_point
             WHERE name <> ''
         UNION ALL
         SELECT osm_id,
@@ -122,7 +138,10 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
 
     let pois = rows.iterator()
-        .map(|r| build_poi(r.unwrap(), &admins_geofinder));
+        .filter_map(|r| r.ok())
+        .filter_map(|r| {
+            build_poi(r, &admins_geofinder)
+        });
     index_pois(rubber, dataset, pois)
 }
 
