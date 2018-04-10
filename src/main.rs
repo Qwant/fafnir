@@ -124,14 +124,16 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
 
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
 
-    let pois = rows.iterator().filter_map(|r| r.ok()).filter_map(|r| {
-        build_poi(r, &admins_geofinder)
-            .ok_or("POI not built")
-            .map_err(|e| {
-                warn!("Problem occurred in build_poi(): {:?}", e);
-            })
-            .ok()
-    });
+    let pois = rows.iterator()
+        .filter_map(|r| {
+            r.map_err(|r| warn!("Impossible to load the row {:?}", r))
+                .ok()
+        })
+        .filter_map(|r| {
+            build_poi(r, &admins_geofinder)
+                .ok_or_else(|| warn!("Problem occurred in build_poi()"))
+                .ok()
+        });
     index_pois(rubber, dataset, pois)
 }
 
