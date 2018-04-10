@@ -45,14 +45,17 @@ fn build_poi_properties(row: &Row) -> Result<Vec<Property>, String> {
         .collect())
 }
 
-fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Poi {
+fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
     let name: String = row.get("name");
     let class: String = row.get("class");
-    let lat = row.get("lat");
-    let lon = row.get("lon");
+    let lat = row.get_opt("lat")?
+        .map_err(|e| warn!("impossible to get lat for {} because {}", name, e))
+        .ok()?;
+    let lon = row.get_opt("lon")?
+        .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
+        .ok()?;
     let admins = geofinder.get(&geo::Coordinate { x: lat, y: lon });
-
-    Poi {
+    Some(Poi {
         id: build_poi_id(&row),
         coord: Coord::new(lat, lon),
         administrative_regions: admins,
@@ -65,7 +68,7 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Poi {
         weight: 0.,
         zip_codes: vec![],
         properties: build_poi_properties(&row).unwrap_or(vec![]),
-    }
+    })
 }
 
 fn index_pois<T>(mut rubber: Rubber, dataset: &str, pois: T)
@@ -105,7 +108,7 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
             name,
             tags,
             'osm_poi_point' as source
-            FROM osm_poi_point 
+            FROM osm_poi_point
             WHERE name <> ''
         UNION ALL
         SELECT osm_id,
@@ -122,7 +125,15 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
 
     let pois = rows.iterator()
-        .map(|r| build_poi(r.unwrap(), &admins_geofinder));
+        .filter_map(|r| {
+            r.map_err(|r| warn!("Impossible to load the row {:?}", r))
+                .ok()
+        })
+        .filter_map(|r| {
+            build_poi(r, &admins_geofinder)
+                .ok_or_else(|| warn!("Problem occurred in build_poi()"))
+                .ok()
+        });
     index_pois(rubber, dataset, pois)
 }
 
