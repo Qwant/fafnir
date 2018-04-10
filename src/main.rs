@@ -48,40 +48,27 @@ fn build_poi_properties(row: &Row) -> Result<Vec<Property>, String> {
 fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
     let name: String = row.get("name");
     let class: String = row.get("class");
-    let lat: Option<f64> = match row.get_opt("lat") {
-        None => None,
-        Some(Err(_)) => None,
-        Some(Ok(latitude)) => Some(latitude),
-    };
-    let lon: Option<f64> = match row.get_opt("lon") {
-        None => None,
-        Some(Err(_)) => None,
-        Some(Ok(longitude)) => Some(longitude),
-    };
-
-    if let Some(lat) = lat {
-        if let Some(lon) = lon {
-            let admins = geofinder.get(&geo::Coordinate { x: lat, y: lon });
-            Some(Poi {
-                id: build_poi_id(&row),
-                coord: Coord::new(lat, lon),
-                administrative_regions: admins,
-                poi_type: PoiType {
-                    id: class.clone(),
-                    name: class,
-                },
-                label: name.clone(),
-                name: name,
-                weight: 0.,
-                zip_codes: vec![],
-                properties: build_poi_properties(&row).unwrap_or(vec![]),
-            })
-        } else {
-            None
-        }
-    } else {
-        None
-    }
+    let lat = row.get_opt("lat")?
+        .map_err(|e| warn!("impossible to get lat for {} because {}", name, e))
+        .ok()?;
+    let lon = row.get_opt("lon")?
+        .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
+        .ok()?;
+    let admins = geofinder.get(&geo::Coordinate { x: lat, y: lon });
+    Some(Poi {
+        id: build_poi_id(&row),
+        coord: Coord::new(lat, lon),
+        administrative_regions: admins,
+        poi_type: PoiType {
+            id: class.clone(),
+            name: class,
+        },
+        label: name.clone(),
+        name: name,
+        weight: 0.,
+        zip_codes: vec![],
+        properties: build_poi_properties(&row).unwrap_or(vec![]),
+    })
 }
 
 fn index_pois<T>(mut rubber: Rubber, dataset: &str, pois: T)
@@ -137,11 +124,14 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
 
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
 
-    let pois = rows.iterator()
-        .filter_map(|r| r.ok())
-        .filter_map(|r| {
-            build_poi(r, &admins_geofinder)
-        });
+    let pois = rows.iterator().filter_map(|r| r.ok()).filter_map(|r| {
+        build_poi(r, &admins_geofinder)
+            .ok_or("POI not built")
+            .map_err(|e| {
+                warn!("Problem occurred in build_poi(): {:?}", e);
+            })
+            .ok()
+    });
     index_pois(rubber, dataset, pois)
 }
 
