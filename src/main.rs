@@ -18,6 +18,7 @@ use mimir::MimirObject;
 use mimir::{Coord, Poi, PoiType, Property};
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use mimirsbrunn::utils::format_label;
 use structopt::StructOpt;
 
 const PG_BATCH_SIZE: i32 = 5000;
@@ -63,7 +64,7 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
             id: class.clone(),
             name: class,
         },
-        label: name.clone(),
+        label: format_label(&admins, name),
         name: name,
         weight: 0.,
         zip_codes: vec![],
