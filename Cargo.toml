@@ -5,10 +5,9 @@ authors = ["Adrien Matissart <a.matissart@qwantresearch.com>"]
 
 [dependencies]
 log = "0.4"
-geo = "0.4.7"
+geo = "0.6"
 postgres = "0.15"
 fallible-iterator = "0.1"
 mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
 mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
-structopt = "0.1"
-structopt-derive = "0.1"
+structopt = "0.2"

@@ -6,15 +6,13 @@ extern crate mimir;
 extern crate mimirsbrunn;
 extern crate postgres;
 
-extern crate structopt;
 #[macro_use]
-extern crate structopt_derive;
+extern crate structopt;
 
 use std::collections::HashMap;
 use postgres::{Connection, TlsMode};
 use postgres::rows::Row;
 use fallible_iterator::FallibleIterator;
-use mimir::MimirObject;
 use mimir::{Coord, Poi, PoiType, Property};
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -55,20 +53,21 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
     let lon = row.get_opt("lon")?
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
-    let admins = geofinder.get(&geo::Coordinate { x: lat, y: lon });
+    let admins = geofinder.get(&geo::Coordinate { x: lon, y: lat });
     Some(Poi {
         id: build_poi_id(&row),
-        coord: Coord::new(lat, lon),
-        administrative_regions: admins,
+        coord: Coord::new(lon,lat),
         poi_type: PoiType {
             id: class.clone(),
             name: class,
         },
-        label: format_label(&admins, name),
+        label: format_label(&admins, &name),
+        administrative_regions: admins,
         name: name,
         weight: 0.,
         zip_codes: vec![],
         properties: build_poi_properties(&row).unwrap_or(vec![]),
+        address: None,
     })
 }
 
@@ -76,7 +75,7 @@ fn index_pois<T>(mut rubber: Rubber, dataset: &str, pois: T)
 where
     T: Iterator<Item = Poi>,
 {
-    let poi_index = rubber.make_index(Poi::doc_type(), dataset).unwrap();
+    let poi_index = rubber.make_index(dataset).unwrap();
 
     match rubber.bulk_index(&poi_index, pois) {
         Err(e) => panic!("Failed to bulk insert pois because: {}", e),
@@ -84,7 +83,7 @@ where
     }
 
     rubber
-        .publish_index(Poi::doc_type(), dataset, poi_index, Poi::is_geo_data())
+        .publish_index(dataset, poi_index)
         .unwrap();
 }
 
@@ -151,16 +150,17 @@ struct Args {
     dataset: String,
 }
 
-fn main() {
-    mimir::logger_init();
-
-    let args = Args::from_args();
-
+fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     let conn = Connection::connect(args.pg, TlsMode::None).unwrap_or_else(|err| {
         panic!("Unable to connect to postgres: {}", err);
     });
 
     let rubber = Rubber::new(&args.connection_string);
     let dataset = &args.dataset;
-    load_and_index_pois(rubber, &conn, dataset)
+    load_and_index_pois(rubber, &conn, dataset);
+    Ok(())
+}
+
+fn main() {
+    mimirsbrunn::utils::launch_run(run);
 }
