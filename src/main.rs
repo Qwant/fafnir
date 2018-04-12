@@ -56,7 +56,7 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
     let admins = geofinder.get(&geo::Coordinate { x: lon, y: lat });
     Some(Poi {
         id: build_poi_id(&row),
-        coord: Coord::new(lon,lat),
+        coord: Coord::new(lon, lat),
         poi_type: PoiType {
             id: class.clone(),
             name: class,
@@ -82,9 +82,7 @@ where
         Ok(nb) => info!("Nb of indexed pois: {}", nb),
     }
 
-    rubber
-        .publish_index(dataset, poi_index)
-        .unwrap();
+    rubber.publish_index(dataset, poi_index).unwrap();
 }
 
 fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
