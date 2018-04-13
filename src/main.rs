@@ -9,14 +9,14 @@ extern crate postgres;
 #[macro_use]
 extern crate structopt;
 
-use std::collections::HashMap;
-use postgres::{Connection, TlsMode};
-use postgres::rows::Row;
 use fallible_iterator::FallibleIterator;
-use mimir::{Coord, Poi, PoiType, Property};
 use mimir::rubber::Rubber;
+use mimir::{Coord, Poi, PoiType, Property};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::utils::format_label;
+use postgres::rows::Row;
+use postgres::{Connection, TlsMode};
+use std::collections::HashMap;
 use structopt::StructOpt;
 
 const PG_BATCH_SIZE: i32 = 5000;
