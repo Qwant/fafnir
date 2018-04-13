@@ -1,13 +1,13 @@
 extern crate fallible_iterator;
 extern crate geo;
-#[macro_use]
 extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
 extern crate postgres;
-
 #[macro_use]
-extern crate structopt;
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
 
 use fallible_iterator::FallibleIterator;
 use mimir::rubber::Rubber;
@@ -15,9 +15,8 @@ use mimir::{Coord, Poi, PoiType, Property};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::utils::format_label;
 use postgres::rows::Row;
-use postgres::{Connection, TlsMode};
+use postgres::Connection;
 use std::collections::HashMap;
-use structopt::StructOpt;
 
 const PG_BATCH_SIZE: i32 = 5000;
 
@@ -107,7 +106,7 @@ where
     rubber.publish_index(dataset, poi_index).unwrap();
 }
 
-fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
+pub fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
     let admins = rubber
         .get_admins_from_dataset(dataset)
         .unwrap_or_else(|err| {
@@ -163,32 +162,4 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
                 .ok()
         });
     index_pois(rubber, dataset, pois)
-}
-
-#[derive(StructOpt, Debug)]
-struct Args {
-    /// Postgresql parameters
-    #[structopt(long = "pg")]
-    pg: String,
-    /// Elasticsearch parameters.
-    #[structopt(long = "connection-string", default_value = "http://localhost:9200/")]
-    connection_string: String,
-    /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset")]
-    dataset: String,
-}
-
-fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
-    let conn = Connection::connect(args.pg, TlsMode::None).unwrap_or_else(|err| {
-        panic!("Unable to connect to postgres: {}", err);
-    });
-
-    let rubber = Rubber::new(&args.connection_string);
-    let dataset = &args.dataset;
-    load_and_index_pois(rubber, &conn, dataset);
-    Ok(())
-}
-
-fn main() {
-    mimirsbrunn::utils::launch_run(run);
 }
