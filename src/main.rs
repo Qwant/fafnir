@@ -29,8 +29,8 @@ fn build_poi_id(row: &Row) -> String {
     )
 }
 
-fn build_poi_properties(row: &Row) -> Result<Vec<Property>, String> {
-    Ok(row.get_opt::<_, HashMap<_, _>>("tags")
+fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> {
+    let mut properties = row.get_opt::<_, HashMap<_, _>>("tags")
         .unwrap()
         .map_err(|err| {
             warn!("Unable to get tags: {:?}", err);
@@ -41,7 +41,20 @@ fn build_poi_properties(row: &Row) -> Result<Vec<Property>, String> {
             key: k,
             value: v.unwrap_or("".to_string()),
         })
-        .collect())
+        .collect::<Vec<Property>>();
+
+    let subclass = row.get_opt("subclass")
+        .unwrap()
+        .map_err(|e| warn!("impossible to get subclass for {} because {}", name, e))
+        .ok()
+        .unwrap();
+
+    properties.push(Property {
+        key: "subclass".to_string(),
+        value: subclass,
+    });
+
+    Ok(properties)
 }
 
 fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
@@ -63,10 +76,10 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
         },
         label: format_label(&admins, &name),
         administrative_regions: admins,
+        properties: build_poi_properties(&row, &name).unwrap_or(vec![]),
         name: name,
         weight: 0.,
         zip_codes: vec![],
-        properties: build_poi_properties(&row).unwrap_or(vec![]),
         address: None,
     })
 }
@@ -103,6 +116,7 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
             st_x(st_transform(geometry, 4326)) as lon,
             st_y(st_transform(geometry, 4326)) as lat,
             poi_class(subclass, mapping_key) AS class,
+            subclass,
             name,
             tags,
             'osm_poi_point' as source
@@ -113,6 +127,7 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
             st_x(st_transform(geometry, 4326)) as lon,
             st_y(st_transform(geometry, 4326)) as lat,
             poi_class(subclass, mapping_key) AS class,
+            subclass,
             name,
             tags,
             'osm_poi_polygon' as source
