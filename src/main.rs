@@ -121,26 +121,32 @@ fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
 
     let stmt = conn.prepare(
         "
-        SELECT osm_id,
-            st_x(st_transform(geometry, 4326)) as lon,
-            st_y(st_transform(geometry, 4326)) as lat,
-            poi_class(subclass, mapping_key) AS class,
-            subclass,
-            name,
-            tags,
-            'osm_poi_point' as source
-            FROM osm_poi_point
-            WHERE name <> '' and ((mapping_key,subclass) not in ((highway,bus_stop), (barrier,gate), (amenity,waste_basket), (amenity,post_box), (tourism,information), (amenity,recycling), (barrier,lift_gate), (barrier,bollard), (barrier,cycle_barrier), (amenity,bicycle_rental), (tourism,artwork), (amenity,toilets), (leisure,playground), (amenity,telephone), (amenity,taxi), (leisure,pitch), (amenity,shelter), (barrier,sally_port), (barrier,stile), (amenity,ferry_terminal), (amenity,post_office)))
-        UNION ALL
-        SELECT osm_id,
-            st_x(st_transform(geometry, 4326)) as lon,
-            st_y(st_transform(geometry, 4326)) as lat,
-            poi_class(subclass, mapping_key) AS class,
-            subclass,
-            name,
-            tags,
-            'osm_poi_polygon' as source
-            FROM osm_poi_polygon WHERE name <> '' and ((mapping_key,subclass) not in ((highway,bus_stop), (barrier,gate), (amenity,waste_basket), (amenity,post_box), (tourism,information), (amenity,recycling), (barrier,lift_gate), (barrier,bollard), (barrier,cycle_barrier), (amenity,bicycle_rental), (tourism,artwork), (amenity,toilets), (leisure,playground), (amenity,telephone), (amenity,taxi), (leisure,pitch), (amenity,shelter), (barrier,sally_port), (barrier,stile), (amenity,ferry_terminal), (amenity,post_office)))",
+        SELECT * FROM
+        (
+            SELECT osm_id,
+                st_x(st_transform(geometry, 4326)) as lon,
+                st_y(st_transform(geometry, 4326)) as lat,
+                poi_class(subclass, mapping_key) AS class,
+                name,
+                mapping_key,
+                subclass,
+                tags,
+                'osm_poi_point' as source
+                FROM osm_poi_point
+                WHERE name <> ''
+            UNION ALL
+            SELECT osm_id,
+                st_x(st_transform(geometry, 4326)) as lon,
+                st_y(st_transform(geometry, 4326)) as lat,
+                poi_class(subclass, mapping_key) AS class,
+                name,
+                mapping_key,
+                subclass,
+                tags,
+                'osm_poi_polygon' as source
+                FROM osm_poi_polygon WHERE name <> ''
+        ) as unionall
+        WHERE (mapping_key,subclass) not in (('highway','bus_stop'), ('barrier','gate'), ('amenity','waste_basket'), ('amenity','post_box'), ('tourism','information'), ('amenity','recycling'), ('barrier','lift_gate'), ('barrier','bollard'), ('barrier','cycle_barrier'), ('amenity','bicycle_rental'), ('tourism','artwork'), ('amenity','toilets'), ('leisure','playground'), ('amenity','telephone'), ('amenity','taxi'), ('leisure','pitch'), ('amenity','shelter'), ('barrier','sally_port'), ('barrier','stile'), ('amenity','ferry_terminal'), ('amenity','post_office'))",
     ).unwrap();
     let trans = conn.transaction().unwrap();
 
