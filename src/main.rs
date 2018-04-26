@@ -43,14 +43,24 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
         })
         .collect::<Vec<Property>>();
 
-    let subclass = row.get_opt("subclass").unwrap().map_err(|e| {
+    let poi_subclass = row.get_opt("subclass").unwrap().map_err(|e| {
         warn!("impossible to get poi_subclass for {} because {}", name, e);
+        e.to_string()
+    })?;
+
+    let poi_class = row.get_opt("class").unwrap().map_err(|e| {
+        warn!("impossible to get poi_class for {} because {}", name, e);
         e.to_string()
     })?;
 
     properties.push(Property {
         key: "poi_subclass".to_string(),
-        value: subclass,
+        value: poi_subclass,
+    });
+
+    properties.push(Property {
+        key: "poi_class".to_string(),
+        value: poi_class,
     });
 
     Ok(properties)
