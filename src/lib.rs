@@ -65,7 +65,7 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
     Ok(properties)
 }
 
-fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
+fn build_poi(row: Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Option<Poi> {
     let name: String = row.get("name");
     let class: String = row.get("class");
     let lat = row.get_opt("lat")?
@@ -74,10 +74,20 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
     let lon = row.get_opt("lon")?
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
+    let poi_coord = Coord::new(lon, lat);
     let admins = geofinder.get(&geo::Coordinate { x: lon, y: lat });
+    let poi_address = rubber
+        .get_address(&poi_coord)
+        .ok()
+        .and_then(|addrs| addrs.into_iter().next())
+        .map(|addr| addr.address().unwrap());
+    if poi_address.is_none() {
+        warn!("The poi {:?} doesn't have any address", name);
+    }
+
     Some(Poi {
         id: build_poi_id(&row),
-        coord: Coord::new(lon, lat),
+        coord: poi_coord,
         poi_type: PoiType {
             id: class.clone(),
             name: class,
@@ -88,11 +98,11 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
         name: name,
         weight: 0.,
         zip_codes: vec![],
-        address: None,
+        address: poi_address,
     })
 }
 
-fn index_pois<T>(mut rubber: Rubber, dataset: &str, pois: T)
+fn index_pois<T>(rubber: &mut Rubber, dataset: &str, pois: T)
 where
     T: Iterator<Item = Poi>,
 {
@@ -106,7 +116,12 @@ where
     rubber.publish_index(dataset, poi_index).unwrap();
 }
 
-pub fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str) {
+pub fn load_and_index_pois(
+    connection_string: &String,
+    rubber: &mut Rubber,
+    conn: &Connection,
+    dataset: &str,
+) {
     let admins = rubber
         .get_admins_from_dataset(dataset)
         .unwrap_or_else(|err| {
@@ -157,9 +172,10 @@ pub fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str)
                 .ok()
         })
         .filter_map(|r| {
-            build_poi(r, &admins_geofinder)
+            build_poi(r, &admins_geofinder, rubber)
                 .ok_or_else(|| warn!("Problem occurred in build_poi()"))
                 .ok()
         });
-    index_pois(rubber, dataset, pois)
+
+    index_pois(&mut Rubber::new(connection_string), dataset, pois)
 }
