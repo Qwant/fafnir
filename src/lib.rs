@@ -28,7 +28,7 @@ fn build_poi_id(row: &Row) -> String {
     )
 }
 
-fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> {
+fn build_poi_properties(row: &Row, name: &str, rank: &i32) -> Result<Vec<Property>, String> {
     let mut properties = row.get_opt::<_, HashMap<_, _>>("tags")
         .unwrap()
         .map_err(|err| {
@@ -62,6 +62,11 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
         value: poi_class,
     });
 
+    properties.push(Property {
+        key: "poi_weight".to_string(),
+        value: rank.to_string(),
+    });
+
     Ok(properties)
 }
 
@@ -75,6 +80,9 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
     let admins = geofinder.get(&geo::Coordinate { x: lon, y: lat });
+    let rank = row.get_opt::<_, i32>("rank")?
+        .map_err(|e| warn!("impossible to get rank for {} because {}", name, e))
+        .ok()?;
     Some(Poi {
         id: build_poi_id(&row),
         coord: Coord::new(lon, lat),
@@ -84,7 +92,7 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder) -> Option<Poi> {
         },
         label: format_label(&admins, &name),
         administrative_regions: admins,
-        properties: build_poi_properties(&row, &name).unwrap_or(vec![]),
+        properties: build_poi_properties(&row, &name, &rank).unwrap_or(vec![]),
         name: name,
         weight: 0.,
         zip_codes: vec![],
@@ -130,7 +138,8 @@ pub fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str)
                 mapping_key,
                 subclass,
                 tags,
-                'osm_poi_point' as source
+                'osm_poi_point' as source,
+                poi_class_rank(poi_class(subclass, mapping_key)) as rank
                 FROM osm_poi_point
                 WHERE name <> ''
             UNION ALL
@@ -142,7 +151,8 @@ pub fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str)
                 mapping_key,
                 subclass,
                 tags,
-                'osm_poi_polygon' as source
+                'osm_poi_polygon' as source,
+                poi_class_rank(poi_class(subclass, mapping_key)) as rank
                 FROM osm_poi_polygon WHERE name <> ''
         ) as unionall
         WHERE (unionall.mapping_key,unionall.subclass) not in (('highway','bus_stop'), ('barrier','gate'), ('amenity','waste_basket'), ('amenity','post_box'), ('tourism','information'), ('amenity','recycling'), ('barrier','lift_gate'), ('barrier','bollard'), ('barrier','cycle_barrier'), ('amenity','bicycle_rental'), ('tourism','artwork'), ('amenity','toilets'), ('leisure','playground'), ('amenity','telephone'), ('amenity','taxi'), ('leisure','pitch'), ('amenity','shelter'), ('barrier','sally_port'), ('barrier','stile'), ('amenity','ferry_terminal'), ('amenity','post_office'))",
