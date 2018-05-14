@@ -2,7 +2,6 @@ extern crate fafnir;
 extern crate postgres;
 #[macro_use]
 extern crate structopt;
-extern crate mimir;
 extern crate mimirsbrunn;
 
 #[derive(StructOpt, Debug)]
@@ -24,9 +23,8 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             panic!("Unable to connect to postgres: {}", err);
         });
 
-    let mut rubber = mimir::rubber::Rubber::new(&args.es);
     let dataset = &args.dataset;
-    fafnir::load_and_index_pois(&args.es, &mut rubber, &conn, dataset);
+    fafnir::load_and_index_pois(&args.es, &conn, dataset);
     Ok(())
 }
 

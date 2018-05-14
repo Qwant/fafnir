@@ -116,7 +116,8 @@ where
     rubber.publish_index(dataset, poi_index).unwrap();
 }
 
-pub fn load_and_index_pois(es: &String, rubber: &mut Rubber, conn: &Connection, dataset: &str) {
+pub fn load_and_index_pois(es: &String, conn: &Connection, dataset: &str) {
+    let rubber = &mut mimir::rubber::Rubber::new(es);
     let admins = rubber
         .get_admins_from_dataset(dataset)
         .unwrap_or_else(|err| {
