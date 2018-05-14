@@ -116,12 +116,7 @@ where
     rubber.publish_index(dataset, poi_index).unwrap();
 }
 
-pub fn load_and_index_pois(
-    connection_string: &String,
-    rubber: &mut Rubber,
-    conn: &Connection,
-    dataset: &str,
-) {
+pub fn load_and_index_pois(es: &String, rubber: &mut Rubber, conn: &Connection, dataset: &str) {
     let admins = rubber
         .get_admins_from_dataset(dataset)
         .unwrap_or_else(|err| {
@@ -177,5 +172,5 @@ pub fn load_and_index_pois(
                 .ok()
         });
 
-    index_pois(&mut Rubber::new(connection_string), dataset, pois)
+    index_pois(&mut Rubber::new(es), dataset, pois)
 }

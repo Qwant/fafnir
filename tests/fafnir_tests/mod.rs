@@ -142,7 +142,7 @@ pub fn main_test(es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) 
     let properties_ocean_poi = &ocean_poi.properties;
     let amenity_tag = properties_ocean_poi
         .into_iter()
-        .find(|&p| p.key=="amenity")
+        .find(|&p| p.key == "amenity")
         .unwrap();
     assert_eq!(amenity_tag.value, "cafe".to_string());
 }
