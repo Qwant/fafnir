@@ -10,4 +10,9 @@ Import [imposm](https://github.com/omniscale/imposm3) POIs from PostgreSQL to [M
 
 ## Run
 
-`./target/release/fafnir --connection-string=http://localhost:9200 --dataset=france --pg=postgresql://localhost:5432`
+`./target/release/fafnir --dataset=france --es=http://localhost:9200 --pg=postgresql://localhost:5432`
+
+
+## Tests
+
+`cargo test`

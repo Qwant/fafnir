@@ -11,3 +11,15 @@ fallible-iterator = "0.1"
 mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
 mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
 structopt = "0.2"
+slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
+slog-scope = "4.0"
+
+[dev-dependencies]
+retry = "*"
+hyper = "0.10"
+bragi = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
+rs-es = {version = "0.10", default-features = false}
+serde = {version = "1", features = ["rc"]}
+serde_derive = "1"
+serde_json = "1"
+failure = "0.1"
