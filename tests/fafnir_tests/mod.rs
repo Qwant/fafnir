@@ -109,7 +109,7 @@ pub fn main_test(es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) 
         fafnir,
         vec![
             "--dataset=test".into(),
-            format!("--connection-string={}", &es_wrapper.host()),
+            format!("--es={}", &es_wrapper.host()),
             format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
         ],
         &es_wrapper,
@@ -142,10 +142,7 @@ pub fn main_test(es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) 
     let properties_ocean_poi = &ocean_poi.properties;
     let amenity_tag = properties_ocean_poi
         .into_iter()
-        .filter(|p| p.key == "amenity")
-        .map(|r| &r.value)
-        .collect::<Vec<&String>>()
-        .pop()
+        .find(|&p| p.key=="amenity")
         .unwrap();
-    assert_eq!(amenity_tag, &"cafe".to_string());
+    assert_eq!(amenity_tag.value, "cafe".to_string());
 }

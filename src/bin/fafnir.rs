@@ -11,8 +11,8 @@ struct Args {
     #[structopt(long = "pg")]
     pg: String,
     /// Elasticsearch parameters.
-    #[structopt(long = "connection-string", default_value = "http://localhost:9200/")]
-    connection_string: String,
+    #[structopt(long = "es", default_value = "http://localhost:9200/")]
+    es: String,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset")]
     dataset: String,
@@ -24,7 +24,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             panic!("Unable to connect to postgres: {}", err);
         });
 
-    let rubber = mimir::rubber::Rubber::new(&args.connection_string);
+    let rubber = mimir::rubber::Rubber::new(&args.es);
     let dataset = &args.dataset;
     fafnir::load_and_index_pois(rubber, &conn, dataset);
     Ok(())
