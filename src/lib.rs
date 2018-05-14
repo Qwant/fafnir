@@ -128,7 +128,7 @@ pub fn load_and_index_pois(mut rubber: Rubber, conn: &Connection, dataset: &str)
 
     let stmt = conn.prepare(
         "
-        SELECT osm_id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
+        SELECT osm_id, lon, lat, class, name, tags, source, mapping_key, subclass, rank FROM
         (
             SELECT osm_id,
                 st_x(st_transform(geometry, 4326)) as lon,
