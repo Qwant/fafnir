@@ -78,6 +78,16 @@ pub struct ElasticSearchWrapper<'a> {
 }
 
 impl<'a> ElasticSearchWrapper<'a> {
+    pub fn make_addr_index(&mut self, dataset: &str, test_address: &mimir::Addr) {
+        let addr_index = self.rubber.make_index(dataset).unwrap();
+        let vec_addr = vec![test_address];
+        let _nb = self.rubber
+            .bulk_index(&addr_index, vec_addr.iter())
+            .unwrap();
+        self.rubber.publish_index(dataset, addr_index).unwrap();
+        self.refresh();
+    }
+
     pub fn get_pois(&mut self) -> Vec<mimir::Poi> {
         self.rubber.get_all_objects_from_index(&"test").unwrap()
     }
@@ -215,11 +225,11 @@ fn launch_and_assert(
 fn main_test() {
     let _guard = mimir::logger_init();
 
-    let el_docker = ElasticsearchDocker::new().unwrap();
+    let mut el_docker = ElasticsearchDocker::new().unwrap();
     let pg_docker = PostgresDocker::new().unwrap();
 
     fafnir_tests::main_test(
-        ElasticSearchWrapper::new(&el_docker),
+        ElasticSearchWrapper::new(&mut el_docker),
         PostgresWrapper::new(&pg_docker),
     );
 }

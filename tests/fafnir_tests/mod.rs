@@ -3,11 +3,12 @@ use super::{ElasticSearchWrapper, PostgresWrapper};
 use postgres::Connection;
 
 // Init the Postgres Wrapper
-fn init(pg_wrapper: &PostgresWrapper) {
+fn init_tests(es_wrapper: &mut ElasticSearchWrapper, pg_wrapper: &PostgresWrapper) {
     let conn = pg_wrapper.get_conn();
     create_tests_tables(&conn);
     populate_tables(&conn);
     load_poi_class_function(&conn);
+    load_address(es_wrapper);
 }
 
 fn create_tests_tables(conn: &Connection) {
@@ -102,8 +103,41 @@ fn load_poi_class_function(conn: &Connection) {
             $$ LANGUAGE SQL IMMUTABLE;", &[]).unwrap();
 }
 
-pub fn main_test(es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
-    init(&pg_wrapper);
+fn load_address(es_wrapper: &mut ElasticSearchWrapper) {
+    let test_address = &get_test_address();
+    es_wrapper.make_addr_index("test", test_address);
+}
+
+fn get_test_address() -> mimir::Addr {
+    let street = mimir::Street {
+        id: "1234".to_string(),
+        street_name: "test".to_string(),
+        label: "test (ville Test)".to_string(),
+        administrative_regions: vec![],
+        weight: 50.0,
+        zip_codes: vec!["12345".to_string()],
+        coord: mimir::Coord::new(124.139607, 24.462216),
+    };
+    mimir::Addr {
+        id: format!("addr:{};{}", 124.139607, 24.462216),
+        house_number: "1234".to_string(),
+        street: street,
+        label: "test (ville Test)".to_string(),
+        coord: mimir::Coord::new(124.139607, 24.462216),
+        weight: 50.0,
+        zip_codes: vec!["12345".to_string()],
+    }
+}
+
+fn get_label(address: &mimir::Address) -> &str {
+    match address {
+        &mimir::Address::Street(ref s) => &s.label,
+        &mimir::Address::Addr(ref a) => &a.label,
+    }
+}
+
+pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
+    init_tests(&mut es_wrapper, &pg_wrapper);
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
@@ -145,4 +179,13 @@ pub fn main_test(es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) 
         .find(|&p| p.key == "amenity")
         .unwrap();
     assert_eq!(amenity_tag.value, "cafe".to_string());
+
+    // Test Address
+    let address_ocean_poi = &ocean_poi.address.as_ref().unwrap();
+    let label = get_label(address_ocean_poi);
+    println!("{:?}", label);
+    assert_eq!(
+        get_label(address_ocean_poi),
+        "test (ville Test)".to_string()
+    );
 }
