@@ -19,7 +19,11 @@ use hyper::client::response::Response;
 use postgres::rows;
 use postgres::{Connection, TlsMode};
 use serde_json::value::Value;
+use std::iter;
 use std::process::Command;
+
+// Dataset name used for tests.
+static DATASET: &'static str = "test";
 
 pub struct PostgresWrapper<'a> {
     docker_wrapper: &'a PostgresDocker,
@@ -78,6 +82,14 @@ pub struct ElasticSearchWrapper<'a> {
 }
 
 impl<'a> ElasticSearchWrapper<'a> {
+    pub fn make_addr_index(&mut self, dataset: &str, test_address: &mimir::Addr) {
+        let addr_index = self.rubber.make_index(dataset).unwrap();
+        let iter_one_addr = iter::once(test_address);
+        let _nb = self.rubber.bulk_index(&addr_index, iter_one_addr).unwrap();
+        self.rubber.publish_index(dataset, addr_index).unwrap();
+        self.refresh();
+    }
+
     pub fn get_pois(&mut self) -> Vec<mimir::Poi> {
         self.rubber.get_all_objects_from_index(&"test").unwrap()
     }
@@ -215,11 +227,11 @@ fn launch_and_assert(
 fn main_test() {
     let _guard = mimir::logger_init();
 
-    let el_docker = ElasticsearchDocker::new().unwrap();
+    let mut el_docker = ElasticsearchDocker::new().unwrap();
     let pg_docker = PostgresDocker::new().unwrap();
 
     fafnir_tests::main_test(
-        ElasticSearchWrapper::new(&el_docker),
+        ElasticSearchWrapper::new(&mut el_docker),
         PostgresWrapper::new(&pg_docker),
     );
 }
