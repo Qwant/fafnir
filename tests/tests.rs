@@ -19,7 +19,11 @@ use hyper::client::response::Response;
 use postgres::rows;
 use postgres::{Connection, TlsMode};
 use serde_json::value::Value;
+use std::iter;
 use std::process::Command;
+
+// Dataset name used for tests.
+static DATASET: &'static str = "test";
 
 pub struct PostgresWrapper<'a> {
     docker_wrapper: &'a PostgresDocker,
@@ -80,10 +84,8 @@ pub struct ElasticSearchWrapper<'a> {
 impl<'a> ElasticSearchWrapper<'a> {
     pub fn make_addr_index(&mut self, dataset: &str, test_address: &mimir::Addr) {
         let addr_index = self.rubber.make_index(dataset).unwrap();
-        let vec_addr = vec![test_address];
-        let _nb = self.rubber
-            .bulk_index(&addr_index, vec_addr.iter())
-            .unwrap();
+        let iter_one_addr = iter::once(test_address);
+        let _nb = self.rubber.bulk_index(&addr_index, iter_one_addr).unwrap();
         self.rubber.publish_index(dataset, addr_index).unwrap();
         self.refresh();
     }

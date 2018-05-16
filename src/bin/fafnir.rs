@@ -23,8 +23,8 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             panic!("Unable to connect to postgres: {}", err);
         });
 
-    let dataset = &args.dataset;
-    fafnir::load_and_index_pois(&args.es, &conn, dataset);
+    let dataset = args.dataset;
+    fafnir::load_and_index_pois(&args.es, &conn, &dataset);
     Ok(())
 }
 

@@ -1,4 +1,5 @@
 use super::mimir;
+use super::DATASET;
 use super::{ElasticSearchWrapper, PostgresWrapper};
 use postgres::Connection;
 
@@ -104,8 +105,8 @@ fn load_poi_class_function(conn: &Connection) {
 }
 
 fn load_address(es_wrapper: &mut ElasticSearchWrapper) {
-    let test_address = &get_test_address();
-    es_wrapper.make_addr_index("test", test_address);
+    let test_address = get_test_address();
+    es_wrapper.make_addr_index(DATASET, &test_address);
 }
 
 fn get_test_address() -> mimir::Addr {
@@ -136,13 +137,27 @@ fn get_label(address: &mimir::Address) -> &str {
     }
 }
 
+fn get_house_number(address: &mimir::Address) -> &str {
+    match address {
+        &mimir::Address::Street(_) => &"",
+        &mimir::Address::Addr(ref a) => &a.house_number,
+    }
+}
+
+fn get_coord(address: &mimir::Address) -> &mimir::Coord {
+    match address {
+        &mimir::Address::Street(ref s) => &s.coord,
+        &mimir::Address::Addr(ref a) => &a.coord,
+    }
+}
+
 pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
     init_tests(&mut es_wrapper, &pg_wrapper);
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
         vec![
-            "--dataset=test".into(),
+            format!("--dataset={}", DATASET),
             format!("--es={}", &es_wrapper.host()),
             format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
         ],
@@ -164,15 +179,17 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert!(&ocean_place.is_poi());
 
     // Test that the coord property of a POI has been well loaded
+    // We test latitude and longitude
     let ocean_poi = &ocean_place.poi().unwrap();
     let coord_ocean_poi = &ocean_poi.coord;
     assert_eq!(&coord_ocean_poi.lat(), &24.46275578041472);
+    assert_eq!(&coord_ocean_poi.lon(), &124.13808059594312);
 
     // Test Label
     let label_ocean_poi = &ocean_poi.label;
     assert_eq!(label_ocean_poi, &"Ocean Studio");
 
-    // Test Properties
+    // Test Properties: the amenity property for this POI should be "cafe"
     let properties_ocean_poi = &ocean_poi.properties;
     let amenity_tag = properties_ocean_poi
         .into_iter()
@@ -180,12 +197,16 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .unwrap();
     assert_eq!(amenity_tag.value, "cafe".to_string());
 
-    // Test Address
-    let address_ocean_poi = &ocean_poi.address.as_ref().unwrap();
-    let label = get_label(address_ocean_poi);
-    println!("{:?}", label);
-    assert_eq!(
-        get_label(address_ocean_poi),
-        "test (ville Test)".to_string()
-    );
+    // Test Address: we get the address from elasticsearch associated to a POI and we check that
+    // its associated information are correct.
+    // To guarantee the rubber found an address we have put a fake address close to the location of
+    // the POI in the init() method.
+    let address_ocean_poi = ocean_poi.address.as_ref().unwrap();
+    let address_label = get_label(&address_ocean_poi);
+    assert_eq!(address_label, &"test (ville Test)".to_string());
+    let address_house_number = get_house_number(&address_ocean_poi);
+    assert_eq!(address_house_number, "1234".to_string());
+    let address_coord = get_coord(&address_ocean_poi);
+    assert_eq!(&address_coord.lat(), &24.462216);
+    assert_eq!(&address_coord.lon(), &124.139607);
 }
