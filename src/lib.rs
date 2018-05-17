@@ -8,7 +8,11 @@ extern crate postgres;
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
+extern crate rayon;
+extern crate itertools;
 
+use rayon::prelude::*;
+use itertools::Itertools;
 use fallible_iterator::FallibleIterator;
 use mimir::rubber::Rubber;
 use mimir::{Coord, Poi, PoiType, Property};
@@ -65,7 +69,7 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
     Ok(properties)
 }
 
-fn build_poi(row: Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Option<Poi> {
+fn build_poi(row: &Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Option<Poi> {
     let name: String = row.get("name");
     let class: String = row.get("class");
     let lat = row.get_opt("lat")?
@@ -100,20 +104,6 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Optio
         zip_codes: vec![],
         address: poi_address,
     })
-}
-
-fn index_pois<T>(rubber: &mut Rubber, dataset: &str, pois: T)
-where
-    T: Iterator<Item = Poi>,
-{
-    let poi_index = rubber.make_index(dataset).unwrap();
-
-    match rubber.bulk_index(&poi_index, pois) {
-        Err(e) => panic!("Failed to bulk insert pois because: {}", e),
-        Ok(nb) => info!("Nb of indexed pois: {}", nb),
-    }
-
-    rubber.publish_index(dataset, poi_index).unwrap();
 }
 
 pub fn load_and_index_pois(es: &String, conn: &Connection, dataset: &str) {
@@ -161,17 +151,34 @@ pub fn load_and_index_pois(es: &String, conn: &Connection, dataset: &str) {
     let trans = conn.transaction().unwrap();
 
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
+    let poi_index = rubber.make_index(dataset).unwrap();
 
-    let pois = rows.iterator()
+    let rows_chunk = rows.iterator()
         .filter_map(|r| {
             r.map_err(|r| warn!("Impossible to load the row {:?}", r))
                 .ok()
         })
-        .filter_map(|r| {
-            build_poi(r, &admins_geofinder, rubber)
-                .ok_or_else(|| warn!("Problem occurred in build_poi()"))
-                .ok()
+        .chunks(20000);
+
+    rows_chunk
+        .into_iter()
+        .for_each(|chunk| {
+            let rows_chunk: Vec<_> = chunk.collect();
+            rows_chunk.par_chunks(500)
+                .for_each(|par_chunk| {
+                    let mut rub = Rubber::new(es);
+                    let pois = par_chunk.into_iter().filter_map(|r| {
+                        build_poi(r, &admins_geofinder, &mut rub)
+                        .ok_or_else(|| warn!("Problem occurred in build_poi()"))
+                        .ok()
+                    });
+                    let mut rub2 = Rubber::new(es);
+                    match rub2.bulk_index(&poi_index, pois) {
+                        Err(e) => panic!("Failed to bulk insert pois because: {}", e),
+                        Ok(nb) => info!("Nb of indexed pois: {}", nb),
+                    }
+                })
         });
 
-    index_pois(&mut Rubber::new(es), dataset, pois)
+    rubber.publish_index(dataset, poi_index).unwrap();
 }
