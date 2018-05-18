@@ -25,10 +25,23 @@ use std::collections::HashMap;
 const PG_BATCH_SIZE: i32 = 5000;
 
 fn build_poi_id(row: &Row) -> String {
+    let osm_id_int = row.get::<_, i64>("osm_id");
+    let pg_table = row.get::<_, String>("source");
+    let osm_type = if osm_id_int < 0 {
+        // Imposm uses negative osm_id for relations
+        "relation"
+    }
+    else if pg_table.ends_with("point") {
+        "node"
+    }
+    else {
+        "way"
+    };
+
     format!(
-        "pg:{source}:{id}",
-        source = row.get::<_, String>("source"),
-        id = row.get::<_, i64>("osm_id")
+        "osm:{osm_type}:{id}",
+        osm_type = osm_type,
+        id = osm_id_int.abs()
     )
 }
 
