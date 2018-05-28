@@ -8,13 +8,13 @@ extern crate postgres;
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-extern crate rayon;
 extern crate itertools;
+extern crate par_map;
 
-use rayon::prelude::*;
 use itertools::Itertools;
+use par_map::ParMap;
 use fallible_iterator::FallibleIterator;
-use mimir::rubber::Rubber;
+use mimir::rubber::{Rubber, TypedIndex};
 use mimir::{Coord, Poi, PoiType, Property};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::utils::format_label;
@@ -46,8 +46,7 @@ fn build_poi_id(row: &Row) -> String {
 }
 
 fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> {
-    let mut properties = row
-        .get_opt::<_, HashMap<_, _>>("tags")
+    let mut properties = row.get_opt::<_, HashMap<_, _>>("tags")
         .unwrap()
         .map_err(|err| {
             warn!("Unable to get tags: {:?}", err);
@@ -125,8 +124,7 @@ fn build_poi(row: &Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Opti
     })
 }
 
-
-pub fn load_and_index_pois(es: &String, conn: &Connection, dataset: &str) {
+pub fn load_and_index_pois(es: &'static String, conn: &'static Connection, dataset: &str) {
     let rubber = &mut mimir::rubber::Rubber::new(es);
     let admins = rubber
         .get_admins_from_dataset(dataset)
@@ -178,26 +176,25 @@ pub fn load_and_index_pois(es: &String, conn: &Connection, dataset: &str) {
             r.map_err(|r| warn!("Impossible to load the row {:?}", r))
                 .ok()
         })
-        .chunks(20000);
+        .chunks(30000);
 
     rows_chunk
         .into_iter()
-        .for_each(|chunk| {
-            let rows_chunk: Vec<_> = chunk.collect();
-            rows_chunk.par_chunks(500)
-                .for_each(|par_chunk| {
-                    let mut rub = Rubber::new(es);
-                    let pois = par_chunk.into_iter().filter_map(|r| {
-                        build_poi(r, &admins_geofinder, &mut rub)
-                        .ok_or_else(|| warn!("Problem occurred in build_poi()"))
-                        .ok()
-                    });
-                    let mut rub2 = Rubber::new(es);
-                    match rub2.bulk_index(&poi_index, pois) {
-                        Err(e) => panic!("Failed to bulk insert pois because: {}", e),
-                        Ok(nb) => info!("Nb of indexed pois: {}", nb),
-                    }
-                })
+        .flat_map(|c| c)
+        .pack(1000)
+        .par_map(move |p| {
+            let mut rub = Rubber::new(es);
+            let pois = p.into_iter()
+                .filter_map(|r| {
+                    build_poi(&r, &admins_geofinder, &mut rub)
+                    .ok_or_else(|| warn!("Problem occurred in build_poi()"))
+                    .ok()
+                });
+            let mut rub2 = Rubber::new(es);
+            match rub2.bulk_index(&poi_index, pois) {
+                Err(e) => panic!("Failed to bulk insert pois because: {}", e),
+                Ok(nb) => info!("Nb of indexed pois: {}", nb),
+            };
         });
 
     rubber.publish_index(dataset, poi_index).unwrap();
