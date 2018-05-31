@@ -120,33 +120,7 @@ dependencies = [
 [[package]]
 name = "bragi"
 version = "1.2.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git#1cfbd084bc4365194e08f8fc7e13f1dbd7f70bc7"
-dependencies = [
- "geo 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "geojson 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "git-version 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "hyper 0.10.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "iron 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "logger 0.4.0 (git+https://github.com/iron/logger.git)",
- "mimir 1.2.0 (git+https://github.com/CanalTP/mimirsbrunn.git)",
- "prometheus 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "rs-es 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustless 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog 2.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog-scope 4.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "structopt 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "urlencoded 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "valico 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "bragi"
-version = "1.2.0"
-source = "git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe#9c74b26ba1f6d110b782feec6f95538755a86506"
+source = "git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe#58c7b9fc1ddb05122cb0433672065579e60e2f21"
 dependencies = [
  "geo 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "geojson 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -156,7 +130,7 @@ dependencies = [
  "iron 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "logger 0.4.0 (git+https://github.com/iron/logger.git)",
- "mimir 1.2.0 (git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe)",
+ "mimir 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)",
  "prometheus 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustless 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -398,15 +372,15 @@ dependencies = [
 name = "fafnir"
 version = "0.1.0"
 dependencies = [
- "bragi 1.2.0 (git+https://github.com/CanalTP/mimirsbrunn.git)",
+ "bragi 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)",
  "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fallible-iterator 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "geo 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.10.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mimir 1.2.0 (git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe)",
- "mimirsbrunn 1.2.0 (git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe)",
+ "mimir 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)",
+ "mimirsbrunn 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)",
  "par-map 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "postgres 0.15.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "retry 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -867,30 +841,7 @@ dependencies = [
 [[package]]
 name = "mimir"
 version = "1.2.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git#1cfbd084bc4365194e08f8fc7e13f1dbd7f70bc7"
-dependencies = [
- "chrono 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "geo 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "geojson 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hyper 0.10.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "rs-es 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog 2.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog-async 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog-envlogger 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog-json 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog-scope 4.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog-stdlog 3.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog-term 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "mimir"
-version = "1.2.0"
-source = "git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe#9c74b26ba1f6d110b782feec6f95538755a86506"
+source = "git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe#58c7b9fc1ddb05122cb0433672065579e60e2f21"
 dependencies = [
  "chrono 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cosmogony 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -914,9 +865,9 @@ dependencies = [
 [[package]]
 name = "mimirsbrunn"
 version = "1.2.0"
-source = "git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe#9c74b26ba1f6d110b782feec6f95538755a86506"
+source = "git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe#58c7b9fc1ddb05122cb0433672065579e60e2f21"
 dependencies = [
- "bragi 1.2.0 (git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe)",
+ "bragi 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)",
  "chrono 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cosmogony 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "csv 1.0.0-beta.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -927,12 +878,12 @@ dependencies = [
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "mdo 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mimir 1.2.0 (git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe)",
+ "mimir 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)",
  "navitia_model 0.1.0 (git+https://github.com/CanalTP/navitia_model)",
  "ordered-float 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "osm_boundaries_utils 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "osmpbfreader 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2095,8 +2046,7 @@ dependencies = [
 "checksum bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b3c30d3802dfb7281680d6285f2ccdaa8c2d8fee41f93805dba5c4cf50dc23cf"
 "checksum block-buffer 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a076c298b9ecdb530ed9d967e74a6027d6a7478924520acddcddc24c1c8ab3ab"
 "checksum bodyparser 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "07b171b407e583dc8f01011a713f20575a81ac60acecf3b8153012709aeb1fd6"
-"checksum bragi 1.2.0 (git+https://github.com/CanalTP/mimirsbrunn.git)" = "<none>"
-"checksum bragi 1.2.0 (git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe)" = "<none>"
+"checksum bragi 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)" = "<none>"
 "checksum byte-tools 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "560c32574a12a89ecd91f5e742165893f86e3ab98d21f8ea548658eb9eef5f40"
 "checksum byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "0fc10e8cc6b2580fda3f36eb6dc5316657f812a3df879a44a66fc9f0fdbc4855"
 "checksum byteorder 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "73b5bdfe7ee3ad0b99c9801d58807a9dbc9e09196365b0203853b99889ab3c87"
@@ -2179,9 +2129,8 @@ dependencies = [
 "checksum memchr 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "148fab2e51b4f1cfc66da2a7c32981d1d3c083a803978268bb11fe4b86925e7a"
 "checksum memchr 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "796fba70e76612589ed2ce7f45282f5af869e0fdd7cc6199fa1aa1f1d591ba9d"
 "checksum mime 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "ba626b8a6de5da682e1caa06bdb42a335aee5a84db8e5046a3e8ab17ba0a3ae0"
-"checksum mimir 1.2.0 (git+https://github.com/CanalTP/mimirsbrunn.git)" = "<none>"
-"checksum mimir 1.2.0 (git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe)" = "<none>"
-"checksum mimirsbrunn 1.2.0 (git+https://github.com/amatissart/mimirsbrunn.git?branch=threadSafe)" = "<none>"
+"checksum mimir 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)" = "<none>"
+"checksum mimirsbrunn 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)" = "<none>"
 "checksum miniz-sys 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "609ce024854aeb19a0ef7567d348aaa5a746b32fb72e336df7fcc16869d7e2b4"
 "checksum modifier 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "41f5c9112cb662acd3b204077e0de5bc66305fa8df65c8019d5adb10e9ab6e58"
 "checksum nalgebra 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)" = "19f2bd263c9a2d334766e8056b370e8cdf9fe292a286a2ea8eba2126fe90100e"
