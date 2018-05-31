@@ -8,8 +8,8 @@ log = "0.4"
 geo = "0.6"
 postgres = "0.15"
 fallible-iterator = "0.1"
-mimir = { git = "https://github.com/amatissart/mimirsbrunn.git", branch = "threadSafe" }
-mimirsbrunn = { git = "https://github.com/amatissart/mimirsbrunn.git", branch = "threadSafe" }
+mimir = { git = "https://github.com/antoine-de/mimirsbrunn.git", branch = "threadSafe" }
+mimirsbrunn = { git = "https://github.com/antoine-de/mimirsbrunn.git", branch = "threadSafe" }
 structopt = "0.2"
 slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
 slog-scope = "4.0"
@@ -19,7 +19,8 @@ par-map = "0.1.2"
 [dev-dependencies]
 retry = "*"
 hyper = "0.10"
-bragi = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
+# bragi = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
+bragi = { git = "https://github.com/antoine-de/mimirsbrunn.git", branch = "threadSafe" }
 rs-es = {version = "0.10", default-features = false}
 serde = {version = "1", features = ["rc"]}
 serde_derive = "1"

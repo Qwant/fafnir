@@ -24,7 +24,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         });
 
     let dataset = args.dataset;
-    fafnir::load_and_index_pois(&args.es, &conn, &dataset);
+    fafnir::load_and_index_pois(args.es, conn, dataset);
     Ok(())
 }
 
