@@ -1,8 +1,8 @@
 extern crate fafnir;
+extern crate mimirsbrunn;
 extern crate postgres;
 #[macro_use]
 extern crate structopt;
-extern crate mimirsbrunn;
 
 #[derive(StructOpt, Debug)]
 struct Args {

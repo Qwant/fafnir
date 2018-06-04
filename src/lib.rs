@@ -29,7 +29,8 @@ fn build_poi_id(row: &Row) -> String {
 }
 
 fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> {
-    let mut properties = row.get_opt::<_, HashMap<_, _>>("tags")
+    let mut properties = row
+        .get_opt::<_, HashMap<_, _>>("tags")
         .unwrap()
         .map_err(|err| {
             warn!("Unable to get tags: {:?}", err);
@@ -68,10 +69,12 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
 fn build_poi(row: Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Option<Poi> {
     let name: String = row.get("name");
     let class: String = row.get("class");
-    let lat = row.get_opt("lat")?
+    let lat = row
+        .get_opt("lat")?
         .map_err(|e| warn!("impossible to get lat for {} because {}", name, e))
         .ok()?;
-    let lon = row.get_opt("lon")?
+    let lon = row
+        .get_opt("lon")?
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
     let poi_coord = Coord::new(lon, lat);
@@ -84,6 +87,11 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Optio
     if poi_address.is_none() {
         warn!("The poi {:?} doesn't have any address", name);
     }
+    let zip_code = match &poi_address {
+        &Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
+        &Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
+        &_ => vec![],
+    };
 
     Some(Poi {
         id: build_poi_id(&row),
@@ -97,7 +105,7 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Optio
         properties: build_poi_properties(&row, &name).unwrap_or(vec![]),
         name: name,
         weight: 0.,
-        zip_codes: vec![],
+        zip_codes: zip_code,
         address: poi_address,
     })
 }
@@ -162,7 +170,8 @@ pub fn load_and_index_pois(es: &String, conn: &Connection, dataset: &str) {
 
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
 
-    let pois = rows.iterator()
+    let pois = rows
+        .iterator()
         .filter_map(|r| {
             r.map_err(|r| warn!("Impossible to load the row {:?}", r))
                 .ok()
