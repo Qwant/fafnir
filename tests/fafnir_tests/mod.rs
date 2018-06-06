@@ -151,6 +151,13 @@ fn get_coord(address: &mimir::Address) -> &mimir::Coord {
     }
 }
 
+fn get_zip_codes(address: &mimir::Address) -> Vec<String> {
+    match address {
+        &mimir::Address::Street(ref s) => s.zip_codes.clone(),
+        &mimir::Address::Addr(ref a) => a.zip_codes.clone(),
+    }
+}
+
 pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
     init_tests(&mut es_wrapper, &pg_wrapper);
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
@@ -209,4 +216,6 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let address_coord = get_coord(&address_ocean_poi);
     assert_eq!(&address_coord.lat(), &24.462216);
     assert_eq!(&address_coord.lon(), &124.139607);
+    let zip_code = get_zip_codes(&address_ocean_poi);
+    assert_eq!(zip_code, vec!["12345".to_string()]);
 }
