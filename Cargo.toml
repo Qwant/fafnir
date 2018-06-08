@@ -14,7 +14,8 @@ structopt = "0.2"
 slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
 slog-scope = "4.0"
 itertools = "0.7.3"
-par-map = "0.1.2"
+# par-map = "0.1.2"
+par-map = { git = "https://github.com/antoine-de/par-map.git", branch = "nb_thread_builder" }
 
 [dev-dependencies]
 retry = "*"
