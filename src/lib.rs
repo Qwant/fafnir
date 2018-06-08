@@ -183,6 +183,7 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String) {
                 .ok()
         })
         .pack(1000)
+        .with_nb_threads(60)
         .par_map({
             let i = poi_index.clone();
             move |p| {

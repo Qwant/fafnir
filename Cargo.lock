@@ -381,7 +381,7 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "mimir 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)",
  "mimirsbrunn 1.2.0 (git+https://github.com/antoine-de/mimirsbrunn.git?branch=threadSafe)",
- "par-map 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "par-map 0.1.1 (git+https://github.com/antoine-de/par-map.git?branch=nb_thread_builder)",
  "postgres 0.15.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "retry 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1079,6 +1079,16 @@ dependencies = [
  "rental 0.4.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "par-map"
+version = "0.1.1"
+source = "git+https://github.com/antoine-de/par-map.git?branch=nb_thread_builder#bd5ff968b759c88b8d4ddc78316983cdb1d0bffe"
+dependencies = [
+ "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures-cpupool 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2151,6 +2161,7 @@ dependencies = [
 "checksum ordered-float 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e19e312d9bf410688e9c292d9e7da4567143c0ad18df8fceb6ce99156f40cef2"
 "checksum osm_boundaries_utils 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f61323c1b76e2a196489df9e021a6270443a6354530794c0ee4892da8a3ff0d8"
 "checksum osmpbfreader 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)" = "bda4b6655f97c1ed0f0e93a95bc231de3b519364d389496092353b2a9bd478d0"
+"checksum par-map 0.1.1 (git+https://github.com/antoine-de/par-map.git?branch=nb_thread_builder)" = "<none>"
 "checksum par-map 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "a148044b62c5002054d4a164b352cf1439fffed060073703e08ba0863d56fdaf"
 "checksum pdqselect 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4ec91767ecc0a0bbe558ce8c9da33c068066c57ecc8bb8477ef8c1ad3ef77c27"
 "checksum percent-encoding 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "31010dd2e1ac33d5b46a5b413495239882813e0369f8ed8a5e266f173602f831"
