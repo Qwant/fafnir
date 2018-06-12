@@ -139,7 +139,7 @@ fn build_poi(row: Row) -> Option<Poi> {
     })
 }
 
-pub fn load_and_index_pois(es: String, conn: Connection, dataset: String) {
+pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_threads: usize) {
     let rubber = &mut mimir::rubber::Rubber::new(&es);
     let admins = rubber
         .get_admins_from_dataset(&dataset)
@@ -197,7 +197,7 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String) {
                 .ok()
         })
         .pack(1000)
-        .with_nb_threads(60)
+        .with_nb_threads(nb_threads)
         .par_map({
             let i = poi_index.clone();
             move |p| {

@@ -15,6 +15,9 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset")]
     dataset: String,
+    /// Number of threads used
+    #[structopt(short = "n", long = "nb-threads", default_value="2")]
+    nb_threads: usize,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -24,7 +27,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         });
 
     let dataset = args.dataset;
-    fafnir::load_and_index_pois(args.es, conn, dataset);
+    fafnir::load_and_index_pois(args.es, conn, dataset, args.nb_threads);
     Ok(())
 }
 
