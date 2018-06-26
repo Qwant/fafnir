@@ -90,9 +90,17 @@ fn locate_poi(poi: &mut Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) {
     if poi_address.is_none() {
         warn!("The poi {:?} doesn't have any address", &poi.name);
     }
+
+    let zip_codes = match &poi_address {
+        &Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
+        &Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
+        &_ => vec![],
+    };
+
     poi.administrative_regions = admins;
     poi.address = poi_address;
     poi.label = format_label(&poi.administrative_regions, &poi.name);
+    poi.zip_codes = zip_codes;
 }
 
 fn build_poi(row: Row) -> Option<Poi> {
@@ -107,20 +115,6 @@ fn build_poi(row: Row) -> Option<Poi> {
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
     let poi_coord = Coord::new(lon, lat);
-    let admins = geofinder.get(&geo::Coordinate { x: lon, y: lat });
-    let poi_address = rubber
-        .get_address(&poi_coord)
-        .ok()
-        .and_then(|addrs| addrs.into_iter().next())
-        .map(|addr| addr.address().unwrap());
-    if poi_address.is_none() {
-        warn!("The poi {:?} doesn't have any address", name);
-    }
-    let zip_code = match &poi_address {
-        &Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
-        &Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
-        &_ => vec![],
-    };
 
     Some(Poi {
         id: build_poi_id(&row),
@@ -129,13 +123,13 @@ fn build_poi(row: Row) -> Option<Poi> {
             id: class.clone(),
             name: class,
         },
-        label: format_label(&admins, &name),
-        administrative_regions: admins,
+        label: "".into(),
+        administrative_regions: vec![],
         properties: build_poi_properties(&row, &name).unwrap_or(vec![]),
         name: name,
         weight: 0.,
-        zip_codes: zip_code,
-        address: poi_address,
+        zip_codes: vec![],
+        address: None,
     })
 }
 

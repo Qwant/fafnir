@@ -16,7 +16,7 @@ struct Args {
     #[structopt(short = "d", long = "dataset")]
     dataset: String,
     /// Number of threads used
-    #[structopt(short = "n", long = "nb-threads", default_value="2")]
+    #[structopt(short = "n", long = "nb-threads", default_value = "2")]
     nb_threads: usize,
 }
 
