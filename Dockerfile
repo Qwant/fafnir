@@ -18,4 +18,4 @@ RUN apt-get update && apt-get install -y libcurl3 libgeos-c1 libssl-dev && apt-g
 
 COPY --from=builder /srv/fafnir/target/release/fafnir /usr/bin/fafnir
 
-ENTRYPOINT fafnir
+ENTRYPOINT ["fafnir"]
