@@ -9,6 +9,7 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 extern crate itertools;
+extern crate num_cpus;
 extern crate par_map;
 
 use fallible_iterator::FallibleIterator;
@@ -24,6 +25,7 @@ use std::collections::HashMap;
 const PG_BATCH_SIZE: i32 = 5000;
 
 fn build_poi_id(row: &Row) -> String {
+    //TO REMOVE and use the right sql function
     let osm_id_int = row.get::<_, i64>("osm_id");
     let pg_table = row.get::<_, String>("source");
     let osm_type = if osm_id_int < 0 {
@@ -196,9 +198,9 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
             let i = poi_index.clone();
             move |p| {
                 let mut rub = Rubber::new(&es);
-                let pois = p.into_iter().map(|mut r| {
-                    locate_poi(&mut r, &admins_geofinder, &mut rub);
-                    r
+                let pois = p.into_iter().map(|mut poi| {
+                    locate_poi(&mut poi, &admins_geofinder, &mut rub);
+                    poi
                 });
                 let mut rub2 = Rubber::new(&es);
                 match rub2.bulk_index(&i, pois) {

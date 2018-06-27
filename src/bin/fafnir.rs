@@ -3,8 +3,10 @@ extern crate mimirsbrunn;
 extern crate postgres;
 #[macro_use]
 extern crate structopt;
+extern crate num_cpus;
 
 #[derive(StructOpt, Debug)]
+#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
 struct Args {
     /// Postgresql parameters
     #[structopt(long = "pg")]
@@ -15,9 +17,9 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset")]
     dataset: String,
-    /// Number of threads used
-    #[structopt(short = "n", long = "nb-threads", default_value = "2")]
-    nb_threads: usize,
+    /// Number of threads used. The default is to use the number of cpus
+    #[structopt(short = "n", long = "nb-threads")]
+    nb_threads: Option<usize>,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -27,7 +29,8 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         });
 
     let dataset = args.dataset;
-    fafnir::load_and_index_pois(args.es, conn, dataset, args.nb_threads);
+    let nb_threads = args.nb_threads.unwrap_or(num_cpus::get());
+    fafnir::load_and_index_pois(args.es, conn, dataset, nb_threads);
     Ok(())
 }
 
