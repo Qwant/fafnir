@@ -8,12 +8,16 @@ extern crate postgres;
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
+extern crate itertools;
+extern crate num_cpus;
+extern crate par_map;
 
 use fallible_iterator::FallibleIterator;
 use mimir::rubber::Rubber;
 use mimir::{Coord, Poi, PoiType, Property};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::utils::format_label;
+use par_map::ParMap;
 use postgres::rows::Row;
 use postgres::Connection;
 use std::collections::HashMap;
@@ -21,10 +25,22 @@ use std::collections::HashMap;
 const PG_BATCH_SIZE: i32 = 5000;
 
 fn build_poi_id(row: &Row) -> String {
+    //TO REMOVE and use the right sql function
+    let osm_id_int = row.get::<_, i64>("osm_id");
+    let pg_table = row.get::<_, String>("source");
+    let osm_type = if osm_id_int < 0 {
+        // Imposm uses negative osm_id for relations
+        "relation"
+    } else if pg_table.ends_with("point") {
+        "node"
+    } else {
+        "way"
+    };
+
     format!(
-        "pg:{source}:{id}",
-        source = row.get::<_, String>("source"),
-        id = row.get::<_, i64>("osm_id")
+        "osm:{osm_type}:{id}",
+        osm_type = osm_type,
+        id = osm_id_int.abs()
     )
 }
 
@@ -66,7 +82,30 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
     Ok(properties)
 }
 
-fn build_poi(row: Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Option<Poi> {
+fn locate_poi(poi: &mut Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) {
+    let admins = geofinder.get(&poi.coord);
+    let poi_address = rubber
+        .get_address(&poi.coord)
+        .ok()
+        .and_then(|addrs| addrs.into_iter().next())
+        .map(|addr| addr.address().unwrap());
+    if poi_address.is_none() {
+        warn!("The poi {:?} doesn't have any address", &poi.name);
+    }
+
+    let zip_codes = match &poi_address {
+        &Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
+        &Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
+        &_ => vec![],
+    };
+
+    poi.administrative_regions = admins;
+    poi.address = poi_address;
+    poi.label = format_label(&poi.administrative_regions, &poi.name);
+    poi.zip_codes = zip_codes;
+}
+
+fn build_poi(row: Row) -> Option<Poi> {
     let name: String = row.get("name");
     let class: String = row.get("class");
     let lat = row
@@ -78,20 +117,6 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Optio
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
     let poi_coord = Coord::new(lon, lat);
-    let admins = geofinder.get(&geo::Coordinate { x: lon, y: lat });
-    let poi_address = rubber
-        .get_address(&poi_coord)
-        .ok()
-        .and_then(|addrs| addrs.into_iter().next())
-        .map(|addr| addr.address().unwrap());
-    if poi_address.is_none() {
-        warn!("The poi {:?} doesn't have any address", name);
-    }
-    let zip_code = match &poi_address {
-        &Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
-        &Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
-        &_ => vec![],
-    };
 
     Some(Poi {
         id: build_poi_id(&row),
@@ -100,34 +125,20 @@ fn build_poi(row: Row, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Optio
             id: class.clone(),
             name: class,
         },
-        label: format_label(&admins, &name),
-        administrative_regions: admins,
+        label: "".into(),
+        administrative_regions: vec![],
         properties: build_poi_properties(&row, &name).unwrap_or(vec![]),
         name: name,
         weight: 0.,
-        zip_codes: zip_code,
-        address: poi_address,
+        zip_codes: vec![],
+        address: None,
     })
 }
 
-fn index_pois<T>(rubber: &mut Rubber, dataset: &str, pois: T)
-where
-    T: Iterator<Item = Poi>,
-{
-    let poi_index = rubber.make_index(dataset).unwrap();
-
-    match rubber.bulk_index(&poi_index, pois) {
-        Err(e) => panic!("Failed to bulk insert pois because: {}", e),
-        Ok(nb) => info!("Nb of indexed pois: {}", nb),
-    }
-
-    rubber.publish_index(dataset, poi_index).unwrap();
-}
-
-pub fn load_and_index_pois(es: &String, conn: &Connection, dataset: &str) {
-    let rubber = &mut mimir::rubber::Rubber::new(es);
+pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_threads: usize) {
+    let rubber = &mut mimir::rubber::Rubber::new(&es);
     let admins = rubber
-        .get_admins_from_dataset(dataset)
+        .get_admins_from_dataset(&dataset)
         .unwrap_or_else(|err| {
             warn!(
                 "Administratives regions not found in es db for dataset {}. (error: {})",
@@ -169,18 +180,36 @@ pub fn load_and_index_pois(es: &String, conn: &Connection, dataset: &str) {
     let trans = conn.transaction().unwrap();
 
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
+    let poi_index = rubber.make_index(&dataset).unwrap();
 
-    let pois = rows
-        .iterator()
+    rows.iterator()
         .filter_map(|r| {
             r.map_err(|r| warn!("Impossible to load the row {:?}", r))
                 .ok()
         })
-        .filter_map(|r| {
-            build_poi(r, &admins_geofinder, rubber)
+        .filter_map(|p| {
+            build_poi(p)
                 .ok_or_else(|| warn!("Problem occurred in build_poi()"))
                 .ok()
-        });
+        })
+        .pack(1000)
+        .with_nb_threads(nb_threads)
+        .par_map({
+            let i = poi_index.clone();
+            move |p| {
+                let mut rub = Rubber::new(&es);
+                let pois = p.into_iter().map(|mut poi| {
+                    locate_poi(&mut poi, &admins_geofinder, &mut rub);
+                    poi
+                });
+                let mut rub2 = Rubber::new(&es);
+                match rub2.bulk_index(&i, pois) {
+                    Err(e) => panic!("Failed to bulk insert pois because: {}", e),
+                    Ok(nb) => info!("Nb of indexed pois: {}", nb),
+                };
+            }
+        })
+        .for_each(|_| {});
 
-    index_pois(&mut Rubber::new(es), dataset, pois)
+    rubber.publish_index(&dataset, poi_index).unwrap();
 }
