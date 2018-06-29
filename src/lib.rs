@@ -24,26 +24,6 @@ use std::collections::HashMap;
 
 const PG_BATCH_SIZE: i32 = 5000;
 
-fn build_poi_id(row: &Row) -> String {
-    //TO REMOVE and use the right sql function
-    let osm_id_int = row.get::<_, i64>("osm_id");
-    let pg_table = row.get::<_, String>("source");
-    let osm_type = if osm_id_int < 0 {
-        // Imposm uses negative osm_id for relations
-        "relation"
-    } else if pg_table.ends_with("point") {
-        "node"
-    } else {
-        "way"
-    };
-
-    format!(
-        "osm:{osm_type}:{id}",
-        osm_type = osm_type,
-        id = osm_id_int.abs()
-    )
-}
-
 fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> {
     let mut properties = row
         .get_opt::<_, HashMap<_, _>>("tags")
@@ -106,6 +86,7 @@ fn locate_poi(poi: &mut Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) {
 }
 
 fn build_poi(row: Row) -> Option<Poi> {
+    let id = row.get("id");
     let name: String = row.get("name");
     let class: String = row.get("class");
     let lat = row
@@ -119,7 +100,7 @@ fn build_poi(row: Row) -> Option<Poi> {
     let poi_coord = Coord::new(lon, lat);
 
     Some(Poi {
-        id: build_poi_id(&row),
+        id: id,
         coord: poi_coord,
         poi_type: PoiType {
             id: class.clone(),
@@ -150,9 +131,9 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
 
     let stmt = conn.prepare(
         "
-        SELECT osm_id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
+        SELECT id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
         (
-            SELECT osm_id,
+            SELECT global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
                 poi_class(subclass, mapping_key) AS class,
@@ -164,7 +145,7 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
                 FROM osm_poi_point
                 WHERE name <> ''
             UNION ALL
-            SELECT osm_id,
+            SELECT global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
                 poi_class(subclass, mapping_key) AS class,
