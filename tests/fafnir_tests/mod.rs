@@ -9,6 +9,7 @@ fn init_tests(es_wrapper: &mut ElasticSearchWrapper, pg_wrapper: &PostgresWrappe
     create_tests_tables(&conn);
     populate_tables(&conn);
     load_poi_class_function(&conn);
+    load_osm_id_function(&conn);
     load_address(es_wrapper);
 }
 
@@ -56,7 +57,7 @@ fn populate_tables(conn: &Connection) {
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (5589618289, 'Ocean Studio',null,null, '\"name\"=>\"Ocean Studio\", \"amenity\"=>\"cafe\", \"name_int\"=>\"Ocean Studio\", \"name:latin\"=>\"Ocean Studio\"', 'cafe', 'amenity',null,null,null,null, '0101000020110F0000D098707D8D5B6A419AD08C9415704541')", &[]).unwrap();
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (5590210422, 'Spagnolo',null,null, '\"name\"=>\"Spagnolo\", \"shop\"=>\"clothes\", \"name_int\"=>\"Spagnolo\", \"name:latin\"=>\"Spagnolo\"', 'clothes', 'shop',null,null,null,null, '0101000020110F0000F33E3B4589031CC1A6CE19ABBB175341')", &[]).unwrap();
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (5590601521, '4 gusto',null,null, '\"name\"=>\"4 gusto\", \"amenity\"=>\"cafe\", \"name_int\"=>\"4 gusto\", \"name:latin\"=>\"4 gusto\"', 'cafe', 'amenity',null,null,null,null, '0101000020110F00006091F81AE83E45417DAADADEB2185041')", &[]).unwrap();
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (5239101332, 'Le nomade',null,null, '\"name\"=>\"Le nomade\", \"amenity\"=>\"bar\", \"name:es\"=>\"Le nomade\", \"name_int\"=>\"Le nomade\", \"name:latin\"=>\"Le nomade\"', 'bar', 'amenity',null,null,null,null, '0101000020110F00005284822481905EC17327757A8E2C37C1')", &[]).unwrap();
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (-42, 'Le nomade',null,null, '\"name\"=>\"Le nomade\", \"amenity\"=>\"bar\", \"name:es\"=>\"Le nomade\", \"name_int\"=>\"Le nomade\", \"name:latin\"=>\"Le nomade\"', 'bar', 'amenity',null,null,null,null, '0101000020110F00005284822481905EC17327757A8E2C37C1')", &[]).unwrap();
 }
 
 /// This function uses the poi_class function from
@@ -102,6 +103,26 @@ fn load_poi_class_function(conn: &Connection) {
                     ELSE subclass
                 END;
             $$ LANGUAGE SQL IMMUTABLE;", &[]).unwrap();
+}
+
+/// This function uses the poi_class function from
+/// https://github.com/QwantResearch/openmaptiles/blob/master/layers/poi/layer.sql#L11
+fn load_osm_id_function(conn: &Connection) {
+    conn.execute(
+        "
+        CREATE OR REPLACE FUNCTION global_id_from_imposm(imposm_id bigint)
+            RETURNS TEXT AS $$
+            SELECT CONCAT(
+                'osm:',
+                CASE WHEN imposm_id < -1e17 THEN CONCAT('relation:', -imposm_id-1e17)
+                    WHEN imposm_id < 0 THEN CONCAT('way:', -imposm_id)
+                    ELSE CONCAT('node:', imposm_id)
+                END
+            );
+        $$ LANGUAGE SQL IMMUTABLE;
+    ",
+        &[],
+    ).unwrap();
 }
 
 fn load_address(es_wrapper: &mut ElasticSearchWrapper) {
@@ -189,6 +210,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // We test latitude and longitude
     let ocean_poi = &ocean_place.poi().unwrap();
     let coord_ocean_poi = &ocean_poi.coord;
+    assert_eq!(&ocean_poi.id, "osm:node:5589618289");
     assert_eq!(&coord_ocean_poi.lat(), &24.46275578041472);
     assert_eq!(&coord_ocean_poi.lon(), &124.13808059594312);
 
@@ -218,4 +240,13 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert_eq!(&address_coord.lon(), &124.139607);
     let zip_code = get_zip_codes(&address_ocean_poi);
     assert_eq!(zip_code, vec!["12345".to_string()]);
+
+    let le_nomade_query: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("Le nomade", |_| true)
+        .collect();
+    assert_eq!(&le_nomade_query.len(), &1);
+    let le_nomade = &le_nomade_query[0];
+    assert!(&le_nomade.is_poi());
+    let le_nomade = &le_nomade.poi().unwrap();
+    assert_eq!(&le_nomade.id, "osm:way:42"); // the id in the database is '-42', so it's a way
 }
