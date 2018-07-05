@@ -51,6 +51,24 @@ fn create_tests_tables(conn: &Connection) {
                        )",
         &[],
     ).unwrap();
+    conn.execute(
+        "CREATE TABLE osm_aerodrome_label_point(
+                         id                         serial primary key,
+                         osm_id                     bigint,
+                         name                       varchar,
+                         name_en                    varchar,
+                         name_de                    varchar,
+                         tags                       hstore,
+                         aerodrome_type             varchar,
+                         aerodrome                  varchar,
+                         military                   varchar,
+                         iata                       varchar,
+                         icao                       varchar,
+                         ele                        varchar,
+                         geometry                   geometry
+                       )",
+        &[],
+    ).unwrap();
 }
 
 fn populate_tables(conn: &Connection) {
@@ -58,6 +76,7 @@ fn populate_tables(conn: &Connection) {
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (5590210422, 'Spagnolo',null,null, '\"name\"=>\"Spagnolo\", \"shop\"=>\"clothes\", \"name_int\"=>\"Spagnolo\", \"name:latin\"=>\"Spagnolo\"', 'clothes', 'shop',null,null,null,null, '0101000020110F0000F33E3B4589031CC1A6CE19ABBB175341')", &[]).unwrap();
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (5590601521, '4 gusto',null,null, '\"name\"=>\"4 gusto\", \"amenity\"=>\"cafe\", \"name_int\"=>\"4 gusto\", \"name:latin\"=>\"4 gusto\"', 'cafe', 'amenity',null,null,null,null, '0101000020110F00006091F81AE83E45417DAADADEB2185041')", &[]).unwrap();
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (-42, 'Le nomade',null,null, '\"name\"=>\"Le nomade\", \"amenity\"=>\"bar\", \"name:es\"=>\"Le nomade\", \"name_int\"=>\"Le nomade\", \"name:latin\"=>\"Le nomade\"', 'bar', 'amenity',null,null,null,null, '0101000020110F00005284822481905EC17327757A8E2C37C1')", &[]).unwrap();
+    conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, tags, aerodrome_type, aerodrome, military, iata, icao, ele, geometry) VALUES (5934,4505823836, 'Isla Cristina Agricultural Airstrip', null, null, '\"name\"=>\"Isla Cristina Agricultural Airstrip\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"Isla Cristina Agricultural Airstrip\", \"name:latin\"=>\"Isla Cristina Agricultural Airstrip\"', null, null, null, null,  null, null, '0101000020110F0000919C16BDE2DB28C116A2D8AA16105141')", &[]).unwrap();
 }
 
 /// This function uses the poi_class function from
@@ -249,4 +268,14 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert!(&le_nomade.is_poi());
     let le_nomade = &le_nomade.poi().unwrap();
     assert_eq!(&le_nomade.id, "osm:way:42"); // the id in the database is '-42', so it's a way
+
+    // Test that the airport 'Isla Cristina Agricultural Airstrip' has been imported in the elastic wrapper
+    let airport_cristina: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("Isla Cristina", |_| true)
+        .collect();
+    assert_eq!(&airport_cristina.len(), &1);
+
+    // Test that the airport is a POI
+    let airport = &airport_cristina[0];
+    assert!(&airport.is_poi());
 }
