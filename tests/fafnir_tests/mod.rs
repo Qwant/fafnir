@@ -274,8 +274,27 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .search_and_filter("Isla Cristina", |_| true)
         .collect();
     assert_eq!(&airport_cristina.len(), &1);
+    assert!(&airport_cristina[0].is_poi());
 
-    // Test that the airport is a POI
-    let airport = &airport_cristina[0];
-    assert!(&airport.is_poi());
+    // Test the airport id
+    let airport = &airport_cristina[0].poi().unwrap();
+    assert_eq!(&airport.id, "osm:node:4505823836");
+
+    // Test the airport coord
+    let airport_coord = &airport.coord;
+    assert_eq!(&airport_coord.lat(), &37.24221674256237);
+    assert_eq!(&airport_coord.lon(), &-7.317473009518636);
+
+    // Test the airport poi_class and poi_subclass
+    let properties_airport = &airport.properties;
+    let poi_class = properties_airport
+        .into_iter()
+        .find(|&p| p.key == "poi_class")
+        .unwrap();
+    assert_eq!(poi_class.value, "aerodrome".to_string());
+    let poi_subclass = properties_airport
+        .into_iter()
+        .find(|&p| p.key == "poi_subclass")
+        .unwrap();
+    assert_eq!(poi_subclass.value, "airport".to_string());
 }
