@@ -10,6 +10,8 @@ extern crate serde_json;
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
+#[macro_use]
+extern crate approx;
 
 pub mod docker_wrapper;
 pub mod fafnir_tests;
