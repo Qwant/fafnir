@@ -2,6 +2,7 @@ use super::mimir;
 use super::DATASET;
 use super::{ElasticSearchWrapper, PostgresWrapper};
 use postgres::Connection;
+use std::f64;
 
 // Init the Postgres Wrapper
 fn init_tests(es_wrapper: &mut ElasticSearchWrapper, pg_wrapper: &PostgresWrapper) {
@@ -228,10 +229,18 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // Test that the coord property of a POI has been well loaded
     // We test latitude and longitude
     let ocean_poi = &ocean_place.poi().unwrap();
-    let coord_ocean_poi = &ocean_poi.coord;
     assert_eq!(&ocean_poi.id, "osm:node:5589618289");
-    assert_eq!(&coord_ocean_poi.lat(), &24.46275578041472);
-    assert_eq!(&coord_ocean_poi.lon(), &124.13808059594312);
+    let coord_ocean_poi = &ocean_poi.coord;
+    assert_relative_eq!(
+        coord_ocean_poi.lat(),
+        24.46275578041472,
+        epsilon = f64::EPSILON
+    );
+    assert_relative_eq!(
+        coord_ocean_poi.lon(),
+        124.13808059594312,
+        epsilon = f64::EPSILON
+    );
 
     // Test Label
     let label_ocean_poi = &ocean_poi.label;
@@ -255,8 +264,8 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let address_house_number = get_house_number(&address_ocean_poi);
     assert_eq!(address_house_number, "1234".to_string());
     let address_coord = get_coord(&address_ocean_poi);
-    assert_eq!(&address_coord.lat(), &24.462216);
-    assert_eq!(&address_coord.lon(), &124.139607);
+    assert_eq!(address_coord.lat(), 24.462216);
+    assert_eq!(address_coord.lon(), 124.139607);
     let zip_code = get_zip_codes(&address_ocean_poi);
     assert_eq!(zip_code, vec!["12345".to_string()]);
 
@@ -282,8 +291,16 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // Test the airport coord
     let airport_coord = &airport.coord;
-    assert_eq!(&airport_coord.lat(), &37.24221674256237);
-    assert_eq!(&airport_coord.lon(), &-7.317473009518636);
+    assert_relative_eq!(
+        airport_coord.lat(),
+        37.24221674256237,
+        epsilon = f64::EPSILON
+    );
+    assert_relative_eq!(
+        airport_coord.lon(),
+        -7.317473009518636,
+        epsilon = f64::EPSILON
+    );
 
     // Test the airport poi_class and poi_subclass
     let properties_airport = &airport.properties;
