@@ -116,7 +116,13 @@ fn build_poi(row: Row) -> Option<Poi> {
     })
 }
 
-pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_threads: usize) {
+pub fn load_and_index_pois(
+    es: String,
+    conn: Connection,
+    dataset: String,
+    nb_threads: usize,
+    bounding_box: Option<String>,
+) {
     let rubber = &mut mimir::rubber::Rubber::new(&es);
     let admins = rubber
         .get_admins_from_dataset(&dataset)
@@ -129,11 +135,22 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
         });
     let admins_geofinder = admins.into_iter().collect();
 
-    let stmt = conn.prepare(
+    let bbox_filter = bounding_box
+        .map(|b| {
+            format!(
+                "and ST_MakeEnvelope({}, 4326) && st_transform(geometry, 4326)",
+                b
+            )
+        })
+        .unwrap_or("".into());
+
+    let query = format!(
         "
-        SELECT id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
+        SELECT geometry, id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
         (
-            SELECT global_id_from_imposm(osm_id) as id,
+            SELECT 
+                geometry, 
+                global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
                 poi_class(subclass, mapping_key) AS class,
@@ -145,7 +162,9 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
                 FROM osm_poi_point
                 WHERE name <> ''
             UNION ALL
-            SELECT global_id_from_imposm(osm_id) as id,
+            SELECT 
+                geometry,
+                global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
                 poi_class(subclass, mapping_key) AS class,
@@ -156,7 +175,9 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
                 'osm_poi_polygon' as source
                 FROM osm_poi_polygon WHERE name <> ''
             UNION ALL
-            SELECT global_id_from_imposm(osm_id) as id,
+            SELECT 
+                geometry,
+                global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
                 'aerodrome' AS class,
@@ -167,8 +188,23 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
                 'osm_aerodrome_label_point' as source
                 FROM osm_aerodrome_label_point WHERE name <> ''
         ) as unionall
-        WHERE (unionall.mapping_key,unionall.subclass) not in (('highway','bus_stop'), ('barrier','gate'), ('amenity','waste_basket'), ('amenity','post_box'), ('tourism','information'), ('amenity','recycling'), ('barrier','lift_gate'), ('barrier','bollard'), ('barrier','cycle_barrier'), ('amenity','bicycle_rental'), ('tourism','artwork'), ('amenity','toilets'), ('leisure','playground'), ('amenity','telephone'), ('amenity','taxi'), ('leisure','pitch'), ('amenity','shelter'), ('barrier','sally_port'), ('barrier','stile'), ('amenity','ferry_terminal'), ('amenity','post_office'))",
-    ).unwrap();
+        WHERE (unionall.mapping_key,unionall.subclass) not in 
+        (('highway','bus_stop'), ('barrier','gate'), 
+         ('amenity','waste_basket'), ('amenity','post_box'), 
+         ('tourism','information'), ('amenity','recycling'), 
+         ('barrier','lift_gate'), ('barrier','bollard'), 
+         ('barrier','cycle_barrier'), ('amenity','bicycle_rental'), 
+         ('tourism','artwork'), ('amenity','toilets'), 
+         ('leisure','playground'), ('amenity','telephone'), 
+         ('amenity','taxi'), ('leisure','pitch'), 
+         ('amenity','shelter'), ('barrier','sally_port'), 
+         ('barrier','stile'), ('amenity','ferry_terminal'), 
+         ('amenity','post_office')) 
+         {}",
+        bbox_filter
+    );
+
+    let stmt = conn.prepare(&query).unwrap();
     let trans = conn.transaction().unwrap();
 
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();

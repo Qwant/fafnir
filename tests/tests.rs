@@ -239,4 +239,9 @@ fn main_test() {
         ElasticSearchWrapper::new(&mut el_docker),
         PostgresWrapper::new(&pg_docker),
     );
+
+    fafnir_tests::bbox_test(
+        ElasticSearchWrapper::new(&mut el_docker),
+        PostgresWrapper::new(&pg_docker),
+    );
 }

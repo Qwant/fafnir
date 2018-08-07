@@ -315,3 +315,31 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .unwrap();
     assert_eq!(poi_subclass.value, "airport".to_string());
 }
+
+pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
+    init_tests(&mut es_wrapper, &pg_wrapper);
+    let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
+    super::launch_and_assert(
+        fafnir,
+        vec![
+            format!("--dataset={}", DATASET),
+            format!("--es={}", &es_wrapper.host()),
+            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
+            format!("--bounding-box=0, 0, 3.5, 3.5"),
+        ],
+        &es_wrapper,
+    );
+
+    // We filtered the import by a bounding box, we still have 5 rows in PG
+    let rows = &pg_wrapper.get_rows();
+    assert_eq!(rows.len(), 5);
+    // but there is only 3 elements in the ES now, 'Le nomade' and 'Isla Cristina Agricultural Airstrip'
+    // have been filtered
+    assert_eq!(
+        es_wrapper
+            .search_and_filter("*.*", |p| p.is_poi())
+            .collect::<Vec<_>>()
+            .len(),
+        3
+    );
+}
