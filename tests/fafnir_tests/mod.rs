@@ -1,8 +1,11 @@
 use super::mimir;
 use super::DATASET;
 use super::{ElasticSearchWrapper, PostgresWrapper};
+use geo;
 use postgres::Connection;
+use std;
 use std::f64;
+use std::sync::Arc;
 
 // Init the Postgres Wrapper
 fn init_tests(es_wrapper: &mut ElasticSearchWrapper, pg_wrapper: &PostgresWrapper) {
@@ -11,12 +14,12 @@ fn init_tests(es_wrapper: &mut ElasticSearchWrapper, pg_wrapper: &PostgresWrappe
     populate_tables(&conn);
     load_poi_class_function(&conn);
     load_osm_id_function(&conn);
-    load_address(es_wrapper);
+    load_es_data(es_wrapper);
 }
 
 fn create_tests_tables(conn: &Connection) {
     conn.execute(
-        "CREATE TABLE osm_poi_point(
+        "CREATE TABLE IF NOT EXISTS osm_poi_point(
                          id                 serial primary key,
                          osm_id             bigint,
                          name               varchar,
@@ -34,8 +37,9 @@ fn create_tests_tables(conn: &Connection) {
                        )",
         &[],
     ).unwrap();
+    conn.execute("TRUNCATE TABLE osm_poi_point", &[]).unwrap();
     conn.execute(
-        "CREATE TABLE osm_poi_polygon (
+        "CREATE TABLE IF NOT EXISTS osm_poi_polygon (
                          id                 serial primary key,
                          osm_id             bigint,
                          name               varchar,
@@ -52,8 +56,9 @@ fn create_tests_tables(conn: &Connection) {
                        )",
         &[],
     ).unwrap();
+    conn.execute("TRUNCATE TABLE osm_poi_polygon", &[]).unwrap();
     conn.execute(
-        "CREATE TABLE osm_aerodrome_label_point(
+        "CREATE TABLE IF NOT EXISTS osm_aerodrome_label_point(
                          id                         serial primary key,
                          osm_id                     bigint,
                          name                       varchar,
@@ -70,14 +75,36 @@ fn create_tests_tables(conn: &Connection) {
                        )",
         &[],
     ).unwrap();
+    conn.execute("TRUNCATE TABLE osm_aerodrome_label_point", &[])
+        .unwrap();
 }
 
 fn populate_tables(conn: &Connection) {
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (5589618289, 'Ocean Studio',null,null, '\"name\"=>\"Ocean Studio\", \"amenity\"=>\"cafe\", \"name_int\"=>\"Ocean Studio\", \"name:latin\"=>\"Ocean Studio\"', 'cafe', 'amenity',null,null,null,null, '0101000020110F0000D098707D8D5B6A419AD08C9415704541')", &[]).unwrap();
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (5590210422, 'Spagnolo',null,null, '\"name\"=>\"Spagnolo\", \"shop\"=>\"clothes\", \"name_int\"=>\"Spagnolo\", \"name:latin\"=>\"Spagnolo\"', 'clothes', 'shop',null,null,null,null, '0101000020110F0000F33E3B4589031CC1A6CE19ABBB175341')", &[]).unwrap();
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (5590601521, '4 gusto',null,null, '\"name\"=>\"4 gusto\", \"amenity\"=>\"cafe\", \"name_int\"=>\"4 gusto\", \"name:latin\"=>\"4 gusto\"', 'cafe', 'amenity',null,null,null,null, '0101000020110F00006091F81AE83E45417DAADADEB2185041')", &[]).unwrap();
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, geometry) VALUES (-42, 'Le nomade',null,null, '\"name\"=>\"Le nomade\", \"amenity\"=>\"bar\", \"name:es\"=>\"Le nomade\", \"name_int\"=>\"Le nomade\", \"name:latin\"=>\"Le nomade\"', 'bar', 'amenity',null,null,null,null, '0101000020110F00005284822481905EC17327757A8E2C37C1')", &[]).unwrap();
-    conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, tags, aerodrome_type, aerodrome, military, iata, icao, ele, geometry) VALUES (5934,4505823836, 'Isla Cristina Agricultural Airstrip', null, null, '\"name\"=>\"Isla Cristina Agricultural Airstrip\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"Isla Cristina Agricultural Airstrip\", \"name:latin\"=>\"Isla Cristina Agricultural Airstrip\"', null, null, null, null,  null, null, '0101000020110F0000919C16BDE2DB28C116A2D8AA16105141')", &[]).unwrap();
+    // this poi is located at lon=1, lat=1
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
+    VALUES (5589618289, 'Ocean Studio',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E6100000000000000000F03F000000000000F03F'
+    , '\"name\"=>\"Ocean Studio\", \"amenity\"=>\"cafe\", \"name_int\"=>\"Ocean Studio\", \"name:latin\"=>\"Ocean Studio\"')", &[]).unwrap();
+    // this poi is located at lon=2, lat=2
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
+    VALUES (5590210422, 'Spagnolo',null,null, 'clothes', 'shop',null,null,null,null, '0101000020E610000000000000000000400000000000000040'
+    , '\"name\"=>\"Spagnolo\", \"shop\"=>\"clothes\", \"name_int\"=>\"Spagnolo\", \"name:latin\"=>\"Spagnolo\"')", &[]).unwrap();
+    // this poi is located at lon=3, lat=3
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
+    VALUES (5590601521, '4 gusto',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E610000000000000000008400000000000000840'
+    , '\"name\"=>\"4 gusto\", \"amenity\"=>\"cafe\", \"name_int\"=>\"4 gusto\", \"name:latin\"=>\"4 gusto\"')", &[]).unwrap();
+    // this poi is located at lon=4, lat=4
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
+    VALUES (-42, 'Le nomade',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E610000000000000000010400000000000001040'
+    , '\"name\"=>\"Le nomade\", \"amenity\"=>\"bar\", \"name:es\"=>\"Le nomade\", \"name_int\"=>\"Le nomade\", \"name:latin\"=>\"Le nomade\"')", &[]).unwrap();
+    // this poi is located at lon=5, lat=5
+    conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, aerodrome_type, aerodrome, military, iata, icao, ele, geometry, tags) 
+    VALUES (5934, 4505823836, 'Isla Cristina Agricultural Airstrip', null, null, null, null, null, null,  null, null, '0101000020E610000000000000000014400000000000001440'
+    , '\"name\"=>\"Isla Cristina Agricultural Airstrip\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"Isla Cristina Agricultural Airstrip\", \"name:latin\"=>\"Isla Cristina Agricultural Airstrip\"')", &[]).unwrap();
+
+    // we also add a poi located at lon=-1, lat=-1, it won't be in an admin, so it must not be imported
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
+    VALUES (12321, 'poi too far',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E6100000000000000000F0BF000000000000F0BF'
+    , '\"name\"=>\"poi too far\"')", &[]).unwrap();
 }
 
 /// This function uses the poi_class function from
@@ -145,27 +172,58 @@ fn load_osm_id_function(conn: &Connection) {
     ).unwrap();
 }
 
-fn load_address(es_wrapper: &mut ElasticSearchWrapper) {
-    let test_address = get_test_address();
-    es_wrapper.make_addr_index(DATASET, &test_address);
+fn load_es_data(es_wrapper: &mut ElasticSearchWrapper) {
+    let city = make_test_admin();
+    let test_address = make_test_address(city.clone());
+    let addresses = std::iter::once(test_address);
+    es_wrapper.index(DATASET, addresses);
+    let cities = std::iter::once(city);
+    es_wrapper.index(DATASET, cities);
 }
 
-fn get_test_address() -> mimir::Addr {
+fn make_test_admin() -> mimir::Admin {
+    let p = |x, y| geo::Point(geo::Coordinate { x: x, y: y });
+
+    let boundary = geo::MultiPolygon(vec![geo::Polygon::new(
+        geo::LineString(vec![
+            p(0., 0.),
+            p(20., 0.),
+            p(20., 20.),
+            p(0., 20.),
+            p(0., 0.),
+        ]),
+        vec![],
+    )]);
+    mimir::Admin {
+        id: "bobs_town".to_string(),
+        level: 8,
+        name: "bob's town".to_string(),
+        label: "bob's town".to_string(),
+        zip_codes: vec!["421337".to_string()],
+        weight: 0f64,
+        coord: ::mimir::Coord::new(4.0, 4.0),
+        boundary: Some(boundary),
+        insee: "outlook".to_string(),
+        admin_type: mimir::AdminType::City,
+        zone_type: None,
+    }
+}
+fn make_test_address(city: mimir::Admin) -> mimir::Addr {
     let street = mimir::Street {
         id: "1234".to_string(),
         street_name: "test".to_string(),
-        label: "test (ville Test)".to_string(),
-        administrative_regions: vec![],
+        label: "test (bob's town)".to_string(),
+        administrative_regions: vec![Arc::new(city)],
         weight: 50.0,
         zip_codes: vec!["12345".to_string()],
-        coord: mimir::Coord::new(124.139607, 24.462216),
+        coord: mimir::Coord::new(1., 1.),
     };
     mimir::Addr {
-        id: format!("addr:{};{}", 124.139607, 24.462216),
+        id: format!("addr:{};{}", 1., 1.),
         house_number: "1234".to_string(),
         street: street,
-        label: "test (ville Test)".to_string(),
-        coord: mimir::Coord::new(124.139607, 24.462216),
+        label: "1234 test (bob's town)".to_string(),
+        coord: mimir::Coord::new(1., 1.),
         weight: 50.0,
         zip_codes: vec!["12345".to_string()],
     }
@@ -212,9 +270,17 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         &es_wrapper,
     );
 
-    // Test that the postgres wrapper contains 4 rows
+    // Test that the postgres wrapper contains 5 rows
     let rows = &pg_wrapper.get_rows();
-    assert_eq!(rows.len(), 4);
+    assert_eq!(rows.len(), 5);
+    // but the elastic search contains only 4 because the poi "poi too far" has not been loaded
+    assert_eq!(
+        es_wrapper
+            .search_and_filter("*.*", |p| p.is_poi())
+            .collect::<Vec<_>>()
+            .len(),
+        5
+    );
 
     // Test that the place "Ocean Studio" has been imported in the elastic wrapper
     let pois: Vec<mimir::Place> = es_wrapper
@@ -231,20 +297,12 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let ocean_poi = &ocean_place.poi().unwrap();
     assert_eq!(&ocean_poi.id, "osm:node:5589618289");
     let coord_ocean_poi = &ocean_poi.coord;
-    assert_relative_eq!(
-        coord_ocean_poi.lat(),
-        24.46275578041472,
-        epsilon = f64::EPSILON
-    );
-    assert_relative_eq!(
-        coord_ocean_poi.lon(),
-        124.13808059594312,
-        epsilon = f64::EPSILON
-    );
+    assert_relative_eq!(coord_ocean_poi.lat(), 1., epsilon = f64::EPSILON);
+    assert_relative_eq!(coord_ocean_poi.lon(), 1., epsilon = f64::EPSILON);
 
     // Test Label
     let label_ocean_poi = &ocean_poi.label;
-    assert_eq!(label_ocean_poi, &"Ocean Studio");
+    assert_eq!(label_ocean_poi, &"Ocean Studio (bob's town)");
 
     // Test Properties: the amenity property for this POI should be "cafe"
     let properties_ocean_poi = &ocean_poi.properties;
@@ -260,12 +318,12 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // the POI in the init() method.
     let address_ocean_poi = ocean_poi.address.as_ref().unwrap();
     let address_label = get_label(&address_ocean_poi);
-    assert_eq!(address_label, &"test (ville Test)".to_string());
+    assert_eq!(address_label, &"1234 test (bob's town)".to_string());
     let address_house_number = get_house_number(&address_ocean_poi);
     assert_eq!(address_house_number, "1234".to_string());
     let address_coord = get_coord(&address_ocean_poi);
-    assert_eq!(address_coord.lat(), 24.462216);
-    assert_eq!(address_coord.lon(), 124.139607);
+    assert_eq!(address_coord.lat(), 1.);
+    assert_eq!(address_coord.lon(), 1.);
     let zip_code = get_zip_codes(&address_ocean_poi);
     assert_eq!(zip_code, vec!["12345".to_string()]);
 
@@ -291,16 +349,8 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // Test the airport coord
     let airport_coord = &airport.coord;
-    assert_relative_eq!(
-        airport_coord.lat(),
-        37.24221674256237,
-        epsilon = f64::EPSILON
-    );
-    assert_relative_eq!(
-        airport_coord.lon(),
-        -7.317473009518636,
-        epsilon = f64::EPSILON
-    );
+    assert_relative_eq!(airport_coord.lat(), 5.0, epsilon = f64::EPSILON);
+    assert_relative_eq!(airport_coord.lon(), 5.0, epsilon = f64::EPSILON);
 
     // Test the airport poi_class and poi_subclass
     let properties_airport = &airport.properties;

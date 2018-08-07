@@ -1,5 +1,6 @@
 extern crate bragi;
 extern crate fafnir;
+extern crate geo;
 extern crate hyper;
 extern crate mimir;
 extern crate mimirsbrunn;
@@ -21,7 +22,6 @@ use hyper::client::response::Response;
 use postgres::rows;
 use postgres::{Connection, TlsMode};
 use serde_json::value::Value;
-use std::iter;
 use std::process::Command;
 
 // Dataset name used for tests.
@@ -84,11 +84,14 @@ pub struct ElasticSearchWrapper<'a> {
 }
 
 impl<'a> ElasticSearchWrapper<'a> {
-    pub fn make_addr_index(&mut self, dataset: &str, test_address: &mimir::Addr) {
-        let addr_index = self.rubber.make_index(dataset).unwrap();
-        let iter_one_addr = iter::once(test_address);
-        let _nb = self.rubber.bulk_index(&addr_index, iter_one_addr).unwrap();
-        self.rubber.publish_index(dataset, addr_index).unwrap();
+    pub fn index<I, T>(&mut self, dataset: &str, objects: I)
+    where
+        T: mimir::MimirObject + std::marker::Send + 'static,
+        I: Iterator<Item = T>,
+    {
+        let index = self.rubber.make_index(dataset).unwrap();
+        let _nb = self.rubber.bulk_index(&index, objects).unwrap();
+        self.rubber.publish_index(dataset, index).unwrap();
         self.refresh();
     }
 

@@ -62,15 +62,20 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
     Ok(properties)
 }
 
-fn locate_poi(poi: &mut Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) {
     let admins = geofinder.get(&poi.coord);
+fn locate_poi(mut poi: Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Option<Poi> {
     let poi_address = rubber
         .get_address(&poi.coord)
         .ok()
         .and_then(|addrs| addrs.into_iter().next())
         .map(|addr| addr.address().unwrap());
+    if admins.is_empty() {
+        info!("The poi {} is not on any admins", &poi.name);
+        return None;
+    }
+
     if poi_address.is_none() {
-        warn!("The poi {:?} doesn't have any address", &poi.name);
+        debug!("The poi {} doesn't have any address", &poi.name);
     }
 
     let zip_codes = match &poi_address {
@@ -83,6 +88,7 @@ fn locate_poi(poi: &mut Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) {
     poi.address = poi_address;
     poi.label = format_label(&poi.administrative_regions, &poi.name);
     poi.zip_codes = zip_codes;
+    Some(poi)
 }
 
 fn build_poi(row: Row) -> Option<Poi> {
@@ -226,10 +232,9 @@ pub fn load_and_index_pois(
             let i = poi_index.clone();
             move |p| {
                 let mut rub = Rubber::new(&es);
-                let pois = p.into_iter().map(|mut poi| {
-                    locate_poi(&mut poi, &admins_geofinder, &mut rub);
-                    poi
-                });
+                let pois = p
+                    .into_iter()
+                    .filter_map(|poi| locate_poi(poi, &admins_geofinder, &mut rub));
                 let mut rub2 = Rubber::new(&es);
                 match rub2.bulk_index(&i, pois) {
                     Err(e) => panic!("Failed to bulk insert pois because: {}", e),
