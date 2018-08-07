@@ -62,13 +62,23 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
     Ok(properties)
 }
 
-    let admins = geofinder.get(&poi.coord);
 fn locate_poi(mut poi: Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Option<Poi> {
     let poi_address = rubber
         .get_address(&poi.coord)
         .ok()
         .and_then(|addrs| addrs.into_iter().next())
         .map(|addr| addr.address().unwrap());
+
+    // if we have an address, we take the address's admin as the poi's admin
+    // else we lookup the admin by the poi's coordinates
+    let admins = poi_address
+        .as_ref()
+        .map(|a| match a {
+            mimir::Address::Street(ref s) => s.administrative_regions.clone(),
+            mimir::Address::Addr(ref s) => s.street.administrative_regions.clone(),
+        })
+        .unwrap_or(geofinder.get(&poi.coord));
+
     if admins.is_empty() {
         info!("The poi {} is not on any admins", &poi.name);
         return None;
