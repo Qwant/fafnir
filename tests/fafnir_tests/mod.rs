@@ -336,9 +336,12 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert!(&le_nomade.is_poi());
     let le_nomade = &le_nomade.poi().unwrap();
     assert_eq!(&le_nomade.id, "osm:way:42"); // the id in the database is '-42', so it's a way
-    // this poi has addresses osm tags, we should have read it
+                                             // this poi has addresses osm tags, we should have read it
     let le_nomade_addr = le_nomade.address.as_ref().unwrap();
-    assert_eq!(get_label(le_nomade_addr), &"7 rue spontini (bob's town)".to_string());
+    assert_eq!(
+        get_label(le_nomade_addr),
+        &"7 rue spontini (bob's town)".to_string()
+    );
     assert_eq!(get_house_number(le_nomade_addr), &"7".to_string());
     assert_eq!(get_zip_codes(le_nomade_addr), vec!["75016".to_string()]);
 
@@ -371,11 +374,10 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .unwrap();
     assert_eq!(poi_subclass.value, "airport".to_string());
 
-    // the '4 gusto' has a tag addr:street but no housenumber, we should not read the address from osm 
+    // the '4 gusto' has a tag addr:street but no housenumber, we should not read the address from osm
     // and since it's too far from another address it should not have an address
-    let gusto_query: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("4 gusto", |_| true)
-        .collect();
+    let gusto_query: Vec<mimir::Place> =
+        es_wrapper.search_and_filter("4 gusto", |_| true).collect();
     assert_eq!(&gusto_query.len(), &1);
     let gusto = &gusto_query[0];
     assert!(&gusto.is_poi());
@@ -385,16 +387,18 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // the Spagnolo has some osm address tags and no addr:postcode
     // we should still read it's address from osm
-    let spagnolo_query: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("spagnolo", |_| true)
-        .collect();
+    let spagnolo_query: Vec<mimir::Place> =
+        es_wrapper.search_and_filter("spagnolo", |_| true).collect();
     assert_eq!(&spagnolo_query.len(), &1);
     let spagnolo = &spagnolo_query[0];
     assert!(&spagnolo.is_poi());
     let spagnolo = &spagnolo.poi().unwrap();
     assert_eq!(&spagnolo.id, "osm:node:5590210422");
     let spagnolo_addr = spagnolo.address.as_ref().unwrap();
-    assert_eq!(get_label(spagnolo_addr), &"12 rue bob (bob's town)".to_string());
+    assert_eq!(
+        get_label(spagnolo_addr),
+        &"12 rue bob (bob's town)".to_string()
+    );
     assert_eq!(get_house_number(spagnolo_addr), &"12".to_string());
     assert!(get_zip_codes(spagnolo_addr).is_empty());
 }
