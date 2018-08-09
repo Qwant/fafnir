@@ -21,6 +21,7 @@ use par_map::ParMap;
 use postgres::rows::Row;
 use postgres::Connection;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 const PG_BATCH_SIZE: i32 = 5000;
 
@@ -62,15 +63,104 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
     Ok(properties)
 }
 
-fn locate_poi(poi: &mut Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) {
-    let admins = geofinder.get(&poi.coord);
-    let poi_address = rubber
-        .get_address(&poi.coord)
-        .ok()
-        .and_then(|addrs| addrs.into_iter().next())
-        .map(|addr| addr.address().unwrap());
+/// Read the osm address tags and build a mimir address from them
+///
+/// For the moment we read mostly `addr:city` or `addr:country`
+/// if available we also read `addr:postcode`
+///
+/// We also search for the admins that contains the coordinates of the poi
+/// and add them as the address's admins.
+///
+/// For the moment we do not read `addr:city` or `addr:country` as it could
+/// lead to inconsistency with the admins hierarchy
+fn build_new_addr(
+    addr_tag: &str,
+    street_tag: &str,
+    poi: &Poi,
+    admins: Vec<Arc<mimir::Admin>>,
+) -> mimir::Address {
+    let postcode = poi
+        .properties
+        .iter()
+        .find(|p| &p.key == "addr:postcode")
+        .map(|p| p.value.clone());
+    let postcodes = postcode.map_or(vec![], |p| vec![p]);
+    let street_label = format_label(&admins, street_tag);
+    let label = format!("{} {}", addr_tag, &street_label);
+    let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
+    mimir::Address::Addr(mimir::Addr {
+        id: format!("addr_poi:{}", &poi.id),
+        house_number: addr_tag.into(),
+        street: mimir::Street {
+            id: format!("street_poi:{}", &poi.id),
+            street_name: street_tag.to_string(),
+            label: street_label,
+            administrative_regions: admins,
+            weight: weight,
+            zip_codes: postcodes.clone(),
+            coord: poi.coord.clone(),
+        },
+        label: label,
+        coord: poi.coord.clone(),
+        weight: weight,
+        zip_codes: postcodes,
+    })
+}
+
+fn find_address(
+    poi: &Poi,
+    geofinder: &AdminGeoFinder,
+    rubber: &mut Rubber,
+) -> Option<mimir::Address> {
+    let osm_addr_tag = poi
+        .properties
+        .iter()
+        .find(|p| &p.key == "addr:housenumber")
+        .map(|p| &p.value);
+    let osm_street_tag = poi
+        .properties
+        .iter()
+        .find(|p| &p.key == "addr:street")
+        .map(|p| &p.value);
+
+    match (osm_addr_tag, osm_street_tag) {
+        (Some(addr_tag), Some(street_tag)) => Some(build_new_addr(
+            addr_tag,
+            street_tag,
+            poi,
+            geofinder.get(&poi.coord),
+        )),
+        _ => rubber
+            .get_address(&poi.coord)
+            .ok()
+            .and_then(|addrs| addrs.into_iter().next())
+            .map(|addr| addr.address().unwrap()),
+    }
+}
+
+fn locate_poi(mut poi: Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Option<Poi> {
+    let poi_address = find_address(&poi, geofinder, rubber);
+
+    // if we have an address, we take the address's admin as the poi's admin
+    // else we lookup the admin by the poi's coordinates
+    let admins = poi_address
+        .as_ref()
+        .map(|a| match a {
+            mimir::Address::Street(ref s) => s.administrative_regions.clone(),
+            mimir::Address::Addr(ref s) => s.street.administrative_regions.clone(),
+        })
+        .unwrap_or(geofinder.get(&poi.coord));
+
+    if admins.is_empty() {
+        debug!("The poi {} is not on any admins", &poi.name);
+        return None;
+    }
+
     if poi_address.is_none() {
-        warn!("The poi {:?} doesn't have any address", &poi.name);
+        debug!(
+            "The poi {} doesn't have any address (admins: {:?})",
+            &poi.name, &admins
+        );
     }
 
     let zip_codes = match &poi_address {
@@ -83,6 +173,7 @@ fn locate_poi(poi: &mut Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) {
     poi.address = poi_address;
     poi.label = format_label(&poi.administrative_regions, &poi.name);
     poi.zip_codes = zip_codes;
+    Some(poi)
 }
 
 fn build_poi(row: Row) -> Option<Poi> {
@@ -116,7 +207,13 @@ fn build_poi(row: Row) -> Option<Poi> {
     })
 }
 
-pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_threads: usize) {
+pub fn load_and_index_pois(
+    es: String,
+    conn: Connection,
+    dataset: String,
+    nb_threads: usize,
+    bounding_box: Option<String>,
+) {
     let rubber = &mut mimir::rubber::Rubber::new(&es);
     let admins = rubber
         .get_admins_from_dataset(&dataset)
@@ -129,11 +226,22 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
         });
     let admins_geofinder = admins.into_iter().collect();
 
-    let stmt = conn.prepare(
+    let bbox_filter = bounding_box
+        .map(|b| {
+            format!(
+                "and ST_MakeEnvelope({}, 4326) && st_transform(geometry, 4326)",
+                b
+            )
+        })
+        .unwrap_or("".into());
+
+    let query = format!(
         "
         SELECT id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
         (
-            SELECT global_id_from_imposm(osm_id) as id,
+            SELECT 
+                geometry, 
+                global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
                 poi_class(subclass, mapping_key) AS class,
@@ -145,7 +253,9 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
                 FROM osm_poi_point
                 WHERE name <> ''
             UNION ALL
-            SELECT global_id_from_imposm(osm_id) as id,
+            SELECT 
+                geometry,
+                global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
                 poi_class(subclass, mapping_key) AS class,
@@ -156,7 +266,9 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
                 'osm_poi_polygon' as source
                 FROM osm_poi_polygon WHERE name <> ''
             UNION ALL
-            SELECT global_id_from_imposm(osm_id) as id,
+            SELECT 
+                geometry,
+                global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
                 'aerodrome' AS class,
@@ -167,8 +279,23 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
                 'osm_aerodrome_label_point' as source
                 FROM osm_aerodrome_label_point WHERE name <> ''
         ) as unionall
-        WHERE (unionall.mapping_key,unionall.subclass) not in (('highway','bus_stop'), ('barrier','gate'), ('amenity','waste_basket'), ('amenity','post_box'), ('tourism','information'), ('amenity','recycling'), ('barrier','lift_gate'), ('barrier','bollard'), ('barrier','cycle_barrier'), ('amenity','bicycle_rental'), ('tourism','artwork'), ('amenity','toilets'), ('leisure','playground'), ('amenity','telephone'), ('amenity','taxi'), ('leisure','pitch'), ('amenity','shelter'), ('barrier','sally_port'), ('barrier','stile'), ('amenity','ferry_terminal'), ('amenity','post_office'))",
-    ).unwrap();
+        WHERE (unionall.mapping_key,unionall.subclass) not in 
+        (('highway','bus_stop'), ('barrier','gate'), 
+         ('amenity','waste_basket'), ('amenity','post_box'), 
+         ('tourism','information'), ('amenity','recycling'), 
+         ('barrier','lift_gate'), ('barrier','bollard'), 
+         ('barrier','cycle_barrier'), ('amenity','bicycle_rental'), 
+         ('tourism','artwork'), ('amenity','toilets'), 
+         ('leisure','playground'), ('amenity','telephone'), 
+         ('amenity','taxi'), ('leisure','pitch'), 
+         ('amenity','shelter'), ('barrier','sally_port'), 
+         ('barrier','stile'), ('amenity','ferry_terminal'), 
+         ('amenity','post_office')) 
+         {}",
+        bbox_filter
+    );
+
+    let stmt = conn.prepare(&query).unwrap();
     let trans = conn.transaction().unwrap();
 
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
@@ -190,10 +317,9 @@ pub fn load_and_index_pois(es: String, conn: Connection, dataset: String, nb_thr
             let i = poi_index.clone();
             move |p| {
                 let mut rub = Rubber::new(&es);
-                let pois = p.into_iter().map(|mut poi| {
-                    locate_poi(&mut poi, &admins_geofinder, &mut rub);
-                    poi
-                });
+                let pois = p
+                    .into_iter()
+                    .filter_map(|poi| locate_poi(poi, &admins_geofinder, &mut rub));
                 let mut rub2 = Rubber::new(&es);
                 match rub2.bulk_index(&i, pois) {
                     Err(e) => panic!("Failed to bulk insert pois because: {}", e),

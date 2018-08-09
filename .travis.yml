@@ -1,14 +1,14 @@
 language: rust
 cache: cargo
 
-matrix:
-  include:
-    - rust: nightly
-      before_script: rustup component add rustfmt-preview
-      script: cargo fmt --all -- --check
-    - rust: stable
-      script:
-        - cargo build
-        - cargo test
-      services:
-        - docker
+rust:
+  - stable
+
+before_script: rustup component add rustfmt-preview
+
+script:
+- cargo test
+- cargo fmt --all -- --check
+
+services:
+- docker

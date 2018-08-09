@@ -20,6 +20,10 @@ struct Args {
     /// Number of threads used. The default is to use the number of cpus
     #[structopt(short = "n", long = "nb-threads")]
     nb_threads: Option<usize>,
+    /// Bounding box to filter the imported pois
+    /// The format is "lat1, lon1, lat2, lon2"
+    #[structopt(short = "b", long = "bounding-box")]
+    bounding_box: Option<String>,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -30,7 +34,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
     let dataset = args.dataset;
     let nb_threads = args.nb_threads.unwrap_or(num_cpus::get());
-    fafnir::load_and_index_pois(args.es, conn, dataset, nb_threads);
+    fafnir::load_and_index_pois(args.es, conn, dataset, nb_threads, args.bounding_box);
     Ok(())
 }
 
