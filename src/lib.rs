@@ -84,22 +84,10 @@ fn build_new_addr(
         .iter()
         .find(|p| &p.key == "addr:postcode")
         .map(|p| p.value.clone());
-    let postcodes = postcode.iter().fold(vec![], |mut l, p| {
-        l.push(p.clone());
-        l
-    });
-
+    let postcodes = postcode.map_or(vec![], |p| vec![p]);
     let street_label = format_label(&admins, street_tag);
     let label = format!("{} {}", addr_tag, &street_label);
     let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
-    if !admins.is_empty() {
-        info!(
-            "poi: {}, {}, {}",
-            &poi.id,
-            format!("addr_poi:{}", &poi.id),
-            &label
-        );
-    }
     mimir::Address::Addr(mimir::Addr {
         id: format!("addr_poi:{}", &poi.id),
         house_number: addr_tag.into(),
@@ -136,10 +124,12 @@ fn find_address(
         .map(|p| &p.value);
 
     match (osm_addr_tag, osm_street_tag) {
-        (Some(addr_tag), Some(street_tag)) => {
-            let addr = build_new_addr(addr_tag, street_tag, poi, geofinder.get(&poi.coord));
-            Some(addr)
-        }
+        (Some(addr_tag), Some(street_tag)) => Some(build_new_addr(
+            addr_tag,
+            street_tag,
+            poi,
+            geofinder.get(&poi.coord),
+        )),
         _ => rubber
             .get_address(&poi.coord)
             .ok()
@@ -247,7 +237,7 @@ pub fn load_and_index_pois(
 
     let query = format!(
         "
-        SELECT geometry, id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
+        SELECT id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
         (
             SELECT 
                 geometry, 
