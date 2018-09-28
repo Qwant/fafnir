@@ -86,14 +86,16 @@ fn build_new_addr(
         .map(|p| p.value.clone());
     let postcodes = postcode.map_or(vec![], |p| vec![p]);
     let street_label = format_label(&admins, street_tag);
-    let label = format!("{} {}", addr_tag, &street_label);
+    let label = format!("{} {}", addr_tag, street_label);
+    let addr_name = format!("{} {}", addr_tag, street_tag);
     let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
     mimir::Address::Addr(mimir::Addr {
         id: format!("addr_poi:{}", &poi.id),
         house_number: addr_tag.into(),
+        name: addr_name,
         street: mimir::Street {
             id: format!("street_poi:{}", &poi.id),
-            street_name: street_tag.to_string(),
+            name: street_tag.to_string(),
             label: street_label,
             administrative_regions: admins,
             weight: weight,
@@ -180,14 +182,25 @@ fn build_poi(row: Row) -> Option<Poi> {
     let id = row.get("id");
     let name: String = row.get("name");
     let class: String = row.get("class");
-    let lat = row
+    let lat: f64 = row
         .get_opt("lat")?
         .map_err(|e| warn!("impossible to get lat for {} because {}", name, e))
         .ok()?;
-    let lon = row
+    let lon: f64 = row
         .get_opt("lon")?
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
+
+    if lat.is_nan() || lon.is_nan() {
+        /*
+            This may happen because of proj transforms around poles.
+            Let's ignore this POI. It would break rtree assertions
+            when looking for admins.
+        */
+        warn!("Got NaN in coords for {}: lon={},lat={}", id, lon, lat);
+        return None
+    }
+
     let poi_coord = Coord::new(lon, lat);
 
     Some(Poi {
