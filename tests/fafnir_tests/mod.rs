@@ -213,7 +213,7 @@ fn make_test_admin() -> mimir::Admin {
         insee: "outlook".to_string(),
         zone_type: Some(cosmogony::ZoneType::City),
         bbox: None,
-        parent_id: None
+        parent_id: None,
     }
 }
 
@@ -354,14 +354,8 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert_eq!(&le_nomade.id, "osm:way:42"); // the id in the database is '-42', so it's a way
                                              // this poi has addresses osm tags, we should have read it
     let le_nomade_addr = le_nomade.address.as_ref().unwrap();
-    assert_eq!(
-        get_label(le_nomade_addr),
-        "7 rue spontini (bob's town)"
-    );
-    assert_eq!(
-        get_name(le_nomade_addr),
-        "7 rue spontini"
-    );
+    assert_eq!(get_label(le_nomade_addr), "7 rue spontini (bob's town)");
+    assert_eq!(get_name(le_nomade_addr), "7 rue spontini");
     assert_eq!(get_house_number(le_nomade_addr), &"7".to_string());
     assert_eq!(get_zip_codes(le_nomade_addr), vec!["75016".to_string()]);
 
@@ -415,10 +409,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let spagnolo = &spagnolo.poi().unwrap();
     assert_eq!(&spagnolo.id, "osm:node:5590210422");
     let spagnolo_addr = spagnolo.address.as_ref().unwrap();
-    assert_eq!(
-        get_label(spagnolo_addr),
-        "12 rue bob (bob's town)"
-    );
+    assert_eq!(get_label(spagnolo_addr), "12 rue bob (bob's town)");
     assert_eq!(get_house_number(spagnolo_addr), &"12".to_string());
     assert!(get_zip_codes(spagnolo_addr).is_empty());
 }
