@@ -41,8 +41,7 @@ impl PostgresDocker {
                     "-d",
                     &format!("--name={}", name),
                     img,
-                ])
-                .status()
+                ]).status()
         );
         if !status.success() {
             return Err(format!("`docker run` failed {}", &status).into());

@@ -32,13 +32,11 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
         .map_err(|err| {
             warn!("Unable to get tags: {:?}", err);
             err.to_string()
-        })?
-        .into_iter()
+        })?.into_iter()
         .map(|(k, v)| Property {
             key: k,
             value: v.unwrap_or("".to_string()),
-        })
-        .collect::<Vec<Property>>();
+        }).collect::<Vec<Property>>();
 
     let poi_subclass = row.get_opt("subclass").unwrap().map_err(|e| {
         warn!("impossible to get poi_subclass for {} because {}", name, e);
@@ -86,14 +84,16 @@ fn build_new_addr(
         .map(|p| p.value.clone());
     let postcodes = postcode.map_or(vec![], |p| vec![p]);
     let street_label = format_label(&admins, street_tag);
-    let label = format!("{} {}", addr_tag, &street_label);
+    let label = format!("{} {}", addr_tag, street_label);
+    let addr_name = format!("{} {}", addr_tag, street_tag);
     let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
     mimir::Address::Addr(mimir::Addr {
         id: format!("addr_poi:{}", &poi.id),
         house_number: addr_tag.into(),
+        name: addr_name,
         street: mimir::Street {
             id: format!("street_poi:{}", &poi.id),
-            street_name: street_tag.to_string(),
+            name: street_tag.to_string(),
             label: street_label,
             administrative_regions: admins,
             weight: weight,
@@ -148,8 +148,7 @@ fn locate_poi(mut poi: Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> 
         .map(|a| match a {
             mimir::Address::Street(ref s) => s.administrative_regions.clone(),
             mimir::Address::Addr(ref s) => s.street.administrative_regions.clone(),
-        })
-        .unwrap_or(geofinder.get(&poi.coord));
+        }).unwrap_or(geofinder.get(&poi.coord));
 
     if admins.is_empty() {
         debug!("The poi {} is not on any admins", &poi.name);
@@ -180,14 +179,25 @@ fn build_poi(row: Row) -> Option<Poi> {
     let id = row.get("id");
     let name: String = row.get("name");
     let class: String = row.get("class");
-    let lat = row
+    let lat: f64 = row
         .get_opt("lat")?
         .map_err(|e| warn!("impossible to get lat for {} because {}", name, e))
         .ok()?;
-    let lon = row
+    let lon: f64 = row
         .get_opt("lon")?
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
+
+    if lat.is_nan() || lon.is_nan() {
+        /*
+            This may happen because of proj transforms around poles.
+            Let's ignore this POI. It would break rtree assertions
+            when looking for admins.
+        */
+        warn!("Got NaN in coords for {}: lon={},lat={}", id, lon, lat);
+        return None;
+    }
+
     let poi_coord = Coord::new(lon, lat);
 
     Some(Poi {
@@ -232,8 +242,7 @@ pub fn load_and_index_pois(
                 "and ST_MakeEnvelope({}, 4326) && st_transform(geometry, 4326)",
                 b
             )
-        })
-        .unwrap_or("".into());
+        }).unwrap_or("".into());
 
     let query = format!(
         "
@@ -305,13 +314,11 @@ pub fn load_and_index_pois(
         .filter_map(|r| {
             r.map_err(|r| warn!("Impossible to load the row {:?}", r))
                 .ok()
-        })
-        .filter_map(|p| {
+        }).filter_map(|p| {
             build_poi(p)
                 .ok_or_else(|| warn!("Problem occurred in build_poi()"))
                 .ok()
-        })
-        .pack(1000)
+        }).pack(1000)
         .with_nb_threads(nb_threads)
         .par_map({
             let i = poi_index.clone();
@@ -326,8 +333,7 @@ pub fn load_and_index_pois(
                     Ok(nb) => info!("Nb of indexed pois: {}", nb),
                 };
             }
-        })
-        .for_each(|_| {});
+        }).for_each(|_| {});
 
     rubber.publish_index(&dataset, poi_index).unwrap();
 }

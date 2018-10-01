@@ -1,3 +1,5 @@
+extern crate cosmogony;
+
 use super::mimir;
 use super::DATASET;
 use super::{ElasticSearchWrapper, PostgresWrapper};
@@ -105,6 +107,11 @@ fn populate_tables(conn: &Connection) {
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
     VALUES (12321, 'poi too far',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E6100000000000000000F0BF000000000000F0BF'
     , '\"name\"=>\"poi too far\"')", &[]).unwrap();
+
+    // aerodrom at the South Pole at lon=0, lat=-90 (Invalid coordinates in EPSG:4326)
+    conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, aerodrome_type, aerodrome, military, iata, icao, ele, geometry, tags)
+    VALUES (30334, 1042050310, 'South Pole Station Airport',null, null, null, null, null, null,  null, null, '0101000020110F0000714501E743E172BF010000000000F87F',
+     '\"name\"=>\"South Pole Station Airport\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"South Pole Station Airport\", \"name:latin\"=>\"South Pole Station Airport\"')", &[]).unwrap();
 }
 
 /// This function uses the poi_class function from
@@ -204,15 +211,16 @@ fn make_test_admin() -> mimir::Admin {
         coord: ::mimir::Coord::new(4.0, 4.0),
         boundary: Some(boundary),
         insee: "outlook".to_string(),
-        admin_type: mimir::AdminType::City,
-        zone_type: None,
+        zone_type: Some(cosmogony::ZoneType::City),
+        bbox: None,
+        parent_id: None,
     }
 }
 
 fn make_test_address(city: mimir::Admin) -> mimir::Addr {
     let street = mimir::Street {
         id: "1234".to_string(),
-        street_name: "test".to_string(),
+        name: "test".to_string(),
         label: "test (bob's town)".to_string(),
         administrative_regions: vec![Arc::new(city)],
         weight: 50.0,
@@ -222,6 +230,7 @@ fn make_test_address(city: mimir::Admin) -> mimir::Addr {
     mimir::Addr {
         id: format!("addr:{};{}", 1., 1.),
         house_number: "1234".to_string(),
+        name: "1234 test".to_string(),
         street: street,
         label: "1234 test (bob's town)".to_string(),
         coord: mimir::Coord::new(1., 1.),
@@ -234,6 +243,13 @@ fn get_label(address: &mimir::Address) -> &str {
     match address {
         &mimir::Address::Street(ref s) => &s.label,
         &mimir::Address::Addr(ref a) => &a.label,
+    }
+}
+
+fn get_name(address: &mimir::Address) -> &str {
+    match address {
+        &mimir::Address::Street(ref s) => &s.name,
+        &mimir::Address::Addr(ref a) => &a.name,
     }
 }
 
@@ -338,10 +354,8 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert_eq!(&le_nomade.id, "osm:way:42"); // the id in the database is '-42', so it's a way
                                              // this poi has addresses osm tags, we should have read it
     let le_nomade_addr = le_nomade.address.as_ref().unwrap();
-    assert_eq!(
-        get_label(le_nomade_addr),
-        &"7 rue spontini (bob's town)".to_string()
-    );
+    assert_eq!(get_label(le_nomade_addr), "7 rue spontini (bob's town)");
+    assert_eq!(get_name(le_nomade_addr), "7 rue spontini");
     assert_eq!(get_house_number(le_nomade_addr), &"7".to_string());
     assert_eq!(get_zip_codes(le_nomade_addr), vec!["75016".to_string()]);
 
@@ -395,10 +409,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let spagnolo = &spagnolo.poi().unwrap();
     assert_eq!(&spagnolo.id, "osm:node:5590210422");
     let spagnolo_addr = spagnolo.address.as_ref().unwrap();
-    assert_eq!(
-        get_label(spagnolo_addr),
-        &"12 rue bob (bob's town)".to_string()
-    );
+    assert_eq!(get_label(spagnolo_addr), "12 rue bob (bob's town)");
     assert_eq!(get_house_number(spagnolo_addr), &"12".to_string());
     assert!(get_zip_codes(spagnolo_addr).is_empty());
 }
