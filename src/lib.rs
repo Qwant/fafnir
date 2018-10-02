@@ -191,11 +191,9 @@ fn build_poi(row: Row) -> Option<Poi> {
     let poi_coord = Coord::new(lon, lat);
 
     if !poi_coord.is_valid() {
-        /*
-            NaN may exist here because of proj transforms around poles.
-            Let's ignore this POI. It would break rtree assertions
-            when looking for admins.
-        */
+        // Ignore PoI if its coords from db are invalid.
+        // Especially, NaN values may exist because of projection
+        // transformations around poles.
         warn!("Got invalid coord for {} lon={},lat={}", id, lon, lat);
         return None;
     }
