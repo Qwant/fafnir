@@ -179,26 +179,24 @@ fn build_poi(row: Row) -> Option<Poi> {
     let id = row.get("id");
     let name: String = row.get("name");
     let class: String = row.get("class");
-    let lat: f64 = row
+    let lat = row
         .get_opt("lat")?
         .map_err(|e| warn!("impossible to get lat for {} because {}", name, e))
         .ok()?;
-    let lon: f64 = row
+    let lon = row
         .get_opt("lon")?
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
 
-    if lat.is_nan() || lon.is_nan() {
-        /*
-            This may happen because of proj transforms around poles.
-            Let's ignore this POI. It would break rtree assertions
-            when looking for admins.
-        */
-        warn!("Got NaN in coords for {}: lon={},lat={}", id, lon, lat);
+    let poi_coord = Coord::new(lon, lat);
+
+    if !poi_coord.is_valid() {
+        // Ignore PoI if its coords from db are invalid.
+        // Especially, NaN values may exist because of projection
+        // transformations around poles.
+        warn!("Got invalid coord for {} lon={},lat={}", id, lon, lat);
         return None;
     }
-
-    let poi_coord = Coord::new(lon, lat);
 
     Some(Poi {
         id: id,
