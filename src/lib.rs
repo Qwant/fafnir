@@ -13,7 +13,7 @@ extern crate num_cpus;
 extern crate par_map;
 
 use fallible_iterator::FallibleIterator;
-use mimir::rubber::Rubber;
+use mimir::rubber::{IndexSettings, Rubber};
 use mimir::{Coord, Poi, PoiType, Property};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::utils::format_label;
@@ -221,6 +221,8 @@ pub fn load_and_index_pois(
     dataset: String,
     nb_threads: usize,
     bounding_box: Option<String>,
+    nb_shards: usize,
+    nb_replicas: usize,
 ) {
     let rubber = &mut mimir::rubber::Rubber::new(&es);
     let admins = rubber
@@ -306,7 +308,12 @@ pub fn load_and_index_pois(
     let trans = conn.transaction().unwrap();
 
     let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
-    let poi_index = rubber.make_index(&dataset).unwrap();
+
+    let index_settings = IndexSettings {
+        nb_shards: nb_shards,
+        nb_replicas: nb_replicas,
+    };
+    let poi_index = rubber.make_index(&dataset, &index_settings).unwrap();
 
     rows.iterator()
         .filter_map(|r| {

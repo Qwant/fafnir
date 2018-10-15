@@ -24,6 +24,12 @@ struct Args {
     /// The format is "lat1, lon1, lat2, lon2"
     #[structopt(short = "b", long = "bounding-box")]
     bounding_box: Option<String>,
+    /// Number of shards for the es index
+    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
+    nb_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
+    nb_replicas: usize,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -34,7 +40,15 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
     let dataset = args.dataset;
     let nb_threads = args.nb_threads.unwrap_or(num_cpus::get());
-    fafnir::load_and_index_pois(args.es, conn, dataset, nb_threads, args.bounding_box);
+    fafnir::load_and_index_pois(
+        args.es,
+        conn,
+        dataset,
+        nb_threads,
+        args.bounding_box,
+        args.nb_shards,
+        args.nb_replicas,
+    );
     Ok(())
 }
 

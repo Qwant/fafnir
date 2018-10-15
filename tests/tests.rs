@@ -19,6 +19,7 @@ pub mod fafnir_tests;
 
 use docker_wrapper::*;
 use hyper::client::response::Response;
+use mimir::rubber::IndexSettings;
 use postgres::rows;
 use postgres::{Connection, TlsMode};
 use serde_json::value::Value;
@@ -89,7 +90,11 @@ impl<'a> ElasticSearchWrapper<'a> {
         T: mimir::MimirObject + std::marker::Send + 'static,
         I: Iterator<Item = T>,
     {
-        let index = self.rubber.make_index(dataset).unwrap();
+        let index_settings = IndexSettings {
+            nb_shards: 1,
+            nb_replicas: 0,
+        };
+        let index = self.rubber.make_index(dataset, &index_settings).unwrap();
         let _nb = self.rubber.bulk_index(&index, objects).unwrap();
         self.rubber.publish_index(dataset, index).unwrap();
         self.refresh();
