@@ -214,6 +214,7 @@ fn make_test_admin() -> mimir::Admin {
         zone_type: Some(cosmogony::ZoneType::City),
         bbox: None,
         parent_id: None,
+        codes: vec![],
     }
 }
 
