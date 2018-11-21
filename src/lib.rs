@@ -21,9 +21,9 @@ use mimirsbrunn::utils::format_label;
 use par_map::ParMap;
 use postgres::rows::Row;
 use postgres::Connection;
+use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
-use regex::Regex;
 
 const PG_BATCH_SIZE: i32 = 5000;
 
@@ -208,12 +208,18 @@ fn build_poi(row: Row) -> Option<Poi> {
         .map_or(0., |_p| 100.0);
 
     let names_count = properties
-                        .iter()
-                        .filter(|p| Regex::new(r"name:*").unwrap().is_match(&p.key))
-                        .collect::<Vec<_>>()
-                        .len();
+        .iter()
+        .filter(|p| Regex::new(r"name:*").unwrap().is_match(&p.key))
+        .collect::<Vec<_>>()
+        .len();
 
-    let weight_names = if names_count < 5 { 0.0 } else if names_count < 9 { 30.0 } else { 50.0 };
+    let weight_names = if names_count < 5 {
+        0.0
+    } else if names_count < 9 {
+        30.0
+    } else {
+        50.0
+    };
 
     Some(Poi {
         id: id,
@@ -340,7 +346,8 @@ pub fn load_and_index_pois(
     };
     let poi_index = rubber.make_index(&dataset, &index_settings).unwrap();
 
-    let mut pois = rows.iterator()
+    let mut pois = rows
+        .iterator()
         .filter_map(|r| {
             r.map_err(|r| warn!("Impossible to load the row {:?}", r))
                 .ok()
@@ -352,7 +359,8 @@ pub fn load_and_index_pois(
 
     normalize_poi_weights(&mut pois);
 
-    pois.into_iter().pack(1000)
+    pois.into_iter()
+        .pack(1000)
         .with_nb_threads(nb_threads)
         .par_map({
             let i = poi_index.clone();
