@@ -16,7 +16,6 @@ slog-scope = "4.0"
 itertools = "0.7.3"
 par-map = "0.1.4"
 num_cpus = "1.8.0"
-regex = "0.1"
 
 [dev-dependencies]
 retry = "*"

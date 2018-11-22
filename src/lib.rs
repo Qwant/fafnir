@@ -11,7 +11,6 @@ extern crate slog_scope;
 extern crate itertools;
 extern crate num_cpus;
 extern crate par_map;
-extern crate regex;
 
 use fallible_iterator::FallibleIterator;
 use mimir::rubber::{IndexSettings, Rubber};
@@ -21,11 +20,15 @@ use mimirsbrunn::utils::format_label;
 use par_map::ParMap;
 use postgres::rows::Row;
 use postgres::Connection;
-use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 const PG_BATCH_SIZE: i32 = 5000;
+
+// constants that define POI weights for ranking
+const WEIGHT_TAG_WIKIDATA: f64 = 100.0;
+const WEIGHT_TAG_NAMES: [f64; 3] = [0.0, 30.0, 50.0];
+const MAX_WEIGHT: f64 = WEIGHT_TAG_NAMES[2] + WEIGHT_TAG_WIKIDATA;
 
 fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> {
     let mut properties = row
@@ -205,20 +208,20 @@ fn build_poi(row: Row) -> Option<Poi> {
     let weight_wikidata = properties
         .iter()
         .find(|p| &p.key == "wikidata")
-        .map_or(0., |_p| 100.0);
+        .map_or(0., |_p| WEIGHT_TAG_WIKIDATA);
 
     let names_count = properties
         .iter()
-        .filter(|p| Regex::new(r"name:*").unwrap().is_match(&p.key))
+        .filter(|p| p.key.starts_with("name:"))
         .collect::<Vec<_>>()
         .len();
 
     let weight_names = if names_count < 5 {
-        0.0
+        WEIGHT_TAG_NAMES[0] / MAX_WEIGHT
     } else if names_count < 9 {
-        30.0
+        WEIGHT_TAG_NAMES[1] / MAX_WEIGHT
     } else {
-        50.0
+        WEIGHT_TAG_NAMES[2] / MAX_WEIGHT
     };
 
     Some(Poi {
@@ -236,14 +239,6 @@ fn build_poi(row: Row) -> Option<Poi> {
         zip_codes: vec![],
         address: None,
     })
-}
-
-/// normalize the poi weight for it to be in [0, 1]
-pub fn normalize_poi_weights(pois: &mut [Poi]) {
-    let max = pois.iter().fold(1f64, |m, p| f64::max(m, p.weight));
-    for ref mut p in pois {
-        p.weight = p.weight / max;
-    }
 }
 
 pub fn load_and_index_pois(
@@ -346,8 +341,7 @@ pub fn load_and_index_pois(
     };
     let poi_index = rubber.make_index(&dataset, &index_settings).unwrap();
 
-    let mut pois = rows
-        .iterator()
+    rows.iterator()
         .filter_map(|r| {
             r.map_err(|r| warn!("Impossible to load the row {:?}", r))
                 .ok()
@@ -355,12 +349,7 @@ pub fn load_and_index_pois(
             build_poi(p)
                 .ok_or_else(|| warn!("Problem occurred in build_poi()"))
                 .ok()
-        }).collect::<Vec<Poi>>();
-
-    normalize_poi_weights(&mut pois);
-
-    pois.into_iter()
-        .pack(1000)
+        }).pack(1000)
         .with_nb_threads(nb_threads)
         .par_map({
             let i = poi_index.clone();
