@@ -217,12 +217,14 @@ fn build_poi(row: Row) -> Option<Poi> {
         .len();
 
     let weight_names = if names_count < 5 {
-        WEIGHT_TAG_NAMES[0] / MAX_WEIGHT
+        WEIGHT_TAG_NAMES[0]
     } else if names_count < 9 {
-        WEIGHT_TAG_NAMES[1] / MAX_WEIGHT
+        WEIGHT_TAG_NAMES[1]
     } else {
-        WEIGHT_TAG_NAMES[2] / MAX_WEIGHT
+        WEIGHT_TAG_NAMES[2]
     };
+
+    let total_weight = (weight_names + weight_wikidata) / MAX_WEIGHT;
 
     Some(Poi {
         id: id,
@@ -235,7 +237,7 @@ fn build_poi(row: Row) -> Option<Poi> {
         administrative_regions: vec![],
         properties: properties,
         name: name,
-        weight: weight_names + weight_wikidata,
+        weight: total_weight,
         zip_codes: vec![],
         address: None,
     })
