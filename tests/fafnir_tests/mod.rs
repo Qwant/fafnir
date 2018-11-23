@@ -295,6 +295,9 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let rows = &pg_wrapper.get_rows(&"osm_poi_polygon");
     assert_eq!(rows.len(), 2);
 
+    // @TODO: the comment on the line below is wrong: the poi "poi too far" is imported
+    //        -> we should check if a distance max is defined to connect an address to a POI ?
+    // but the elastic search contains only 4 because the poi "poi too far" has not been loaded
     assert_eq!(
         es_wrapper
             .search_and_filter("*.*", |p| p.is_poi())
