@@ -112,7 +112,6 @@ fn populate_tables(conn: &Connection) {
 
     // Insert the "Hôtel Auteuil Tour Eiffel" POI
     conn.execute("INSERT INTO osm_poi_polygon (id, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (10980, -84194390, 'Hôtel Auteuil Tour Eiffel', null, null, '\"name\"=>\"Hôtel Auteuil Tour Eiffel\", \"source\"=>\"cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2010\", \"tourism\"=>\"hotel\", \"building\"=>\"yes\", \"name_int\"=>\"Hôtel Auteuil Tour Eiffel\", \"name:latin\"=>\"Hôtel Auteuil Tour Eiffel\", \"addr:street\"=>\"Rue Félicien David\", \"addr:postcode\"=>\"75016\", \"addr:housenumber\"=>\"10\"','hotel', 'tourism', null, null, null, null, null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
-
 }
 
 /// This function uses the poi_class function from
@@ -428,7 +427,12 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert!(&eiffels.iter().all(|ref p| p.is_poi()));
 
     // Test their weight are not both equal to 0.0
-    assert!(!&eiffels.iter().map(|ref mut p| p.poi().unwrap()).all(|p| p.weight == 0.0f64));
+    assert!(
+        !&eiffels
+            .iter()
+            .map(|ref mut p| p.poi().unwrap())
+            .all(|p| p.weight == 0.0f64)
+    );
 }
 
 pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
