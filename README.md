@@ -4,7 +4,7 @@
 
 # Fafnir
 
-- Rust tool to import [imposm](https://github.com/omniscale/imposm3) points-of-interest from a PostgreSQL database into a [Mímirsbrunn](https://github.com/CanalTP/mimirsbrunn/) Elasticsearch. 
+- Rust tool to import [imposm](https://github.com/omniscale/imposm3) points-of-interest from a PostgreSQL database into a [Mímirsbrunn](https://github.com/CanalTP/mimirsbrunn/) Elasticsearch.
 - You can run fafnir either manually or with docker.
 
 ## Getting Started
@@ -32,4 +32,9 @@ docker build . -t fafnir
 - You can run the tests than come along fafnir directly with cargo:
 ```shell
 cargo test
+```
+
+- For a live test, you can import a small postgres database from the ile-de-france points-of-interest directly from [this docker image](https://hub.docker.com/r/qwantresearch/postgres_poi_idf/):
+```shell
+docker pull qwantresearch/postgres_poi_idf
 ```
