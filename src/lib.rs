@@ -25,6 +25,11 @@ use std::sync::Arc;
 
 const PG_BATCH_SIZE: i32 = 5000;
 
+// constants that define POI weights for ranking
+const WEIGHT_TAG_WIKIDATA: f64 = 100.0;
+const WEIGHT_TAG_NAMES: [f64; 3] = [0.0, 30.0, 50.0];
+const MAX_WEIGHT: f64 = WEIGHT_TAG_NAMES[2] + WEIGHT_TAG_WIKIDATA;
+
 fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> {
     let mut properties = row
         .get_opt::<_, HashMap<_, _>>("tags")
@@ -198,6 +203,34 @@ fn build_poi(row: Row) -> Option<Poi> {
         return None;
     }
 
+    let properties = build_poi_properties(&row, &name).unwrap_or(vec![]);
+
+    // Add a weight if the "wikidata" tag exists for this POI
+    let weight_wikidata = properties
+        .iter()
+        .find(|p| &p.key == "wikidata")
+        .map_or(0., |_p| WEIGHT_TAG_WIKIDATA);
+
+    // Count the number of tags "name:" for this POI.
+    // The more tags, the more the POI is important
+    let names_count = properties
+        .iter()
+        .filter(|p| p.key.starts_with("name:"))
+        .collect::<Vec<_>>()
+        .len();
+
+    // Depending on the number of tags "name" we choose different weights
+    let weight_names = if names_count < 5 {
+        WEIGHT_TAG_NAMES[0]
+    } else if names_count < 9 {
+        WEIGHT_TAG_NAMES[1]
+    } else {
+        WEIGHT_TAG_NAMES[2]
+    };
+
+    // The total weight for POI is simply the normalized sum of above weights
+    let total_weight = (weight_names + weight_wikidata) / MAX_WEIGHT;
+
     Some(Poi {
         id: id,
         coord: poi_coord,
@@ -207,9 +240,9 @@ fn build_poi(row: Row) -> Option<Poi> {
         },
         label: "".into(),
         administrative_regions: vec![],
-        properties: build_poi_properties(&row, &name).unwrap_or(vec![]),
+        properties: properties,
         name: name,
-        weight: 0.,
+        weight: total_weight,
         zip_codes: vec![],
         address: None,
     })
@@ -248,8 +281,8 @@ pub fn load_and_index_pois(
         "
         SELECT id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
         (
-            SELECT 
-                geometry, 
+            SELECT
+                geometry,
                 global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
@@ -262,7 +295,7 @@ pub fn load_and_index_pois(
                 FROM osm_poi_point
                 WHERE name <> ''
             UNION ALL
-            SELECT 
+            SELECT
                 geometry,
                 global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
@@ -275,7 +308,7 @@ pub fn load_and_index_pois(
                 'osm_poi_polygon' as source
                 FROM osm_poi_polygon WHERE name <> ''
             UNION ALL
-            SELECT 
+            SELECT
                 geometry,
                 global_id_from_imposm(osm_id) as id,
                 st_x(st_transform(geometry, 4326)) as lon,
@@ -288,18 +321,30 @@ pub fn load_and_index_pois(
                 'osm_aerodrome_label_point' as source
                 FROM osm_aerodrome_label_point WHERE name <> ''
         ) as unionall
-        WHERE (unionall.mapping_key,unionall.subclass) not in 
-        (('highway','bus_stop'), ('barrier','gate'), 
-         ('amenity','waste_basket'), ('amenity','post_box'), 
-         ('tourism','information'), ('amenity','recycling'), 
-         ('barrier','lift_gate'), ('barrier','bollard'), 
-         ('barrier','cycle_barrier'), ('amenity','bicycle_rental'), 
-         ('tourism','artwork'), ('amenity','toilets'), 
-         ('leisure','playground'), ('amenity','telephone'), 
-         ('amenity','taxi'), ('leisure','pitch'), 
-         ('amenity','shelter'), ('barrier','sally_port'), 
-         ('barrier','stile'), ('amenity','ferry_terminal'), 
-         ('amenity','post_office')) 
+        WHERE (unionall.mapping_key,unionall.subclass) not in
+        (('highway','bus_stop'),
+         ('barrier','gate'),
+         ('amenity','waste_basket'),
+         ('amenity','post_box'),
+         ('tourism','information'),
+         ('amenity','recycling'),
+         ('barrier','lift_gate'),
+         ('barrier','bollard'),
+         ('barrier','cycle_barrier'),
+         ('amenity','bicycle_rental'),
+         ('tourism','artwork'),
+         ('amenity','toilets'),
+         ('leisure','playground'),
+         ('amenity','telephone'),
+         ('amenity','taxi'),
+         ('leisure','pitch'),
+         ('amenity','shelter'),
+         ('barrier','sally_port'),
+         ('barrier','stile'),
+         ('amenity','ferry_terminal'),
+         ('amenity','post_office'),
+         ('railway','subway_entrance'),
+         ('railway','train_station_entrance'))
          {}",
         bbox_filter
     );

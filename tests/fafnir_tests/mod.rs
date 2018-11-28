@@ -54,8 +54,9 @@ fn create_tests_tables(conn: &Connection) {
                          funicular          varchar,
                          information        varchar,
                          uic_ref            varchar,
+                         religion           varchar,
                          geometry           geometry
-                       )",
+        )",
         &[],
     ).unwrap();
     conn.execute("TRUNCATE TABLE osm_poi_polygon", &[]).unwrap();
@@ -83,35 +84,34 @@ fn create_tests_tables(conn: &Connection) {
 
 fn populate_tables(conn: &Connection) {
     // this poi is located at lon=1, lat=1
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
-    VALUES (5589618289, 'Ocean Studio',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E6100000000000000000F03F000000000000F03F'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5589618289, 'Ocean Studio',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E6100000000000000000F03F000000000000F03F'
     , '\"name\"=>\"Ocean Studio\", \"amenity\"=>\"cafe\", \"name_int\"=>\"Ocean Studio\", \"name:latin\"=>\"Ocean Studio\"')", &[]).unwrap();
     // this poi is located at lon=2, lat=2
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
-    VALUES (5590210422, 'Spagnolo',null,null, 'clothes', 'shop',null,null,null,null, '0101000020E610000000000000000000400000000000000040'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5590210422, 'Spagnolo',null,null, 'clothes', 'shop',null,null,null,null, '0101000020E610000000000000000000400000000000000040'
     , '\"name\"=>\"Spagnolo\", \"shop\"=>\"clothes\", \"name_int\"=>\"Spagnolo\", \"name:latin\"=>\"Spagnolo\",\"addr:housenumber\"=>\"12\",\"addr:street\"=>\"rue bob\"')", &[]).unwrap();
     // this poi is located at lon=3, lat=3
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
-    VALUES (5590601521, '4 gusto',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E610000000000000000008400000000000000840'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5590601521, '4 gusto',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E610000000000000000008400000000000000840'
     , '\"name\"=>\"4 gusto\", \"amenity\"=>\"cafe\", \"name_int\"=>\"4 gusto\", \"name:latin\"=>\"4 gusto\",\"addr:street\"=>\"rue spontini\"')", &[]).unwrap();
     // this poi is located at lon=4, lat=4
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
-    VALUES (-42, 'Le nomade',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E610000000000000000010400000000000001040'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (-42, 'Le nomade',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E610000000000000000010400000000000001040'
     , '\"name\"=>\"Le nomade\", \"amenity\"=>\"bar\", \"name:es\"=>\"Le nomade\", \"name_int\"=>\"Le nomade\", \"name:latin\"=>\"Le nomade\",\"addr:housenumber\"=>\"7\",\"addr:street\"=>\"rue spontini\",\"addr:postcode\"=>\"75016\"')", &[]).unwrap();
     // this poi is located at lon=5, lat=5
-    conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, aerodrome_type, aerodrome, military, iata, icao, ele, geometry, tags) 
-    VALUES (5934, 4505823836, 'Isla Cristina Agricultural Airstrip', null, null, null, null, null, null,  null, null, '0101000020E610000000000000000014400000000000001440'
+    conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, aerodrome_type, aerodrome, military, iata, icao, ele, geometry, tags) VALUES (5934, 4505823836, 'Isla Cristina Agricultural Airstrip', null, null, null, null, null, null,  null, null, '0101000020E610000000000000000014400000000000001440'
     , '\"name\"=>\"Isla Cristina Agricultural Airstrip\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"Isla Cristina Agricultural Airstrip\", \"name:latin\"=>\"Isla Cristina Agricultural Airstrip\"')", &[]).unwrap();
 
     // we also add a poi located at lon=-1, lat=-1, it won't be in an admin, so it must not be imported
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) 
-    VALUES (12321, 'poi too far',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E6100000000000000000F0BF000000000000F0BF'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (12321, 'poi too far',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E6100000000000000000F0BF000000000000F0BF'
     , '\"name\"=>\"poi too far\"')", &[]).unwrap();
 
     // aerodrom at the South Pole at lon=0, lat=-90 (Invalid coordinates in EPSG:4326)
-    conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, aerodrome_type, aerodrome, military, iata, icao, ele, geometry, tags)
-    VALUES (30334, 1042050310, 'South Pole Station Airport',null, null, null, null, null, null,  null, null, '0101000020110F0000714501E743E172BF010000000000F87F',
+    conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, aerodrome_type, aerodrome, military, iata, icao, ele, geometry, tags) VALUES (30334, 1042050310, 'South Pole Station Airport',null, null, null, null, null, null,  null, null, '0101000020110F0000714501E743E172BF010000000000F87F',
      '\"name\"=>\"South Pole Station Airport\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"South Pole Station Airport\", \"name:latin\"=>\"South Pole Station Airport\"')", &[]).unwrap();
+
+    // Insert the "Eiffel Tower" POI
+    conn.execute("INSERT INTO osm_poi_polygon (id, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (1175, -5013364, 'Tour Eiffel', 'Eiffel Tower', 'Eiffelturm', '\"fee\"=>\"10-25€\", \"3dmr\"=>\"4\", \"name\"=>\"Tour Eiffel\", \"layer\"=>\"2\", \"height\"=>\"324\", \"name:af\"=>\"Eiffel-toring\", \"name:ar\"=>\"برج إيفل\", \"name:ba\"=>\"Эйфель башняһы\", \"name:be\"=>\"Вежа Эйфеля\", \"name:cs\"=>\"Eiffelova věž\", \"name:da\"=>\"Eiffeltårnet\", \"name:de\"=>\"Eiffelturm\", \"name:el\"=>\"Πύργος του Άιφελ\", \"name:en\"=>\"Eiffel Tower\", \"name:eo\"=>\"Eiffel-Turo\", \"name:es\"=>\"Torre Eiffel\", \"name:et\"=>\"Eiffeli torn\", \"name:fa\"=>\"برج ایفل\", \"name:fi\"=>\"Eiffel-torni\", \"name:fr\"=>\"Tour Eiffel\", \"name:hr\"=>\"Eiffelov toranj\", \"name:hu\"=>\"Eiffel-torony\", \"name:ia\"=>\"Turre Eiffel\", \"name:id\"=>\"Menara Eiffel\", \"name:io\"=>\"Turmo Eiffel\", \"name:it\"=>\"Torre Eiffel\", \"name:ja\"=>\"エッフェル塔\", \"name:ku\"=>\"Barûya Eyfelê\", \"name:la\"=>\"Turris Eiffelia\", \"name:lb\"=>\"Eiffeltuerm\", \"name:nl\"=>\"Eiffeltoren\", \"name:pl\"=>\"Wieża Eiffla\", \"name:pt\"=>\"Torre Eiffel\", \"name:ru\"=>\"Эйфелева башня\", \"name:sk\"=>\"Eiffelova veža\", \"name:sr\"=>\"Ајфелова кула\", \"name:sv\"=>\"Eiffeltornet\", \"name:tr\"=>\"Eyfel Kulesi\", \"name:tt\"=>\"Эйфель манарасы\", \"name:uk\"=>\"Ейфелева вежа\", \"name:vi\"=>\"Tháp Eiffel\", \"name:me:vo\"=>\"Tüm di Eiffel\", \"name:zh\"=>\"埃菲尔铁塔\", \"ref:mhs\"=>\"PA00088801\", \"tourism\"=>\"attraction\", \"website\"=>\"http://toureiffel.paris\", \"building\"=>\"yes\", \"heritage\"=>\"3\", \"historic\"=>\"yes\", \"man_made\"=>\"tower\", \"name:ast\"=>\"Torrne Eiffel\", \"name_int\"=>\"Eiffel Tower\", \"operator\"=>\"Société d’Exploitation de la Tour Eiffel\", \"wikidata\"=>\"Q243\", \"addr:city\"=>\"Paris\", \"architect\"=>\"Stephen Sauvestre;Gustave Eiffel;Maurice Koechlin;Émile Nouguier\", \"wikipedia\"=>\"fr:Tour Eiffel\", \"importance\"=>\"international\", \"name:latin\"=>\"Tour Eiffel\", \"start_date\"=>\"C19\", \"tower:type\"=>\"communication;observation\", \"wheelchair\"=>\"yes\", \"addr:street\"=>\"Avenue Anatole France\", \"addr:postcode\"=>\"75007\", \"opening_hours\"=>\"09:30-23:45; Jun 21-Sep 02: 09:00-00:45; Jul 14,Jul 15 off\", \"building:shape\"=>\"pyramidal\", \"building:colour\"=>\"#706550\", \"source:heritage\"=>\"data.gouv.fr, Ministère de la Culture - 2016\", \"addr:housenumber\"=>\"5\", \"building:material\"=>\"iron\", \"heritage:operator\"=>\"mhs\", \"tower:construction\"=>\"lattice\", \"building:min_height\"=>\"0\", \"communication:radio\"=>\"fm\", \"mhs:inscription_date\"=>\"1964-06-24\", \"communication:television\"=>\"dvb-t\"', 'attraction', 'tourism',null,null,null,null,null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
+
+    // Insert the "Hôtel Auteuil Tour Eiffel" POI
+    conn.execute("INSERT INTO osm_poi_polygon (id, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (10980, -84194390, 'Hôtel Auteuil Tour Eiffel', null, null, '\"name\"=>\"Hôtel Auteuil Tour Eiffel\", \"source\"=>\"cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2010\", \"tourism\"=>\"hotel\", \"building\"=>\"yes\", \"name_int\"=>\"Hôtel Auteuil Tour Eiffel\", \"name:latin\"=>\"Hôtel Auteuil Tour Eiffel\", \"addr:street\"=>\"Rue Félicien David\", \"addr:postcode\"=>\"75016\", \"addr:housenumber\"=>\"10\"','hotel', 'tourism', null, null, null, null, null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
 }
 
 /// This function uses the poi_class function from
@@ -288,16 +288,22 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         &es_wrapper,
     );
 
-    // Test that the postgres wrapper contains 5 rows
-    let rows = &pg_wrapper.get_rows();
+    // Test that the postgres wrapper contains 5 rows in osm_poi_point
+    // and 2 rows in osm_poi_polygon
+    let rows = &pg_wrapper.get_rows(&"osm_poi_point");
     assert_eq!(rows.len(), 5);
+    let rows = &pg_wrapper.get_rows(&"osm_poi_polygon");
+    assert_eq!(rows.len(), 2);
+
+    // @TODO: the comment on the line below is wrong: the poi "poi too far" is imported
+    //        -> we should check if a distance max is defined to connect an address to a POI ?
     // but the elastic search contains only 4 because the poi "poi too far" has not been loaded
     assert_eq!(
         es_wrapper
             .search_and_filter("*.*", |p| p.is_poi())
             .collect::<Vec<_>>()
             .len(),
-        5
+        7
     );
 
     // Test that the place "Ocean Studio" has been imported in the elastic wrapper
@@ -413,6 +419,23 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert_eq!(get_label(spagnolo_addr), "12 rue bob (bob's town)");
     assert_eq!(get_house_number(spagnolo_addr), &"12".to_string());
     assert!(get_zip_codes(spagnolo_addr).is_empty());
+
+    // Test that two "Tour Eiffel" POI should have been imported: the hotel + the monument
+    let eiffels: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("Tour Eiffel", |_| true)
+        .collect();
+    assert_eq!(&eiffels.len(), &2);
+
+    // Test they are both POI
+    assert!(&eiffels.iter().all(|ref p| p.is_poi()));
+
+    // Test their weight are not both equal to 0.0
+    assert!(
+        !&eiffels
+            .iter()
+            .map(|ref mut p| p.poi().unwrap())
+            .all(|p| p.weight == 0.0f64)
+    );
 }
 
 pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
@@ -430,7 +453,7 @@ pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     );
 
     // We filtered the import by a bounding box, we still have 5 rows in PG
-    let rows = &pg_wrapper.get_rows();
+    let rows = &pg_wrapper.get_rows(&"osm_poi_point");
     assert_eq!(rows.len(), 5);
     // but there is only 3 elements in the ES now, 'Le nomade' and 'Isla Cristina Agricultural Airstrip'
     // have been filtered
@@ -439,6 +462,6 @@ pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
             .search_and_filter("*.*", |p| p.is_poi())
             .collect::<Vec<_>>()
             .len(),
-        3
+        5
     );
 }

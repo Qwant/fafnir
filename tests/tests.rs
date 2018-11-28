@@ -50,9 +50,10 @@ impl<'a> PostgresWrapper<'a> {
         })
     }
 
-    pub fn get_rows(&self) -> rows::Rows {
+    pub fn get_rows(&self, table: &str) -> rows::Rows {
         let conn = self.get_conn();
-        conn.query("SELECT * FROM osm_poi_point", &[]).unwrap()
+        conn.query(&format!("SELECT * FROM {}", table), &[])
+            .unwrap()
     }
 
     pub fn new(docker_wrapper: &PostgresDocker) -> PostgresWrapper {
