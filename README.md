@@ -1,4 +1,4 @@
-[![AppVeyor](https://travis-ci.org/QwantResearch/fafnir.svg?branch=master)](https://github.com/QwantResearch/fafnir)
+[![GH-build](https://travis-ci.org/QwantResearch/fafnir.svg?branch=master)](https://github.com/QwantResearch/fafnir)
 [![Docker Pulls](https://img.shields.io/docker/pulls/qwantresearch/fafnir.svg)](https://hub.docker.com/r/qwantresearch/fafnir/)
 [![GitHub license](https://img.shields.io/github/license/QwantResearch/fafnir.svg)](https://github.com/QwantResearch/fafnir/blob/master/LICENSE)
 
