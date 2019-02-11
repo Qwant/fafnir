@@ -327,6 +327,9 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // Test Label
     let label_ocean_poi = &ocean_poi.label;
     assert_eq!(label_ocean_poi, &"Ocean Studio (bob's town)");
+    // Test poi_type
+    let poi_type_ocean_poi = &ocean_poi.poi_type.name;
+    assert_eq!(poi_type_ocean_poi, &"class_cafe subclass_cafe");
 
     // Test Properties: the amenity property for this POI should be "cafe"
     let properties_ocean_poi = &ocean_poi.properties;
