@@ -38,7 +38,8 @@ fn create_tests_tables(conn: &Connection) {
                          agg_stop           integer
                        )",
         &[],
-    ).unwrap();
+    )
+    .unwrap();
     conn.execute("TRUNCATE TABLE osm_poi_point", &[]).unwrap();
     conn.execute(
         "CREATE TABLE IF NOT EXISTS osm_poi_polygon (
@@ -58,7 +59,8 @@ fn create_tests_tables(conn: &Connection) {
                          geometry           geometry
         )",
         &[],
-    ).unwrap();
+    )
+    .unwrap();
     conn.execute("TRUNCATE TABLE osm_poi_polygon", &[]).unwrap();
     conn.execute(
         "CREATE TABLE IF NOT EXISTS osm_aerodrome_label_point(
@@ -77,7 +79,8 @@ fn create_tests_tables(conn: &Connection) {
                          geometry                   geometry
                        )",
         &[],
-    ).unwrap();
+    )
+    .unwrap();
     conn.execute("TRUNCATE TABLE osm_aerodrome_label_point", &[])
         .unwrap();
 }
@@ -176,7 +179,8 @@ fn load_osm_id_function(conn: &Connection) {
         $$ LANGUAGE SQL IMMUTABLE;
     ",
         &[],
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 fn load_es_data(es_wrapper: &mut ElasticSearchWrapper) {
@@ -433,12 +437,10 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert!(&eiffels.iter().all(|ref p| p.is_poi()));
 
     // Test their weight are not both equal to 0.0
-    assert!(
-        !&eiffels
-            .iter()
-            .map(|ref mut p| p.poi().unwrap())
-            .all(|p| p.weight == 0.0f64)
-    );
+    assert!(!&eiffels
+        .iter()
+        .map(|ref mut p| p.poi().unwrap())
+        .all(|p| p.weight == 0.0f64));
 }
 
 pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {

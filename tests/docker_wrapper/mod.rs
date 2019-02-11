@@ -29,30 +29,27 @@ impl PostgresDocker {
         info!("Launching the PostgresWrapper docker");
         let (name, img) = ("postgres_fafnir_tests", "openmaptiles/postgis");
 
-        let status = try!(
-            Command::new("docker")
-                .args(&[
-                    "run",
-                    "--env",
-                    "POSTGRES_DB=test",
-                    "--env",
-                    "POSTGRES_USER=test",
-                    "-P",
-                    "-d",
-                    &format!("--name={}", name),
-                    img,
-                ]).status()
-        );
+        let status = try!(Command::new("docker")
+            .args(&[
+                "run",
+                "--env",
+                "POSTGRES_DB=test",
+                "--env",
+                "POSTGRES_USER=test",
+                "-P",
+                "-d",
+                &format!("--name={}", name),
+                img,
+            ])
+            .status());
         if !status.success() {
             return Err(format!("`docker run` failed {}", &status).into());
         }
 
         // we need to get the ip of the container if the container has been run on another machine
-        let container_ip_cmd = try!(
-            Command::new("docker")
-                .args(&["inspect", "--format={{.NetworkSettings.IPAddress}}", name])
-                .output()
-        );
+        let container_ip_cmd = try!(Command::new("docker")
+            .args(&["inspect", "--format={{.NetworkSettings.IPAddress}}", name])
+            .output());
 
         let container_ip = ::std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.trim();
 
@@ -99,21 +96,17 @@ impl ElasticsearchDocker {
         info!("Launching docker");
         let (name, img) = ("mimirsbrunn_fafnir_tests", "elasticsearch:2");
 
-        let status = try!(
-            Command::new("docker")
-                .args(&["run", "-d", &format!("--name={}", name), img])
-                .status()
-        );
+        let status = try!(Command::new("docker")
+            .args(&["run", "-d", &format!("--name={}", name), img])
+            .status());
         if !status.success() {
             return Err(format!("`docker run` failed {}", &status).into());
         }
 
         // we need to get the ip of the container if the container has been run on another machine
-        let container_ip_cmd = try!(
-            Command::new("docker")
-                .args(&["inspect", "--format={{.NetworkSettings.IPAddress}}", name])
-                .output()
-        );
+        let container_ip_cmd = try!(Command::new("docker")
+            .args(&["inspect", "--format={{.NetworkSettings.IPAddress}}", name])
+            .output());
 
         let container_ip = ::std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.trim();
 
