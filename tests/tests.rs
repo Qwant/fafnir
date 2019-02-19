@@ -41,7 +41,8 @@ impl<'a> PostgresWrapper<'a> {
         Connection::connect(
             format!("postgres://test@{}/test", &self.host()),
             TlsMode::None,
-        ).unwrap_or_else(|err| {
+        )
+        .unwrap_or_else(|err| {
             panic!(
                 "Unable to connect to postgres: {} with ip: {}",
                 err,
@@ -215,13 +216,15 @@ impl<'a> ElasticSearchWrapper<'a> {
                                             })
                                         })
                                     })
-                                }).filter(predicate),
+                                })
+                                .filter(predicate),
                         )
                             as Box<Iterator<Item = mimir::Place>>)
                     }
                     _ => None,
                 }
-            }).unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
+            })
+            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
     }
 }
 
