@@ -17,7 +17,7 @@ extern crate approx;
 pub mod docker_wrapper;
 pub mod fafnir_tests;
 
-use docker_wrapper::*;
+use crate::docker_wrapper::*;
 use hyper::client::response::Response;
 use mimir::rubber::IndexSettings;
 use postgres::rows;

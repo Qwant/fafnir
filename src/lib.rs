@@ -138,7 +138,7 @@ fn find_address(
             geofinder.get(&poi.coord),
         )),
         _ => rubber
-            .get_address(&poi.coord)
+            .get_address(&poi.coord, None)
             .ok()
             .and_then(|addrs| addrs.into_iter().next())
             .map(|addr| addr.address().unwrap()),

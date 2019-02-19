@@ -2,14 +2,15 @@
 name = "fafnir"
 version = "0.1.0"
 authors = ["Adrien Matissart <a.matissart@qwantresearch.com>"]
+edition = "2018"
 
 [dependencies]
 log = "0.4"
 geo = "0.6"
 postgres = "0.15"
 fallible-iterator = "0.1"
-mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "be106982e71a54" }
-mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "be106982e71a54" }
+mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "v1.7.0" }
+mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "v1.7.0" }
 structopt = "0.2"
 slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
 slog-scope = "4.0"
@@ -20,8 +21,8 @@ num_cpus = "1.8.0"
 [dev-dependencies]
 retry = "*"
 hyper = "0.10"
-bragi = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "be106982e71a54" }
-cosmogony = "*"
+bragi = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "v1.7.0" }
+cosmogony = "0.3"
 rs-es = {version = "0.10", default-features = false}
 serde = {version = "1", features = ["rc"]}
 serde_derive = "1"

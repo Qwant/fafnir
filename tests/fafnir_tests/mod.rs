@@ -219,6 +219,8 @@ fn make_test_admin() -> mimir::Admin {
         bbox: None,
         parent_id: None,
         codes: vec![],
+        labels: mimir::I18nProperties::default(),
+        names: mimir::I18nProperties::default(),
     }
 }
 
