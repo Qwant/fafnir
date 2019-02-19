@@ -186,9 +186,12 @@ fn locate_poi(mut poi: Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> 
 fn build_poi(row: Row) -> Option<Poi> {
     let id = row.get("id");
     let name: String = row.get("name");
+
     let class: String = row.get("class");
     let subclass: String = row.get("subclass");
-    let class_sub: String = format!("class_{} subclass_{}", class, subclass);
+
+    let poi_type_id: String = format!("class_{}:subclass_{}", class, subclass);
+    let poi_type_name: String = format!("class_{} subclass_{}", class, subclass);
 
     let lat = row
         .get_opt("lat")?
@@ -241,8 +244,8 @@ fn build_poi(row: Row) -> Option<Poi> {
         id: id,
         coord: poi_coord,
         poi_type: PoiType {
-            id: class.clone(),
-            name: class_sub,
+            id: poi_type_id,
+            name: poi_type_name,
         },
         label: "".into(),
         administrative_regions: vec![],
