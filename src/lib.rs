@@ -365,6 +365,8 @@ pub fn load_and_index_pois(
         nb_shards: nb_shards,
         nb_replicas: nb_replicas,
     };
+
+    rubber.initialize_templates()?;
     let poi_index = rubber.make_index(&dataset, &index_settings).unwrap();
 
     rows.iterator()
