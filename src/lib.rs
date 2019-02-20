@@ -41,7 +41,7 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
         .into_iter()
         .map(|(k, v)| Property {
             key: k,
-            value: v.unwrap_or("".to_string()),
+            value: v.unwrap_or_else(|| "".to_string()),
         })
         .collect::<Vec<Property>>();
 
@@ -138,7 +138,7 @@ fn find_address(
             geofinder.get(&poi.coord),
         )),
         _ => rubber
-            .get_address(&poi.coord)
+            .get_address(&poi.coord, None) // No timeout value here for now.
             .ok()
             .and_then(|addrs| addrs.into_iter().next())
             .map(|addr| addr.address().unwrap()),
@@ -156,7 +156,7 @@ fn locate_poi(mut poi: Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> 
             mimir::Address::Street(ref s) => s.administrative_regions.clone(),
             mimir::Address::Addr(ref s) => s.street.administrative_regions.clone(),
         })
-        .unwrap_or(geofinder.get(&poi.coord));
+        .unwrap_or_else(|| geofinder.get(&poi.coord));
 
     if admins.is_empty() {
         debug!("The poi {} is not on any admins", &poi.name);
@@ -170,10 +170,10 @@ fn locate_poi(mut poi: Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> 
         );
     }
 
-    let zip_codes = match &poi_address {
-        &Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
-        &Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
-        &_ => vec![],
+    let zip_codes = match poi_address {
+        Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
+        Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
+        _ => vec![],
     };
 
     poi.administrative_regions = admins;
@@ -212,7 +212,7 @@ fn build_poi(row: Row) -> Option<Poi> {
         return None;
     }
 
-    let properties = build_poi_properties(&row, &name).unwrap_or(vec![]);
+    let properties = build_poi_properties(&row, &name).unwrap_or_else(|_| vec![]);
 
     // Add a weight if the "wikidata" tag exists for this POI
     let weight_wikidata = properties
@@ -225,8 +225,7 @@ fn build_poi(row: Row) -> Option<Poi> {
     let names_count = properties
         .iter()
         .filter(|p| p.key.starts_with("name:"))
-        .collect::<Vec<_>>()
-        .len();
+        .count();
 
     // Depending on the number of tags "name" we choose different weights
     let weight_names = if names_count < 5 {
@@ -265,17 +264,15 @@ pub fn load_and_index_pois(
     bounding_box: Option<String>,
     nb_shards: usize,
     nb_replicas: usize,
-) {
+) -> Result<(), mimirsbrunn::Error> {
     let rubber = &mut mimir::rubber::Rubber::new(&es);
-    let admins = rubber
-        .get_admins_from_dataset(&dataset)
-        .unwrap_or_else(|err| {
-            warn!(
-                "Administratives regions not found in es db for dataset {}. (error: {})",
-                dataset, err
-            );
-            vec![]
-        });
+    let admins = rubber.get_admins_from_dataset(&dataset).map_err(|err| {
+        error!(
+            "Administratives regions not found in es db for dataset {}.",
+            dataset
+        );
+        err
+    })?;
     let admins_geofinder = admins.into_iter().collect();
 
     let bbox_filter = bounding_box
@@ -285,7 +282,7 @@ pub fn load_and_index_pois(
                 b
             )
         })
-        .unwrap_or("".into());
+        .unwrap_or_else(|| "".into());
 
     let query = format!(
         "
@@ -368,6 +365,8 @@ pub fn load_and_index_pois(
         nb_shards: nb_shards,
         nb_replicas: nb_replicas,
     };
+
+    rubber.initialize_templates()?;
     let poi_index = rubber.make_index(&dataset, &index_settings).unwrap();
 
     rows.iterator()
@@ -399,4 +398,5 @@ pub fn load_and_index_pois(
         .for_each(|_| {});
 
     rubber.publish_index(&dataset, poi_index).unwrap();
+    Ok(())
 }

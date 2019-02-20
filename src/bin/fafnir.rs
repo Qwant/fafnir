@@ -39,7 +39,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         });
 
     let dataset = args.dataset;
-    let nb_threads = args.nb_threads.unwrap_or(num_cpus::get());
+    let nb_threads = args.nb_threads.unwrap_or_else(num_cpus::get);
     fafnir::load_and_index_pois(
         args.es,
         conn,
@@ -48,8 +48,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         args.bounding_box,
         args.nb_shards,
         args.nb_replicas,
-    );
-    Ok(())
+    )
 }
 
 fn main() {
