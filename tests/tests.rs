@@ -1,6 +1,5 @@
 extern crate bragi;
 extern crate fafnir;
-extern crate geo;
 extern crate hyper;
 extern crate mimir;
 extern crate mimirsbrunn;
@@ -249,8 +248,11 @@ fn main_test() {
         ElasticSearchWrapper::new(&mut el_docker),
         PostgresWrapper::new(&pg_docker),
     );
-
     fafnir_tests::bbox_test(
+        ElasticSearchWrapper::new(&mut el_docker),
+        PostgresWrapper::new(&pg_docker),
+    );
+    fafnir_tests::test_with_langs(
         ElasticSearchWrapper::new(&mut el_docker),
         PostgresWrapper::new(&pg_docker),
     );

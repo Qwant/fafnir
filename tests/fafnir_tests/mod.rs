@@ -1,9 +1,7 @@
-extern crate cosmogony;
-
 use super::mimir;
 use super::DATASET;
 use super::{ElasticSearchWrapper, PostgresWrapper};
-use geo;
+use geo_types as geo;
 use postgres::Connection;
 use std;
 use std::f64;
@@ -88,7 +86,7 @@ fn create_tests_tables(conn: &Connection) {
 fn populate_tables(conn: &Connection) {
     // this poi is located at lon=1, lat=1
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5589618289, 'Ocean Studio',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E6100000000000000000F03F000000000000F03F'
-    , '\"name\"=>\"Ocean Studio\", \"amenity\"=>\"cafe\", \"name_int\"=>\"Ocean Studio\", \"name:latin\"=>\"Ocean Studio\"')", &[]).unwrap();
+    , '\"name\"=>\"Ocean Studio\", \"amenity\"=>\"cafe\", \"name:ru\"=>\"студия океана\", \"name:it\"=>\"Oceano Studioso\", \"name_int\"=>\"Ocean Studio\", \"name:latin\"=>\"Ocean Studio\"')", &[]).unwrap();
     // this poi is located at lon=2, lat=2
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5590210422, 'Spagnolo',null,null, 'clothes', 'shop',null,null,null,null, '0101000020E610000000000000000000400000000000000040'
     , '\"name\"=>\"Spagnolo\", \"shop\"=>\"clothes\", \"name_int\"=>\"Spagnolo\", \"name:latin\"=>\"Spagnolo\",\"addr:housenumber\"=>\"12\",\"addr:street\"=>\"rue bob\"')", &[]).unwrap();
@@ -193,7 +191,7 @@ fn load_es_data(es_wrapper: &mut ElasticSearchWrapper) {
 }
 
 fn make_test_admin() -> mimir::Admin {
-    let p = |x, y| geo::Point(geo::Coordinate { x: x, y: y });
+    let p = |x, y| geo::Coordinate { x: x, y: y };
 
     let boundary = geo::MultiPolygon(vec![geo::Polygon::new(
         geo::LineString(vec![
@@ -221,6 +219,7 @@ fn make_test_admin() -> mimir::Admin {
         codes: vec![],
         labels: mimir::I18nProperties::default(),
         names: mimir::I18nProperties::default(),
+        distance: None,
     }
 }
 
@@ -233,6 +232,7 @@ fn make_test_address(city: mimir::Admin) -> mimir::Addr {
         weight: 50.0,
         zip_codes: vec!["12345".to_string()],
         coord: mimir::Coord::new(1., 1.),
+        distance: None,
     };
     mimir::Addr {
         id: format!("addr:{};{}", 1., 1.),
@@ -243,6 +243,7 @@ fn make_test_address(city: mimir::Admin) -> mimir::Addr {
         coord: mimir::Coord::new(1., 1.),
         weight: 50.0,
         zip_codes: vec!["12345".to_string()],
+        distance: None,
     }
 }
 
@@ -306,7 +307,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // but the elastic search contains only 4 because the poi "poi too far" has not been loaded
     assert_eq!(
         es_wrapper
-            .search_and_filter("*.*", |p| p.is_poi())
+            .search_and_filter("name:*", |p| p.is_poi())
             .collect::<Vec<_>>()
             .len(),
         7
@@ -314,7 +315,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // Test that the place "Ocean Studio" has been imported in the elastic wrapper
     let pois: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("Ocean Studio", |_| true)
+        .search_and_filter("name:Ocean*", |_| true)
         .collect();
     assert_eq!(&pois.len(), &1);
 
@@ -361,7 +362,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert_eq!(zip_code, vec!["12345".to_string()]);
 
     let le_nomade_query: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("Le nomade", |_| true)
+        .search_and_filter("name:Le nomade", |_| true)
         .collect();
     assert_eq!(&le_nomade_query.len(), &1);
     let le_nomade = &le_nomade_query[0];
@@ -377,7 +378,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // Test that the airport 'Isla Cristina Agricultural Airstrip' has been imported in the elastic wrapper
     let airport_cristina: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("Isla Cristina", |_| true)
+        .search_and_filter("name:Isla Cristina", |_| true)
         .collect();
     assert_eq!(&airport_cristina.len(), &1);
     assert!(&airport_cristina[0].is_poi());
@@ -406,8 +407,9 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // the '4 gusto' has a tag addr:street but no housenumber, we should not read the address from osm
     // and since it's too far from another address it should not have an address
-    let gusto_query: Vec<mimir::Place> =
-        es_wrapper.search_and_filter("4 gusto", |_| true).collect();
+    let gusto_query: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("name:4 gusto", |_| true)
+        .collect();
     assert_eq!(&gusto_query.len(), &1);
     let gusto = &gusto_query[0];
     assert!(&gusto.is_poi());
@@ -417,8 +419,9 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // the Spagnolo has some osm address tags and no addr:postcode
     // we should still read it's address from osm
-    let spagnolo_query: Vec<mimir::Place> =
-        es_wrapper.search_and_filter("spagnolo", |_| true).collect();
+    let spagnolo_query: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("name:spagnolo", |_| true)
+        .collect();
     assert_eq!(&spagnolo_query.len(), &1);
     let spagnolo = &spagnolo_query[0];
     assert!(&spagnolo.is_poi());
@@ -431,7 +434,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // Test that two "Tour Eiffel" POI should have been imported: the hotel + the monument
     let eiffels: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("Tour Eiffel", |_| true)
+        .search_and_filter("name:Tour Eiffel", |_| true)
         .collect();
     assert_eq!(&eiffels.len(), &2);
 
@@ -466,9 +469,55 @@ pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // have been filtered
     assert_eq!(
         es_wrapper
-            .search_and_filter("*.*", |p| p.is_poi())
+            .search_and_filter("name:*", |p| p.is_poi())
             .collect::<Vec<_>>()
             .len(),
         5
     );
+}
+
+pub fn test_with_langs(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
+    init_tests(&mut es_wrapper, &pg_wrapper);
+    let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
+    super::launch_and_assert(
+        fafnir,
+        vec![
+            "--lang=ru".into(),
+            "--lang=it".into(),
+            format!("--dataset={}", DATASET),
+            format!("--es={}", &es_wrapper.host()),
+            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
+
+    // Test that the place "Ocean Studio" has been imported in the elastic wrapper
+    // with the fields "labels" and "names"
+    let pois: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("name:Ocean*", |_| true)
+        .collect();
+    let ocean_poi = &pois[0].poi().unwrap();
+    assert!(ocean_poi
+        .names
+        .0
+        .iter()
+        .any(|p| p.key == "ru" && p.value == "студия океана"));
+
+    assert!(ocean_poi
+        .names
+        .0
+        .iter()
+        .any(|p| p.key == "it" && p.value == "Oceano Studioso"));
+
+    assert!(ocean_poi
+        .labels
+        .0
+        .iter()
+        .any(|p| p.key == "ru" && p.value == "студия океана (bob\'s town)"));
+
+    assert!(ocean_poi
+        .labels
+        .0
+        .iter()
+        .any(|p| p.key == "it" && p.value == "Oceano Studioso (bob\'s town)"));
 }

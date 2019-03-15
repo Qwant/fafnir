@@ -1,5 +1,4 @@
 extern crate fallible_iterator;
-extern crate geo;
 extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
@@ -16,7 +15,7 @@ use fallible_iterator::FallibleIterator;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimir::{Coord, Poi, PoiType, Property};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::utils::format_label;
+use mimirsbrunn::utils::{format_international_labels, format_label};
 use par_map::ParMap;
 use postgres::rows::Row;
 use postgres::Connection;
@@ -30,8 +29,8 @@ const WEIGHT_TAG_WIKIDATA: f64 = 100.0;
 const WEIGHT_TAG_NAMES: [f64; 3] = [0.0, 30.0, 50.0];
 const MAX_WEIGHT: f64 = WEIGHT_TAG_NAMES[2] + WEIGHT_TAG_WIKIDATA;
 
-fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> {
-    let mut properties = row
+fn properties_from_row(row: &Row) -> Result<Vec<Property>, String> {
+    let properties = row
         .get_opt::<_, HashMap<_, _>>("tags")
         .unwrap()
         .map_err(|err| {
@@ -45,6 +44,33 @@ fn build_poi_properties(row: &Row, name: &str) -> Result<Vec<Property>, String> 
         })
         .collect::<Vec<Property>>();
 
+    Ok(properties)
+}
+
+fn build_names(
+    langs: &[String],
+    properties: &Vec<Property>,
+) -> Result<mimir::I18nProperties, String> {
+    const NAME_TAG_PREFIX: &str = "name:";
+
+    let properties = properties
+        .iter()
+        .filter(|property| property.key.starts_with(&NAME_TAG_PREFIX))
+        .map(|property| mimir::Property {
+            key: property.key[NAME_TAG_PREFIX.len()..].to_string(),
+            value: property.value.to_string(),
+        })
+        .filter(|p| langs.contains(&p.key))
+        .collect();
+
+    Ok(mimir::I18nProperties(properties))
+}
+
+fn build_poi_properties(
+    row: &Row,
+    name: &str,
+    mut properties: Vec<Property>,
+) -> Result<Vec<Property>, String> {
     let poi_subclass = row.get_opt("subclass").unwrap().map_err(|e| {
         warn!("impossible to get poi_subclass for {} because {}", name, e);
         e.to_string()
@@ -106,11 +132,13 @@ fn build_new_addr(
             weight: weight,
             zip_codes: postcodes.clone(),
             coord: poi.coord.clone(),
+            distance: None,
         },
         label: label,
         coord: poi.coord.clone(),
         weight: weight,
         zip_codes: postcodes,
+        distance: None,
     })
 }
 
@@ -145,7 +173,12 @@ fn find_address(
     }
 }
 
-fn locate_poi(mut poi: Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> Option<Poi> {
+fn locate_poi(
+    mut poi: Poi,
+    geofinder: &AdminGeoFinder,
+    rubber: &mut Rubber,
+    langs: &[String],
+) -> Option<Poi> {
     let poi_address = find_address(&poi, geofinder, rubber);
 
     // if we have an address, we take the address's admin as the poi's admin
@@ -179,11 +212,18 @@ fn locate_poi(mut poi: Poi, geofinder: &AdminGeoFinder, rubber: &mut Rubber) -> 
     poi.administrative_regions = admins;
     poi.address = poi_address;
     poi.label = format_label(&poi.administrative_regions, &poi.name);
+    poi.labels = format_international_labels(
+        &poi.administrative_regions,
+        &poi.names,
+        &poi.name,
+        &poi.label,
+        langs,
+    );
     poi.zip_codes = zip_codes;
     Some(poi)
 }
 
-fn build_poi(row: Row) -> Option<Poi> {
+fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
     let id = row.get("id");
     let name: String = row.get("name");
 
@@ -212,7 +252,12 @@ fn build_poi(row: Row) -> Option<Poi> {
         return None;
     }
 
-    let properties = build_poi_properties(&row, &name).unwrap_or_else(|_| vec![]);
+    let row_properties = properties_from_row(&row).unwrap_or_else(|_| vec![]);
+
+    let names =
+        build_names(langs, &row_properties).unwrap_or_else(|_| mimir::I18nProperties::default());
+
+    let properties = build_poi_properties(&row, &name, row_properties).unwrap_or_else(|_| vec![]);
 
     // Add a weight if the "wikidata" tag exists for this POI
     let weight_wikidata = properties
@@ -253,6 +298,9 @@ fn build_poi(row: Row) -> Option<Poi> {
         weight: total_weight,
         zip_codes: vec![],
         address: None,
+        names: names,
+        labels: mimir::I18nProperties::default(),
+        distance: None,
     })
 }
 
@@ -264,6 +312,7 @@ pub fn load_and_index_pois(
     bounding_box: Option<String>,
     nb_shards: usize,
     nb_replicas: usize,
+    langs: Vec<String>,
 ) -> Result<(), mimirsbrunn::Error> {
     let rubber = &mut mimir::rubber::Rubber::new(&es);
     let admins = rubber.get_admins_from_dataset(&dataset).map_err(|err| {
@@ -375,7 +424,7 @@ pub fn load_and_index_pois(
                 .ok()
         })
         .filter_map(|p| {
-            build_poi(p)
+            build_poi(p, &langs)
                 .ok_or_else(|| warn!("Problem occurred in build_poi()"))
                 .ok()
         })
@@ -383,11 +432,12 @@ pub fn load_and_index_pois(
         .with_nb_threads(nb_threads)
         .par_map({
             let i = poi_index.clone();
+            let langs = langs.clone();
             move |p| {
                 let mut rub = Rubber::new(&es);
                 let pois = p
                     .into_iter()
-                    .filter_map(|poi| locate_poi(poi, &admins_geofinder, &mut rub));
+                    .filter_map(|poi| locate_poi(poi, &admins_geofinder, &mut rub, &langs));
                 let mut rub2 = Rubber::new(&es);
                 match rub2.bulk_index(&i, pois) {
                     Err(e) => panic!("Failed to bulk insert pois because: {}", e),
