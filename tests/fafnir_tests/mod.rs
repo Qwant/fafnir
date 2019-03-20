@@ -434,7 +434,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // Test that two "Tour Eiffel" POI should have been imported: the hotel + the monument
     let eiffels: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("name:Tour Eiffel", |_| true)
+        .search_and_filter("name:(Tour Eiffel)", |_| true)
         .collect();
     assert_eq!(&eiffels.len(), &2);
 
