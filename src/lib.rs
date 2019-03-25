@@ -15,7 +15,7 @@ use fallible_iterator::FallibleIterator;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimir::{Coord, Poi, PoiType, Property};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::utils::{format_international_labels, format_label};
+use mimirsbrunn::utils::{format_international_poi_label, format_label};
 use par_map::ParMap;
 use postgres::rows::Row;
 use postgres::Connection;
@@ -212,7 +212,7 @@ fn locate_poi(
     poi.administrative_regions = admins;
     poi.address = poi_address;
     poi.label = format_label(&poi.administrative_regions, &poi.name);
-    poi.labels = format_international_labels(
+    poi.labels = format_international_poi_label(
         &poi.administrative_regions,
         &poi.names,
         &poi.name,
