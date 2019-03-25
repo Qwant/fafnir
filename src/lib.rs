@@ -55,12 +55,21 @@ fn build_names(
 
     let properties = properties
         .iter()
-        .filter(|property| property.key.starts_with(&NAME_TAG_PREFIX))
-        .map(|property| mimir::Property {
-            key: property.key[NAME_TAG_PREFIX.len()..].to_string(),
-            value: property.value.to_string(),
+        .filter_map(|property| {
+            if property.key.starts_with(&NAME_TAG_PREFIX) {
+                let lang = property.key[NAME_TAG_PREFIX.len()..].to_string();
+                if langs.contains(&lang) {
+                    Some(mimir::Property {
+                        key: lang,
+                        value: property.value.to_string(),
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
         })
-        .filter(|p| langs.contains(&p.key))
         .collect();
 
     Ok(mimir::I18nProperties(properties))
@@ -294,11 +303,11 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
         label: "".into(),
         administrative_regions: vec![],
         properties: properties,
-        name: name,
+        name,
         weight: total_weight,
         zip_codes: vec![],
         address: None,
-        names: names,
+        names,
         labels: mimir::I18nProperties::default(),
         distance: None,
     })
