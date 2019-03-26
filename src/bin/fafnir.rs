@@ -30,6 +30,9 @@ struct Args {
     /// Number of replicas for the es index
     #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
     nb_replicas: usize,
+    /// Languages codes, used to build i18n names and labels
+    #[structopt(name = "lang", short, long)]
+    langs: Vec<String>,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -48,6 +51,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         args.bounding_box,
         args.nb_shards,
         args.nb_replicas,
+        args.langs,
     )
 }
 
