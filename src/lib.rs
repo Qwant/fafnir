@@ -3,7 +3,6 @@ extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
 extern crate postgres;
-#[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
@@ -12,10 +11,14 @@ extern crate num_cpus;
 extern crate par_map;
 
 use fallible_iterator::FallibleIterator;
-use mimir::rubber::{IndexSettings, Rubber};
+use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::{Coord, Poi, PoiType, Property};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::utils::{format_international_poi_label, format_label};
+use mimirsbrunn::labels::format_international_poi_label;
+use mimirsbrunn::labels::{format_addr_name_and_label, format_poi_label, format_street_label};
+use mimirsbrunn::utils::find_country_codes;
+use std::ops::Deref;
+
 use par_map::ParMap;
 use postgres::rows::Row;
 use postgres::Connection;
@@ -47,10 +50,7 @@ fn properties_from_row(row: &Row) -> Result<Vec<Property>, String> {
     Ok(properties)
 }
 
-fn build_names(
-    langs: &[String],
-    properties: &Vec<Property>,
-) -> Result<mimir::I18nProperties, String> {
+fn build_names(langs: &[String], properties: &[Property]) -> Result<mimir::I18nProperties, String> {
     const NAME_TAG_PREFIX: &str = "name:";
 
     let properties = properties
@@ -103,6 +103,10 @@ fn build_poi_properties(
     Ok(properties)
 }
 
+fn iter_admins(admins: &[Arc<mimir::Admin>]) -> impl Iterator<Item = &mimir::Admin> + Clone {
+    admins.iter().map(|a| a.deref())
+}
+
 /// Read the osm address tags and build a mimir address from them
 ///
 /// For the moment we read mostly `addr:city` or `addr:country`
@@ -125,9 +129,10 @@ fn build_new_addr(
         .find(|p| &p.key == "addr:postcode")
         .map(|p| p.value.clone());
     let postcodes = postcode.map_or(vec![], |p| vec![p]);
-    let street_label = format_label(&admins, street_tag);
-    let label = format!("{} {}", addr_tag, street_label);
-    let addr_name = format!("{} {}", addr_tag, street_tag);
+    let country_codes = find_country_codes(iter_admins(&admins));
+    let street_label = format_street_label(street_tag, iter_admins(&admins), &country_codes);
+    let (addr_name, addr_label) =
+        format_addr_name_and_label(addr_tag, street_tag, iter_admins(&admins), &country_codes);
     let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
     mimir::Address::Addr(mimir::Addr {
         id: format!("addr_poi:{}", &poi.id),
@@ -140,14 +145,17 @@ fn build_new_addr(
             administrative_regions: admins,
             weight: weight,
             zip_codes: postcodes.clone(),
-            coord: poi.coord.clone(),
-            distance: None,
+            coord: poi.coord,
+            country_codes: country_codes.clone(),
+            ..Default::default()
         },
-        label: label,
-        coord: poi.coord.clone(),
+        label: addr_label,
+        coord: poi.coord,
+        approx_coord: None,
         weight: weight,
         zip_codes: postcodes,
         distance: None,
+        country_codes: country_codes,
     })
 }
 
@@ -175,7 +183,7 @@ fn find_address(
             geofinder.get(&poi.coord),
         )),
         _ => rubber
-            .get_address(&poi.coord, None) // No timeout value here for now.
+            .get_address(&poi.coord)
             .ok()
             .and_then(|addrs| addrs.into_iter().next())
             .map(|addr| addr.address().unwrap()),
@@ -192,13 +200,22 @@ fn locate_poi(
 
     // if we have an address, we take the address's admin as the poi's admin
     // else we lookup the admin by the poi's coordinates
-    let admins = poi_address
+    let (admins, country_codes) = poi_address
         .as_ref()
         .map(|a| match a {
-            mimir::Address::Street(ref s) => s.administrative_regions.clone(),
-            mimir::Address::Addr(ref s) => s.street.administrative_regions.clone(),
+            mimir::Address::Street(ref s) => {
+                (s.administrative_regions.clone(), s.country_codes.clone())
+            }
+            mimir::Address::Addr(ref s) => (
+                s.street.administrative_regions.clone(),
+                s.country_codes.clone(),
+            ),
         })
-        .unwrap_or_else(|| geofinder.get(&poi.coord));
+        .unwrap_or_else(|| {
+            let admins = geofinder.get(&poi.coord);
+            let country_codes = find_country_codes(iter_admins(&admins));
+            (admins, country_codes)
+        });
 
     if admins.is_empty() {
         debug!("The poi {} is not on any admins", &poi.name);
@@ -220,12 +237,17 @@ fn locate_poi(
 
     poi.administrative_regions = admins;
     poi.address = poi_address;
-    poi.label = format_label(&poi.administrative_regions, &poi.name);
+    poi.label = format_poi_label(
+        &poi.name,
+        iter_admins(&poi.administrative_regions),
+        &country_codes,
+    );
     poi.labels = format_international_poi_label(
-        &poi.administrative_regions,
         &poi.names,
         &poi.name,
         &poi.label,
+        iter_admins(&poi.administrative_regions),
+        &country_codes,
         langs,
     );
     poi.zip_codes = zip_codes;
@@ -301,15 +323,12 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
             name: poi_type_name,
         },
         label: "".into(),
-        administrative_regions: vec![],
         properties: properties,
         name,
         weight: total_weight,
-        zip_codes: vec![],
-        address: None,
         names,
         labels: mimir::I18nProperties::default(),
-        distance: None,
+        ..Default::default()
     })
 }
 
@@ -324,11 +343,8 @@ pub fn load_and_index_pois(
     langs: Vec<String>,
 ) -> Result<(), mimirsbrunn::Error> {
     let rubber = &mut mimir::rubber::Rubber::new(&es);
-    let admins = rubber.get_admins_from_dataset(&dataset).map_err(|err| {
-        error!(
-            "Administratives regions not found in es db for dataset {}.",
-            dataset
-        );
+    let admins = rubber.get_all_admins().map_err(|err| {
+        error!("Administratives regions not found in es db");
         err
     })?;
     let admins_geofinder = admins.into_iter().collect();
@@ -456,6 +472,8 @@ pub fn load_and_index_pois(
         })
         .for_each(|_| {});
 
-    rubber.publish_index(&dataset, poi_index).unwrap();
+    rubber
+        .publish_index(&dataset, poi_index, IndexVisibility::Public)
+        .unwrap();
     Ok(())
 }

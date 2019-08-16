@@ -2,19 +2,24 @@ use super::mimir;
 use super::DATASET;
 use super::{ElasticSearchWrapper, PostgresWrapper};
 use geo_types as geo;
+use mimirsbrunn::utils;
 use postgres::Connection;
 use std;
 use std::f64;
 use std::sync::Arc;
 
 // Init the Postgres Wrapper
-fn init_tests(es_wrapper: &mut ElasticSearchWrapper, pg_wrapper: &PostgresWrapper) {
+fn init_tests(
+    es_wrapper: &mut ElasticSearchWrapper,
+    pg_wrapper: &PostgresWrapper,
+    country_code: &str,
+) {
     let conn = pg_wrapper.get_conn();
     create_tests_tables(&conn);
     populate_tables(&conn);
     load_poi_class_function(&conn);
     load_osm_id_function(&conn);
-    load_es_data(es_wrapper);
+    load_es_data(es_wrapper, country_code);
 }
 
 fn create_tests_tables(conn: &Connection) {
@@ -181,16 +186,17 @@ fn load_osm_id_function(conn: &Connection) {
     .unwrap();
 }
 
-fn load_es_data(es_wrapper: &mut ElasticSearchWrapper) {
-    let city = make_test_admin();
+fn load_es_data(es_wrapper: &mut ElasticSearchWrapper, country_code: &str) {
+    let city = make_test_admin("bob's town", country_code);
     let test_address = make_test_address(city.clone());
     let addresses = std::iter::once(test_address);
     es_wrapper.index(DATASET, addresses);
     let cities = std::iter::once(city);
+
     es_wrapper.index(DATASET, cities);
 }
 
-fn make_test_admin() -> mimir::Admin {
+fn make_test_admin(name: &str, country_code: &str) -> mimir::Admin {
     let p = |x, y| geo::Coordinate { x: x, y: y };
 
     let boundary = geo::MultiPolygon(vec![geo::Polygon::new(
@@ -204,26 +210,29 @@ fn make_test_admin() -> mimir::Admin {
         vec![],
     )]);
     mimir::Admin {
-        id: "bobs_town".to_string(),
+        id: name.to_string(),
         level: 8,
-        name: "bob's town".to_string(),
-        label: "bob's town".to_string(),
+        name: name.to_string(),
+        label: name.to_string(),
         zip_codes: vec!["421337".to_string()],
         weight: 0f64,
         coord: ::mimir::Coord::new(4.0, 4.0),
         boundary: Some(boundary),
         insee: "outlook".to_string(),
         zone_type: Some(cosmogony::ZoneType::City),
-        bbox: None,
-        parent_id: None,
-        codes: vec![],
         labels: mimir::I18nProperties::default(),
         names: mimir::I18nProperties::default(),
-        distance: None,
+        codes: vec![mimir::Code {
+            name: "ISO3166-1:alpha2".to_string(),
+            value: country_code.to_string(),
+        }],
+        ..Default::default()
     }
 }
 
 fn make_test_address(city: mimir::Admin) -> mimir::Addr {
+    let country_codes = utils::find_country_codes(std::iter::once(&city));
+
     let street = mimir::Street {
         id: "1234".to_string(),
         name: "test".to_string(),
@@ -232,7 +241,8 @@ fn make_test_address(city: mimir::Admin) -> mimir::Addr {
         weight: 50.0,
         zip_codes: vec!["12345".to_string()],
         coord: mimir::Coord::new(1., 1.),
-        distance: None,
+        country_codes: country_codes.clone(),
+        ..Default::default()
     };
     mimir::Addr {
         id: format!("addr:{};{}", 1., 1.),
@@ -244,6 +254,8 @@ fn make_test_address(city: mimir::Admin) -> mimir::Addr {
         weight: 50.0,
         zip_codes: vec!["12345".to_string()],
         distance: None,
+        approx_coord: None,
+        country_codes,
     }
 }
 
@@ -283,7 +295,7 @@ fn get_zip_codes(address: &mimir::Address) -> Vec<String> {
 }
 
 pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
-    init_tests(&mut es_wrapper, &pg_wrapper);
+    init_tests(&mut es_wrapper, &pg_wrapper, "FR");
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
@@ -449,7 +461,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 }
 
 pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
-    init_tests(&mut es_wrapper, &pg_wrapper);
+    init_tests(&mut es_wrapper, &pg_wrapper, "FR");
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
@@ -477,7 +489,7 @@ pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 }
 
 pub fn test_with_langs(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
-    init_tests(&mut es_wrapper, &pg_wrapper);
+    init_tests(&mut es_wrapper, &pg_wrapper, "FR");
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
@@ -520,4 +532,32 @@ pub fn test_with_langs(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
         .0
         .iter()
         .any(|p| p.key == "it" && p.value == "Oceano Studioso (bob\'s town)"));
+}
+
+pub fn test_address_format(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
+    // Import data with DE as country code in admins
+    init_tests(&mut es_wrapper, &pg_wrapper, "DE");
+    let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
+    super::launch_and_assert(
+        fafnir,
+        vec![
+            format!("--dataset={}", DATASET),
+            format!("--es={}", &es_wrapper.host()),
+            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
+
+    let spagnolo_query: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("name:spagnolo", |_| true)
+        .collect();
+    let spagnolo = &spagnolo_query[0];
+    assert!(&spagnolo.is_poi());
+    let spagnolo = &spagnolo.poi().unwrap();
+    assert_eq!(&spagnolo.id, "osm:node:5590210422");
+    let spagnolo_addr = spagnolo.address.as_ref().unwrap();
+
+    // German format: housenumber comes after street name
+    assert_eq!(get_label(spagnolo_addr), "rue bob 12 (bob's town)");
+    assert_eq!(get_house_number(spagnolo_addr), &"12".to_string());
 }

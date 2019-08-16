@@ -3,6 +3,7 @@ extern crate retry;
 use super::hyper;
 use mimir::rubber::Rubber;
 use postgres::{Connection, TlsMode};
+use retry::delay::Fixed;
 use std::error::Error;
 use std::process::Command;
 
@@ -58,17 +59,12 @@ impl PostgresDocker {
 
         info!("Waiting for Postgres in docker to be up and running...");
 
-        let retry = retry::retry(
-            200,
-            700,
-            || {
-                Connection::connect(
-                    format!("postgres://test@{}/test", &self.host()),
-                    TlsMode::None,
-                )
-            },
-            |connection| connection.is_ok(),
-        );
+        let retry = retry::retry(Fixed::from_millis(1000).take(30), || {
+            Connection::connect(
+                format!("postgres://test@{}/test", &self.host()),
+                TlsMode::None,
+            )
+        });
         match retry {
             Ok(_) => {
                 info!("{} docker is up and running", name);
@@ -114,17 +110,12 @@ impl ElasticsearchDocker {
         self.ip = container_ip.to_string();
 
         info!("Waiting for ES in docker to be up and running...");
-        let retry = retry::retry(
-            200,
-            100,
-            || hyper::client::Client::new().get(&self.host()).send(),
-            |response| {
-                response
-                    .as_ref()
-                    .map(|res| res.status == hyper::Ok)
-                    .unwrap_or(false)
-            },
-        );
+        let retry = retry::retry(Fixed::from_millis(1000).take(30), || {
+            hyper::client::Client::new()
+                .get(&self.host())
+                .send()
+                .map(|res| res.status == hyper::Ok)
+        });
         match retry {
             Ok(_) => {
                 info!("{} docker is up and running", name);
