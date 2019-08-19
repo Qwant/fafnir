@@ -156,16 +156,25 @@ fn find_address(
     geofinder: &AdminGeoFinder,
     rubber: &mut Rubber,
 ) -> Option<mimir::Address> {
-    let osm_addr_tag = poi
-        .properties
+    let osm_addr_tag = ["addr:housenumber", "contact:housenumber"]
         .iter()
-        .find(|p| &p.key == "addr:housenumber")
-        .map(|p| &p.value);
-    let osm_street_tag = poi
-        .properties
+        .filter_map(|k| {
+            poi.properties
+                .iter()
+                .find(|p| &p.key == k)
+                .map(|p| &p.value)
+        })
+        .next();
+
+    let osm_street_tag = ["addr:street", "contact:street"]
         .iter()
-        .find(|p| &p.key == "addr:street")
-        .map(|p| &p.value);
+        .filter_map(|k| {
+            poi.properties
+                .iter()
+                .find(|p| &p.key == k)
+                .map(|p| &p.value)
+        })
+        .next();
 
     match (osm_addr_tag, osm_street_tag) {
         (Some(addr_tag), Some(street_tag)) => Some(build_new_addr(
