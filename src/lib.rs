@@ -155,7 +155,7 @@ fn build_new_addr(
         weight: weight,
         zip_codes: postcodes,
         distance: None,
-        country_codes: country_codes,
+        country_codes,
     })
 }
 
