@@ -6,7 +6,6 @@ extern crate mimirsbrunn;
 extern crate postgres;
 extern crate rs_es;
 extern crate serde_json;
-#[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
@@ -18,7 +17,7 @@ pub mod fafnir_tests;
 
 use crate::docker_wrapper::*;
 use hyper::client::response::Response;
-use mimir::rubber::IndexSettings;
+use mimir::rubber::{IndexSettings, IndexVisibility};
 use postgres::rows;
 use postgres::{Connection, TlsMode};
 use serde_json::value::Value;
@@ -97,7 +96,9 @@ impl<'a> ElasticSearchWrapper<'a> {
         };
         let index = self.rubber.make_index(dataset, &index_settings).unwrap();
         let _nb = self.rubber.bulk_index(&index, objects).unwrap();
-        self.rubber.publish_index(dataset, index).unwrap();
+        self.rubber
+            .publish_index(dataset, index, IndexVisibility::Public)
+            .unwrap();
         self.refresh();
     }
 
@@ -135,21 +136,21 @@ impl<'a> ElasticSearchWrapper<'a> {
     /// simple search on an index
     /// assert that the result is OK and transform it to a json Value
     pub fn search(&self, word: &str) -> serde_json::Value {
-        let res = self
+        let mut res = self
             .rubber
             .get(&format!("munin/_search?q={}", word))
             .unwrap();
-        assert!(res.status == hyper::Ok);
-        res.to_json()
+        assert!(res.status().is_success());
+        res.json().expect("failed to parse json")
     }
 
     pub fn search_on_global_stop_index(&self, word: &str) -> serde_json::Value {
-        let res = self
+        let mut res = self
             .rubber
             .get(&format!("munin_global_stops/_search?q={}", word))
             .unwrap();
-        assert!(res.status == hyper::Ok);
-        res.to_json()
+        assert!(res.status().is_success());
+        res.json().expect("failed to parse json")
     }
 
     pub fn search_and_filter<'b, F>(
@@ -173,7 +174,6 @@ impl<'a> ElasticSearchWrapper<'a> {
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
         use serde_json::map::{Entry, Map};
-        use serde_json::value::Value;
         fn into_object(json: Value) -> Option<Map<String, Value>> {
             match json {
                 Value::Object(o) => Some(o),
@@ -253,6 +253,10 @@ fn main_test() {
         PostgresWrapper::new(&pg_docker),
     );
     fafnir_tests::test_with_langs(
+        ElasticSearchWrapper::new(&mut el_docker),
+        PostgresWrapper::new(&pg_docker),
+    );
+    fafnir_tests::test_address_format(
         ElasticSearchWrapper::new(&mut el_docker),
         PostgresWrapper::new(&pg_docker),
     );
