@@ -370,34 +370,19 @@ pub fn load_and_index_pois(
 
     let query = format!(
         "
-        SELECT id, lon, lat, class, name, tags, source, mapping_key, subclass FROM
+        SELECT id, lon, lat, class, name, tags, subclass FROM
         (
             SELECT
                 geometry,
-                global_id_from_imposm(osm_id) as id,
+                global_id as id,
                 st_x(st_transform(geometry, 4326)) as lon,
                 st_y(st_transform(geometry, 4326)) as lat,
                 poi_class(subclass, mapping_key) AS class,
                 name,
                 mapping_key,
                 subclass,
-                tags,
-                'osm_poi_point' as source
-            FROM osm_poi_point
-                WHERE name <> ''
-            UNION ALL
-            SELECT
-                geometry,
-                global_id_from_imposm(osm_id) as id,
-                st_x(st_transform(geometry, 4326)) as lon,
-                st_y(st_transform(geometry, 4326)) as lat,
-                poi_class(subclass, mapping_key) AS class,
-                name,
-                mapping_key,
-                subclass,
-                tags,
-                'osm_poi_polygon' as source
-            FROM osm_poi_polygon
+                tags
+            FROM layer_poi(NULL, 14, 1)
                 WHERE name <> ''
             UNION ALL
             SELECT
@@ -409,8 +394,7 @@ pub fn load_and_index_pois(
                 name,
                 'aerodrome' as mapping_key,
                 'airport' as subclass,
-                tags,
-                'osm_aerodrome_label_point' as source
+                tags
             FROM osm_aerodrome_label_point
                 WHERE name <> ''
         ) as unionall
