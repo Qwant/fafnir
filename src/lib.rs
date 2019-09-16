@@ -11,6 +11,7 @@ extern crate num_cpus;
 extern crate par_map;
 
 use fallible_iterator::FallibleIterator;
+use itertools::process_results;
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::{Coord, Poi, PoiType, Property};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -442,7 +443,10 @@ pub fn load_and_index_pois(
     let stmt = conn.prepare(&query).unwrap();
     let trans = conn.transaction().unwrap();
 
-    let rows = stmt.lazy_query(&trans, &[], PG_BATCH_SIZE).unwrap();
+    let rows_iterator = stmt
+        .lazy_query(&trans, &[], PG_BATCH_SIZE)
+        .expect("failed to execute query")
+        .iterator();
 
     let index_settings = IndexSettings {
         nb_shards: nb_shards,
@@ -452,13 +456,11 @@ pub fn load_and_index_pois(
     rubber.initialize_templates()?;
     let poi_index = rubber.make_index(&dataset, &index_settings).unwrap();
 
-    rows.iterator()
-        .filter_map(|r| {
-            r.map_err(|r| warn!("Impossible to load the row {:?}", r))
-                .ok()
-        })
-        .filter_map(|p| {
-            build_poi(p, &langs)
+    // "process_results" will early return on first error
+    // from the postgres iterator
+    process_results(rows_iterator, |rows| {
+        rows.filter_map(|row| {
+            build_poi(row, &langs)
                 .ok_or_else(|| warn!("Problem occurred in build_poi()"))
                 .ok()
         })
@@ -479,7 +481,8 @@ pub fn load_and_index_pois(
                 };
             }
         })
-        .for_each(|_| {});
+        .for_each(|_| {})
+    })?;
 
     rubber
         .publish_index(&dataset, poi_index, IndexVisibility::Public)
