@@ -15,7 +15,7 @@ cargo build --release
 ```
 - Then you can run fafnir (with the connections to postgres and elasticsearch):
 ```shell
-cargo run --release --dataset=<dataset name> --es=http://<es-IP>:9200 --pg=postgresql://<pg-IP>:5432
+cargo run --release -- --dataset=<dataset name> --es=http://<es-IP>:9200 --pg=postgresql://<pg-IP>:5432
 ```
 
 ## Run with docker :whale:
