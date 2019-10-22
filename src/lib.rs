@@ -28,11 +28,6 @@ use std::sync::Arc;
 
 const PG_BATCH_SIZE: i32 = 5000;
 
-// constants that define POI weights for ranking
-const WEIGHT_TAG_WIKIDATA: f64 = 100.0;
-const WEIGHT_TAG_NAMES: [f64; 3] = [0.0, 30.0, 50.0];
-const MAX_WEIGHT: f64 = WEIGHT_TAG_NAMES[2] + WEIGHT_TAG_WIKIDATA;
-
 fn properties_from_row(row: &Row) -> Result<Vec<Property>, String> {
     let properties = row
         .get_opt::<_, HashMap<_, _>>("tags")
@@ -282,6 +277,8 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
     let poi_type_id: String = format!("class_{}:subclass_{}", class, subclass);
     let poi_type_name: String = format!("class_{} subclass_{}", class, subclass);
 
+    let weight = row.get("weight");
+
     let lat = row
         .get_opt("lat")?
         .map_err(|e| warn!("impossible to get lat for {} because {}", name, e))
@@ -308,31 +305,6 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
 
     let properties = build_poi_properties(&row, &name, row_properties).unwrap_or_else(|_| vec![]);
 
-    // Add a weight if the "wikidata" tag exists for this POI
-    let weight_wikidata = properties
-        .iter()
-        .find(|p| &p.key == "wikidata")
-        .map_or(0., |_p| WEIGHT_TAG_WIKIDATA);
-
-    // Count the number of tags "name:" for this POI.
-    // The more tags, the more the POI is important
-    let names_count = properties
-        .iter()
-        .filter(|p| p.key.starts_with("name:"))
-        .count();
-
-    // Depending on the number of tags "name" we choose different weights
-    let weight_names = if names_count < 5 {
-        WEIGHT_TAG_NAMES[0]
-    } else if names_count < 9 {
-        WEIGHT_TAG_NAMES[1]
-    } else {
-        WEIGHT_TAG_NAMES[2]
-    };
-
-    // The total weight for POI is simply the normalized sum of above weights
-    let total_weight = (weight_names + weight_wikidata) / MAX_WEIGHT;
-
     Some(Poi {
         id: id,
         coord: poi_coord,
@@ -343,7 +315,7 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
         label: "".into(),
         properties: properties,
         name,
-        weight: total_weight,
+        weight,
         names,
         labels: mimir::I18nProperties::default(),
         ..Default::default()
@@ -378,8 +350,16 @@ pub fn load_and_index_pois(
 
     let query = format!(
         "
-        SELECT id, lon, lat, class, name, tags, subclass FROM
-        (
+        SELECT
+            id,
+            lon,
+            lat,
+            class,
+            name,
+            tags,
+            subclass,
+            poi_display_weight(name, subclass, mapping_key, tags)::float as weight
+        FROM (
             SELECT
                 geometry,
                 global_id AS id,
