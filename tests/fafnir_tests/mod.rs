@@ -403,9 +403,15 @@ fn load_poi_weight_function(conn: &Connection) {
             mapping_key varchar,
             tags hstore
         )
-        RETURNS integer AS $$
-            SELECT LENGTH(name)
-        $$ LANGUAGE SQL IMMUTABLE;
+        RETURNS REAL AS $$
+            DECLARE
+                result REAL;
+            BEGIN
+                SELECT INTO result
+                    1.0 - 1.0 / (1.0 + LENGTH(name)::real);
+                RETURN result;
+            END
+        $$ LANGUAGE plpgsql IMMUTABLE;
         ",
         &[],
     )
