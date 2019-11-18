@@ -23,7 +23,7 @@ fn init_tests(
     load_labelgrid_function(&conn);
     load_poi_class_rank_function(&conn);
     load_layer_poi_function(&conn);
-    load_poi_weight_function(&conn);
+    load_poi_display_weight_function(&conn);
     load_es_data(es_wrapper, country_code);
 }
 
@@ -394,7 +394,7 @@ $$ LANGUAGE SQL IMMUTABLE;
 }
 
 /// This is a quick placeholder for the actual weight function.
-fn load_poi_weight_function(conn: &Connection) {
+fn load_poi_display_weight_function(conn: &Connection) {
     conn.execute(
         "
         CREATE OR REPLACE FUNCTION poi_display_weight(
