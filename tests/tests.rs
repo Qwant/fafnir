@@ -157,7 +157,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         &self,
         word: &str,
         predicate: F,
-    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    ) -> Box<dyn Iterator<Item = mimir::Place> + 'b>
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -169,7 +169,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         word: &str,
         predicate: F,
         search_on_global_stops: bool,
-    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    ) -> Box<dyn Iterator<Item = mimir::Place> + 'b>
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -218,12 +218,12 @@ impl<'a> ElasticSearchWrapper<'a> {
                                 })
                                 .filter(predicate),
                         )
-                            as Box<Iterator<Item = mimir::Place>>)
+                            as Box<dyn Iterator<Item = mimir::Place>>)
                     }
                     _ => None,
                 }
             })
-            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
+            .unwrap_or(Box::new(None.into_iter()) as Box<dyn Iterator<Item = mimir::Place>>)
     }
 }
 
