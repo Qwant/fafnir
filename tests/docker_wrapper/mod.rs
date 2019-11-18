@@ -16,7 +16,7 @@ pub struct PostgresDocker {
 }
 
 impl PostgresDocker {
-    pub fn new() -> Result<PostgresDocker, Box<Error>> {
+    pub fn new() -> Result<PostgresDocker, Box<dyn Error>> {
         let mut pg_docker = PostgresDocker { ip: "".to_string() };
         pg_docker.setup()?;
         Ok(pg_docker)
@@ -26,7 +26,7 @@ impl PostgresDocker {
         format!("{}", self.ip)
     }
 
-    pub fn setup(&mut self) -> Result<(), Box<Error>> {
+    pub fn setup(&mut self) -> Result<(), Box<dyn Error>> {
         info!("Launching the PostgresWrapper docker");
         let (name, img) = ("postgres_fafnir_tests", "openmaptiles/postgis");
 
@@ -76,7 +76,7 @@ impl PostgresDocker {
 }
 
 impl ElasticsearchDocker {
-    pub fn new() -> Result<ElasticsearchDocker, Box<Error>> {
+    pub fn new() -> Result<ElasticsearchDocker, Box<dyn Error>> {
         let mut el_docker = ElasticsearchDocker { ip: "".to_string() };
         el_docker.setup()?;
         let rubber = Rubber::new(&el_docker.host());
@@ -88,7 +88,7 @@ impl ElasticsearchDocker {
         format!("http://{}:9200", self.ip)
     }
 
-    pub fn setup(&mut self) -> Result<(), Box<Error>> {
+    pub fn setup(&mut self) -> Result<(), Box<dyn Error>> {
         info!("Launching docker");
         let (name, img) = ("mimirsbrunn_fafnir_tests", "elasticsearch:2");
 
