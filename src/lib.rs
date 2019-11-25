@@ -383,7 +383,7 @@ pub fn load_and_index_pois(
                 subclass,
                 tags,
                 'osm_poi_point' as source
-                FROM osm_poi_point
+            FROM osm_poi_point
                 WHERE name <> ''
             UNION ALL
             SELECT
@@ -397,7 +397,8 @@ pub fn load_and_index_pois(
                 subclass,
                 tags,
                 'osm_poi_polygon' as source
-                FROM osm_poi_polygon WHERE name <> ''
+            FROM osm_poi_polygon
+                WHERE name <> ''
             UNION ALL
             SELECT
                 geometry,
@@ -410,32 +411,33 @@ pub fn load_and_index_pois(
                 'airport' as subclass,
                 tags,
                 'osm_aerodrome_label_point' as source
-                FROM osm_aerodrome_label_point WHERE name <> ''
+            FROM osm_aerodrome_label_point
+                WHERE name <> ''
         ) as unionall
         WHERE (unionall.mapping_key,unionall.subclass) not in
-        (('highway','bus_stop'),
-         ('barrier','gate'),
-         ('amenity','waste_basket'),
-         ('amenity','post_box'),
-         ('tourism','information'),
-         ('amenity','recycling'),
-         ('barrier','lift_gate'),
-         ('barrier','bollard'),
-         ('barrier','cycle_barrier'),
-         ('amenity','bicycle_rental'),
-         ('tourism','artwork'),
-         ('amenity','toilets'),
-         ('leisure','playground'),
-         ('amenity','telephone'),
-         ('amenity','taxi'),
-         ('leisure','pitch'),
-         ('amenity','shelter'),
-         ('barrier','sally_port'),
-         ('barrier','stile'),
-         ('amenity','ferry_terminal'),
-         ('amenity','post_office'),
-         ('railway','subway_entrance'),
-         ('railway','train_station_entrance'))
+            (('highway','bus_stop'),
+             ('barrier','gate'),
+             ('amenity','waste_basket'),
+             ('amenity','post_box'),
+             ('tourism','information'),
+             ('amenity','recycling'),
+             ('barrier','lift_gate'),
+             ('barrier','bollard'),
+             ('barrier','cycle_barrier'),
+             ('amenity','bicycle_rental'),
+             ('tourism','artwork'),
+             ('amenity','toilets'),
+             ('leisure','playground'),
+             ('amenity','telephone'),
+             ('amenity','taxi'),
+             ('leisure','pitch'),
+             ('amenity','shelter'),
+             ('barrier','sally_port'),
+             ('barrier','stile'),
+             ('amenity','ferry_terminal'),
+             ('amenity','post_office'),
+             ('railway','subway_entrance'),
+             ('railway','train_station_entrance'))
          {}",
         bbox_filter
     );
