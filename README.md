@@ -10,31 +10,36 @@
 ## Getting Started
 
 - First build fafnir with Cargo:
-```shell
-cargo build --release
-```
+
+  ```shell
+  cargo build --release
+  ```
 - Then you can run fafnir (with the connections to postgres and elasticsearch):
-```shell
-cargo run --release -- --dataset=<dataset name> --es=http://<es-IP>:9200 --pg=postgresql://<pg-IP>:5432
-```
+
+  ```shell
+  cargo run --release -- --dataset=<dataset name> --es=http://<es-IP>:9200 --pg=postgresql://<pg-IP>:5432
+  ```
 
 ## Run with docker :whale:
 
 - Fafnir can be used with [docker](https://www.docker.com/) as well.
 - You can either use the [fafnir docker image](https://hub.docker.com/r/qwantresearch/fafnir/)
 - Or build your own image with this repo:
-```shell
-docker build . -t fafnir
-```
+
+  ```shell
+  docker build . -t fafnir
+  ```
 
 ## Tests
 
 - You can run the tests than come along fafnir directly with cargo:
-```shell
-cargo test
-```
+
+  ```shell
+  cargo test
+  ```
 
 - For a live test, you can import a small postgres database from the ile-de-france points-of-interest directly from [this docker image](https://hub.docker.com/r/qwantresearch/postgres_poi_idf/):
-```shell
-docker pull qwantresearch/postgres_poi_idf
-```
+
+  ```shell
+  docker pull qwantresearch/postgres_poi_idf
+  ```
