@@ -18,7 +18,11 @@ fn init_tests(
     create_tests_tables(&conn);
     populate_tables(&conn);
     load_poi_class_function(&conn);
-    load_osm_id_function(&conn);
+    load_osm_hash_from_imposm_function(&conn);
+    load_global_id_from_imposm_function(&conn);
+    load_labelgrid_function(&conn);
+    load_poi_class_rank_function(&conn);
+    load_layer_poi_function(&conn);
     load_es_data(es_wrapper, country_code);
 }
 
@@ -37,6 +41,11 @@ fn create_tests_tables(conn: &Connection) {
                          funicular          varchar,
                          information        varchar,
                          uic_ref            varchar,
+                         religion           varchar,
+                         level              integer,
+                         indoor             boolean,
+                         layer              integer,
+                         sport              varchar,
                          geometry           geometry,
                          agg_stop           integer
                        )",
@@ -59,6 +68,10 @@ fn create_tests_tables(conn: &Connection) {
                          information        varchar,
                          uic_ref            varchar,
                          religion           varchar,
+                         level              integer,
+                         indoor             boolean,
+                         layer              integer,
+                         sport              varchar,
                          geometry           geometry
         )",
         &[],
@@ -90,23 +103,23 @@ fn create_tests_tables(conn: &Connection) {
 
 fn populate_tables(conn: &Connection) {
     // this poi is located at lon=1, lat=1
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5589618289, 'Ocean Studio',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E6100000000000000000F03F000000000000F03F'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, level, indoor, layer, sport, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5589618289, 14, TRUE, 0, 'sport', 'Ocean Studio',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E6100000000000000000F03F000000000000F03F'
     , '\"name\"=>\"Ocean Studio\", \"amenity\"=>\"cafe\", \"name:ru\"=>\"студия океана\", \"name:it\"=>\"Oceano Studioso\", \"name_int\"=>\"Ocean Studio\", \"name:latin\"=>\"Ocean Studio\"')", &[]).unwrap();
     // this poi is located at lon=2, lat=2
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5590210422, 'Spagnolo',null,null, 'clothes', 'shop',null,null,null,null, '0101000020E610000000000000000000400000000000000040'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, level, indoor, layer, sport, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5590210422, 14, TRUE, 0, 'sport', 'Spagnolo',null,null, 'clothes', 'shop',null,null,null,null, '0101000020E610000000000000000000400000000000000040'
     , '\"name\"=>\"Spagnolo\", \"shop\"=>\"clothes\", \"name_int\"=>\"Spagnolo\", \"name:latin\"=>\"Spagnolo\",\"addr:housenumber\"=>\"12\",\"addr:street\"=>\"rue bob\"')", &[]).unwrap();
     // this poi is located at lon=3, lat=3
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5590601521, '4 gusto',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E610000000000000000008400000000000000840'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, level, indoor, layer, sport, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5590601521, 14, TRUE, 0, 'sport', '4 gusto',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E610000000000000000008400000000000000840'
     , '\"name\"=>\"4 gusto\", \"amenity\"=>\"cafe\", \"name_int\"=>\"4 gusto\", \"name:latin\"=>\"4 gusto\",\"addr:street\"=>\"rue spontini\"')", &[]).unwrap();
     // this poi is located at lon=4, lat=4
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (-42, 'Le nomade',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E610000000000000000010400000000000001040'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, level, indoor, layer, sport, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (-42, 14, TRUE, 0, 'sport', 'Le nomade',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E610000000000000000010400000000000001040'
     , '\"name\"=>\"Le nomade\", \"amenity\"=>\"bar\", \"name:es\"=>\"Le nomade\", \"name_int\"=>\"Le nomade\", \"name:latin\"=>\"Le nomade\",\"addr:housenumber\"=>\"7\",\"addr:street\"=>\"rue spontini\",\"addr:postcode\"=>\"75016\"')", &[]).unwrap();
     // this poi is located at lon=5, lat=5
     conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, aerodrome_type, aerodrome, military, iata, icao, ele, geometry, tags) VALUES (5934, 4505823836, 'Isla Cristina Agricultural Airstrip', null, null, null, null, null, null,  null, null, '0101000020E610000000000000000014400000000000001440'
     , '\"name\"=>\"Isla Cristina Agricultural Airstrip\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"Isla Cristina Agricultural Airstrip\", \"name:latin\"=>\"Isla Cristina Agricultural Airstrip\"')", &[]).unwrap();
 
     // we also add a poi located at lon=-1, lat=-1, it won't be in an admin, so it must not be imported
-    conn.execute("INSERT INTO osm_poi_point (osm_id, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (12321, 'poi too far',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E6100000000000000000F0BF000000000000F0BF'
+    conn.execute("INSERT INTO osm_poi_point (osm_id, level, indoor, layer, sport, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (12321, 14, TRUE, 0, 'sport', 'poi too far',null,null, 'bar', 'amenity',null,null,null,null, '0101000020E6100000000000000000F0BF000000000000F0BF'
     , '\"name\"=>\"poi too far\"')", &[]).unwrap();
 
     // aerodrom at the South Pole at lon=0, lat=-90 (Invalid coordinates in EPSG:4326)
@@ -114,10 +127,10 @@ fn populate_tables(conn: &Connection) {
      '\"name\"=>\"South Pole Station Airport\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"South Pole Station Airport\", \"name:latin\"=>\"South Pole Station Airport\"')", &[]).unwrap();
 
     // Insert the "Eiffel Tower" POI
-    conn.execute("INSERT INTO osm_poi_polygon (id, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (1175, -5013364, 'Tour Eiffel', 'Eiffel Tower', 'Eiffelturm', '\"fee\"=>\"10-25€\", \"3dmr\"=>\"4\", \"name\"=>\"Tour Eiffel\", \"layer\"=>\"2\", \"height\"=>\"324\", \"name:af\"=>\"Eiffel-toring\", \"name:ar\"=>\"برج إيفل\", \"name:ba\"=>\"Эйфель башняһы\", \"name:be\"=>\"Вежа Эйфеля\", \"name:cs\"=>\"Eiffelova věž\", \"name:da\"=>\"Eiffeltårnet\", \"name:de\"=>\"Eiffelturm\", \"name:el\"=>\"Πύργος του Άιφελ\", \"name:en\"=>\"Eiffel Tower\", \"name:eo\"=>\"Eiffel-Turo\", \"name:es\"=>\"Torre Eiffel\", \"name:et\"=>\"Eiffeli torn\", \"name:fa\"=>\"برج ایفل\", \"name:fi\"=>\"Eiffel-torni\", \"name:fr\"=>\"Tour Eiffel\", \"name:hr\"=>\"Eiffelov toranj\", \"name:hu\"=>\"Eiffel-torony\", \"name:ia\"=>\"Turre Eiffel\", \"name:id\"=>\"Menara Eiffel\", \"name:io\"=>\"Turmo Eiffel\", \"name:it\"=>\"Torre Eiffel\", \"name:ja\"=>\"エッフェル塔\", \"name:ku\"=>\"Barûya Eyfelê\", \"name:la\"=>\"Turris Eiffelia\", \"name:lb\"=>\"Eiffeltuerm\", \"name:nl\"=>\"Eiffeltoren\", \"name:pl\"=>\"Wieża Eiffla\", \"name:pt\"=>\"Torre Eiffel\", \"name:ru\"=>\"Эйфелева башня\", \"name:sk\"=>\"Eiffelova veža\", \"name:sr\"=>\"Ајфелова кула\", \"name:sv\"=>\"Eiffeltornet\", \"name:tr\"=>\"Eyfel Kulesi\", \"name:tt\"=>\"Эйфель манарасы\", \"name:uk\"=>\"Ейфелева вежа\", \"name:vi\"=>\"Tháp Eiffel\", \"name:me:vo\"=>\"Tüm di Eiffel\", \"name:zh\"=>\"埃菲尔铁塔\", \"ref:mhs\"=>\"PA00088801\", \"tourism\"=>\"attraction\", \"website\"=>\"http://toureiffel.paris\", \"building\"=>\"yes\", \"heritage\"=>\"3\", \"historic\"=>\"yes\", \"man_made\"=>\"tower\", \"name:ast\"=>\"Torrne Eiffel\", \"name_int\"=>\"Eiffel Tower\", \"operator\"=>\"Société d’Exploitation de la Tour Eiffel\", \"wikidata\"=>\"Q243\", \"addr:city\"=>\"Paris\", \"architect\"=>\"Stephen Sauvestre;Gustave Eiffel;Maurice Koechlin;Émile Nouguier\", \"wikipedia\"=>\"fr:Tour Eiffel\", \"importance\"=>\"international\", \"name:latin\"=>\"Tour Eiffel\", \"start_date\"=>\"C19\", \"tower:type\"=>\"communication;observation\", \"wheelchair\"=>\"yes\", \"addr:street\"=>\"Avenue Anatole France\", \"addr:postcode\"=>\"75007\", \"opening_hours\"=>\"09:30-23:45; Jun 21-Sep 02: 09:00-00:45; Jul 14,Jul 15 off\", \"building:shape\"=>\"pyramidal\", \"building:colour\"=>\"#706550\", \"source:heritage\"=>\"data.gouv.fr, Ministère de la Culture - 2016\", \"addr:housenumber\"=>\"5\", \"building:material\"=>\"iron\", \"heritage:operator\"=>\"mhs\", \"tower:construction\"=>\"lattice\", \"building:min_height\"=>\"0\", \"communication:radio\"=>\"fm\", \"mhs:inscription_date\"=>\"1964-06-24\", \"communication:television\"=>\"dvb-t\"', 'attraction', 'tourism',null,null,null,null,null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
+    conn.execute("INSERT INTO osm_poi_polygon (id, level, indoor, layer, sport, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (1175, 14, TRUE, 0, 'sport', -5013364, 'Tour Eiffel', 'Eiffel Tower', 'Eiffelturm', '\"fee\"=>\"10-25€\", \"3dmr\"=>\"4\", \"name\"=>\"Tour Eiffel\", \"layer\"=>\"2\", \"height\"=>\"324\", \"name:af\"=>\"Eiffel-toring\", \"name:ar\"=>\"برج إيفل\", \"name:ba\"=>\"Эйфель башняһы\", \"name:be\"=>\"Вежа Эйфеля\", \"name:cs\"=>\"Eiffelova věž\", \"name:da\"=>\"Eiffeltårnet\", \"name:de\"=>\"Eiffelturm\", \"name:el\"=>\"Πύργος του Άιφελ\", \"name:en\"=>\"Eiffel Tower\", \"name:eo\"=>\"Eiffel-Turo\", \"name:es\"=>\"Torre Eiffel\", \"name:et\"=>\"Eiffeli torn\", \"name:fa\"=>\"برج ایفل\", \"name:fi\"=>\"Eiffel-torni\", \"name:fr\"=>\"Tour Eiffel\", \"name:hr\"=>\"Eiffelov toranj\", \"name:hu\"=>\"Eiffel-torony\", \"name:ia\"=>\"Turre Eiffel\", \"name:id\"=>\"Menara Eiffel\", \"name:io\"=>\"Turmo Eiffel\", \"name:it\"=>\"Torre Eiffel\", \"name:ja\"=>\"エッフェル塔\", \"name:ku\"=>\"Barûya Eyfelê\", \"name:la\"=>\"Turris Eiffelia\", \"name:lb\"=>\"Eiffeltuerm\", \"name:nl\"=>\"Eiffeltoren\", \"name:pl\"=>\"Wieża Eiffla\", \"name:pt\"=>\"Torre Eiffel\", \"name:ru\"=>\"Эйфелева башня\", \"name:sk\"=>\"Eiffelova veža\", \"name:sr\"=>\"Ајфелова кула\", \"name:sv\"=>\"Eiffeltornet\", \"name:tr\"=>\"Eyfel Kulesi\", \"name:tt\"=>\"Эйфель манарасы\", \"name:uk\"=>\"Ейфелева вежа\", \"name:vi\"=>\"Tháp Eiffel\", \"name:me:vo\"=>\"Tüm di Eiffel\", \"name:zh\"=>\"埃菲尔铁塔\", \"ref:mhs\"=>\"PA00088801\", \"tourism\"=>\"attraction\", \"website\"=>\"http://toureiffel.paris\", \"building\"=>\"yes\", \"heritage\"=>\"3\", \"historic\"=>\"yes\", \"man_made\"=>\"tower\", \"name:ast\"=>\"Torrne Eiffel\", \"name_int\"=>\"Eiffel Tower\", \"operator\"=>\"Société d’Exploitation de la Tour Eiffel\", \"wikidata\"=>\"Q243\", \"addr:city\"=>\"Paris\", \"architect\"=>\"Stephen Sauvestre;Gustave Eiffel;Maurice Koechlin;Émile Nouguier\", \"wikipedia\"=>\"fr:Tour Eiffel\", \"importance\"=>\"international\", \"name:latin\"=>\"Tour Eiffel\", \"start_date\"=>\"C19\", \"tower:type\"=>\"communication;observation\", \"wheelchair\"=>\"yes\", \"addr:street\"=>\"Avenue Anatole France\", \"addr:postcode\"=>\"75007\", \"opening_hours\"=>\"09:30-23:45; Jun 21-Sep 02: 09:00-00:45; Jul 14,Jul 15 off\", \"building:shape\"=>\"pyramidal\", \"building:colour\"=>\"#706550\", \"source:heritage\"=>\"data.gouv.fr, Ministère de la Culture - 2016\", \"addr:housenumber\"=>\"5\", \"building:material\"=>\"iron\", \"heritage:operator\"=>\"mhs\", \"tower:construction\"=>\"lattice\", \"building:min_height\"=>\"0\", \"communication:radio\"=>\"fm\", \"mhs:inscription_date\"=>\"1964-06-24\", \"communication:television\"=>\"dvb-t\"', 'attraction', 'tourism',null,null,null,null,null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
 
     // Insert the "Hôtel Auteuil Tour Eiffel" POI
-    conn.execute("INSERT INTO osm_poi_polygon (id, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (10980, -84194390, 'Hôtel Auteuil Tour Eiffel', null, null, '\"name\"=>\"Hôtel Auteuil Tour Eiffel\", \"source\"=>\"cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2010\", \"tourism\"=>\"hotel\", \"building\"=>\"yes\", \"name_int\"=>\"Hôtel Auteuil Tour Eiffel\", \"name:latin\"=>\"Hôtel Auteuil Tour Eiffel\", \"addr:street\"=>\"Rue Félicien David\", \"addr:postcode\"=>\"75016\", \"addr:housenumber\"=>\"10\"','hotel', 'tourism', null, null, null, null, null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
+    conn.execute("INSERT INTO osm_poi_polygon (id, level, indoor, layer, sport, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (10980, 14, TRUE, 0, 'sport', -84194390, 'Hôtel Auteuil Tour Eiffel', null, null, '\"name\"=>\"Hôtel Auteuil Tour Eiffel\", \"source\"=>\"cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2010\", \"tourism\"=>\"hotel\", \"building\"=>\"yes\", \"name_int\"=>\"Hôtel Auteuil Tour Eiffel\", \"name:latin\"=>\"Hôtel Auteuil Tour Eiffel\", \"addr:street\"=>\"Rue Félicien David\", \"addr:postcode\"=>\"75016\", \"addr:housenumber\"=>\"10\"','hotel', 'tourism', null, null, null, null, null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
 }
 
 /// This function uses the poi_class function from
@@ -165,21 +178,188 @@ fn load_poi_class_function(conn: &Connection) {
             $$ LANGUAGE SQL IMMUTABLE;", &[]).unwrap();
 }
 
-/// This function uses the poi_class function from
-/// https://github.com/QwantResearch/openmaptiles/blob/master/layers/poi/layer.sql#L11
-fn load_osm_id_function(conn: &Connection) {
+fn load_labelgrid_function(conn: &Connection) {
     conn.execute(
         "
-        CREATE OR REPLACE FUNCTION global_id_from_imposm(imposm_id bigint)
-            RETURNS TEXT AS $$
-            SELECT CONCAT(
-                'osm:',
-                CASE WHEN imposm_id < -1e17 THEN CONCAT('relation:', -imposm_id-1e17)
-                    WHEN imposm_id < 0 THEN CONCAT('way:', -imposm_id)
-                    ELSE CONCAT('node:', imposm_id)
-                END
-            );
-        $$ LANGUAGE SQL IMMUTABLE;
+create or replace function LabelGrid (
+        g geometry,
+        grid_size numeric
+    )
+    returns text
+    language plpgsql immutable as
+$func$
+begin
+    if grid_size <= 0 then
+        return 'null';
+    end if;
+    if GeometryType(g) <> 'POINT' then
+        g := (select (ST_DumpPoints(g)).geom limit 1);
+    end if;
+    return ST_AsText(ST_SnapToGrid(
+        g,
+        grid_size/2,  -- x origin
+        grid_size/2,  -- y origin
+        grid_size,    -- x size
+        grid_size     -- y size
+    ));
+end;
+$func$;",
+        &[],
+    )
+    .unwrap();
+}
+
+fn load_layer_poi_function(conn: &Connection) {
+    conn.execute(
+        r#"
+        CREATE OR REPLACE FUNCTION layer_poi(bbox geometry, zoom_level integer, pixel_width numeric)
+RETURNS TABLE(osm_id bigint, global_id text, geometry geometry, name text, name_en text, name_de text, tags hstore, class text, subclass text, agg_stop integer, layer integer, level integer, indoor integer, "rank" int, mapping_key text) AS $$
+    SELECT osm_id_hash AS osm_id, global_id,
+        geometry, NULLIF(name, '') AS name,
+        COALESCE(NULLIF(name_en, ''), name) AS name_en,
+        COALESCE(NULLIF(name_de, ''), name, name_en) AS name_de,
+        tags,
+        poi_class(subclass, mapping_key) AS class,
+        CASE
+            WHEN subclass = 'information'
+                THEN NULLIF(information, '')
+            WHEN subclass = 'place_of_worship'
+                THEN NULLIF(religion, '')
+            WHEN subclass = 'pitch'
+                THEN NULLIF(sport, '')
+            ELSE subclass
+        END AS subclass,
+        agg_stop,
+        NULLIF(layer, 0) AS layer,
+        "level",
+        CASE WHEN indoor=TRUE THEN 1 ELSE NULL END as indoor,
+        row_number() OVER (
+            PARTITION BY LabelGrid(geometry, 100 * pixel_width)
+            ORDER BY CASE WHEN name = '' THEN 2000 ELSE poi_class_rank(poi_class(subclass, mapping_key)) END ASC
+        )::int AS "rank",
+        mapping_key
+    FROM (
+        -- etldoc: osm_poi_point ->  layer_poi:z12
+        -- etldoc: osm_poi_point ->  layer_poi:z13
+        SELECT *,
+            osm_hash_from_imposm(osm_id) AS osm_id_hash,
+            global_id_from_imposm(osm_id) as global_id
+        FROM osm_poi_point
+            WHERE CASE WHEN bbox IS NULL THEN TRUE ELSE geometry && bbox END
+                AND zoom_level BETWEEN 12 AND 13
+                AND ((subclass='station' AND mapping_key = 'railway')
+                    OR subclass IN ('halt', 'ferry_terminal'))
+        UNION ALL
+
+        -- etldoc: osm_poi_point ->  layer_poi:z14_
+        SELECT *,
+            osm_hash_from_imposm(osm_id) AS osm_id_hash,
+            global_id_from_imposm(osm_id) as global_id
+        FROM osm_poi_point
+            WHERE CASE WHEN bbox IS NULL THEN TRUE ELSE geometry && bbox END
+                AND zoom_level >= 14
+                AND (name <> '' OR (subclass <> 'garden' AND subclass <> 'park'))
+
+        UNION ALL
+        -- etldoc: osm_poi_polygon ->  layer_poi:z12
+        -- etldoc: osm_poi_polygon ->  layer_poi:z13
+        SELECT *,
+            NULL::INTEGER AS agg_stop,
+            osm_hash_from_imposm(osm_id) AS osm_id_hash,
+            global_id_from_imposm(osm_id) as global_id
+        FROM osm_poi_polygon
+            WHERE CASE WHEN bbox IS NULL THEN TRUE ELSE geometry && bbox END
+                AND zoom_level BETWEEN 12 AND 13
+                AND ((subclass='station' AND mapping_key = 'railway')
+                    OR subclass IN ('halt', 'ferry_terminal'))
+
+        UNION ALL
+        -- etldoc: osm_poi_polygon ->  layer_poi:z14_
+        SELECT *,
+            NULL::INTEGER AS agg_stop,
+            osm_hash_from_imposm(osm_id) AS osm_id_hash,
+            global_id_from_imposm(osm_id) as global_id
+        FROM osm_poi_polygon
+            WHERE CASE WHEN bbox IS NULL THEN TRUE ELSE geometry && bbox END
+                AND zoom_level >= 14
+                AND (name <> '' OR (subclass <> 'garden' AND subclass <> 'park'))
+        ) as poi_union
+    ORDER BY "rank"
+    ;
+$$ LANGUAGE SQL IMMUTABLE;
+"#,
+        &[],
+    )
+    .unwrap();
+}
+
+fn load_poi_class_rank_function(conn: &Connection) {
+    conn.execute(
+        "
+CREATE OR REPLACE FUNCTION poi_class_rank(class TEXT)
+RETURNS INT AS $$
+    SELECT CASE class
+        WHEN 'hospital' THEN 20
+        WHEN 'railway' THEN 40
+        WHEN 'bus' THEN 50
+        WHEN 'attraction' THEN 70
+        WHEN 'harbor' THEN 75
+        WHEN 'college' THEN 80
+        WHEN 'school' THEN 85
+        WHEN 'stadium' THEN 90
+        WHEN 'zoo' THEN 95
+        WHEN 'town_hall' THEN 100
+        WHEN 'campsite' THEN 110
+        WHEN 'cemetery' THEN 115
+        WHEN 'park' THEN 120
+        WHEN 'library' THEN 130
+        WHEN 'police' THEN 135
+        WHEN 'post' THEN 140
+        WHEN 'golf' THEN 150
+        WHEN 'shop' THEN 400
+        WHEN 'grocery' THEN 500
+        WHEN 'fast_food' THEN 600
+        WHEN 'clothing_store' THEN 700
+        WHEN 'bar' THEN 800
+        ELSE 1000
+    END;
+$$ LANGUAGE SQL IMMUTABLE;
+    ",
+        &[],
+    )
+    .unwrap();
+}
+
+fn load_osm_hash_from_imposm_function(conn: &Connection) {
+    conn.execute(
+        "
+CREATE OR REPLACE FUNCTION osm_hash_from_imposm(imposm_id bigint)
+RETURNS bigint AS $$
+    SELECT CASE
+        WHEN imposm_id < -1e17 THEN (-imposm_id-1e17) * 10 + 4 -- Relation
+        WHEN imposm_id < 0 THEN  (-imposm_id) * 10 + 1 -- Way
+        ELSE imposm_id * 10 -- Node
+    END::bigint;
+$$ LANGUAGE SQL IMMUTABLE;
+    ",
+        &[],
+    )
+    .unwrap();
+}
+
+fn load_global_id_from_imposm_function(conn: &Connection) {
+    conn.execute(
+        "
+CREATE OR REPLACE FUNCTION global_id_from_imposm(imposm_id bigint)
+RETURNS TEXT AS $$
+    SELECT CONCAT(
+        'osm:',
+        CASE WHEN imposm_id < -1e17 THEN CONCAT('relation:', -imposm_id-1e17)
+             WHEN imposm_id < 0 THEN CONCAT('way:', -imposm_id)
+             ELSE CONCAT('node:', imposm_id)
+        END
+    );
+$$ LANGUAGE SQL IMMUTABLE;
     ",
         &[],
     )
