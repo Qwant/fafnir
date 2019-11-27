@@ -165,6 +165,14 @@ fn find_address(
     geofinder: &AdminGeoFinder,
     rubber: &mut Rubber,
 ) -> Option<mimir::Address> {
+    if poi
+        .properties
+        .iter()
+        .any(|p| p.key == "poi_class" && p.value == "locality")
+    {
+        // We don't want to add address on hamlets.
+        return None;
+    }
     let osm_addr_tag = ["addr:housenumber", "contact:housenumber"]
         .iter()
         .filter_map(|k| {
@@ -374,9 +382,9 @@ pub fn load_and_index_pois(
         (
             SELECT
                 geometry,
-                global_id as id,
-                st_x(st_transform(geometry, 4326)) as lon,
-                st_y(st_transform(geometry, 4326)) as lat,
+                global_id AS id,
+                st_x(st_transform(geometry, 4326)) AS lon,
+                st_y(st_transform(geometry, 4326)) AS lat,
                 poi_class(subclass, mapping_key) AS class,
                 name,
                 mapping_key,
@@ -387,17 +395,30 @@ pub fn load_and_index_pois(
             UNION ALL
             SELECT
                 geometry,
-                global_id_from_imposm(osm_id) as id,
-                st_x(st_transform(geometry, 4326)) as lon,
-                st_y(st_transform(geometry, 4326)) as lat,
+                global_id_from_imposm(osm_id) AS id,
+                st_x(st_transform(geometry, 4326)) AS lon,
+                st_y(st_transform(geometry, 4326)) AS lat,
                 'aerodrome' AS class,
                 name,
-                'aerodrome' as mapping_key,
-                'airport' as subclass,
+                'aerodrome' AS mapping_key,
+                'airport' AS subclass,
                 tags
             FROM osm_aerodrome_label_point
                 WHERE name <> ''
-        ) as unionall
+            UNION ALL
+            SELECT
+                geometry,
+                global_id_from_imposm(osm_id) AS id,
+                st_x(st_transform(geometry, 4326)) AS lon,
+                st_y(st_transform(geometry, 4326)) AS lat,
+                'locality' AS class,
+                name,
+                'locality' AS mapping_key,
+                'hamlet' AS subclass,
+                tags
+            FROM osm_city_point
+                WHERE name <> '' AND place='hamlet'
+        ) AS unionall
         WHERE (unionall.mapping_key,unionall.subclass) not in
             (('highway','bus_stop'),
              ('barrier','gate'),

@@ -99,6 +99,23 @@ fn create_tests_tables(conn: &Connection) {
     .unwrap();
     conn.execute("TRUNCATE TABLE osm_aerodrome_label_point", &[])
         .unwrap();
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS osm_city_point(
+                         id                         serial primary key,
+                         osm_id                     bigint,
+                         name                       varchar,
+                         name_en                    varchar,
+                         name_de                    varchar,
+                         tags                       hstore,
+                         place                      varchar,
+                         population                 integer,
+                         capital                    varchar,
+                         geometry                   geometry
+                       )",
+        &[],
+    )
+    .unwrap();
+    conn.execute("TRUNCATE TABLE osm_city_point", &[]).unwrap();
 }
 
 fn populate_tables(conn: &Connection) {
@@ -125,6 +142,12 @@ fn populate_tables(conn: &Connection) {
     // aerodrom at the South Pole at lon=0, lat=-90 (Invalid coordinates in EPSG:4326)
     conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, aerodrome_type, aerodrome, military, iata, icao, ele, geometry, tags) VALUES (30334, 1042050310, 'South Pole Station Airport',null, null, null, null, null, null,  null, null, '0101000020110F0000714501E743E172BF010000000000F87F',
      '\"name\"=>\"South Pole Station Airport\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"South Pole Station Airport\", \"name:latin\"=>\"South Pole Station Airport\"')", &[]).unwrap();
+
+    // some lost hamlet
+    conn.execute("INSERT INTO osm_city_point (id, osm_id, name, name_en, name_de, place, population, capital, geometry, tags) VALUES (30336, 1042050311, 'I am a lost sheep',null, null, 'hamlet', 3, 'somewhere', '0101000020E610000000000000000014400000000000001440',
+     '\"name\"=>\"I am a lost sheep\",\"population\"=>\"3\",\"capital\"=>\"somewhere\"')", &[]).unwrap();
+    conn.execute("INSERT INTO osm_city_point (id, osm_id, name, name_en, name_de, place, population, capital, geometry, tags) VALUES (303362, 1042050311, 'I am a lost sheep',null, null, 'other', 3, 'somewhere', '0101000020E610000000000000000014400000000000001440',
+     '\"name\"=>\"I am a lost sheep\",\"population\"=>\"3\",\"capital\"=>\"somewhere\"')", &[]).unwrap();
 
     // Insert the "Eiffel Tower" POI
     conn.execute("INSERT INTO osm_poi_polygon (id, level, indoor, layer, sport, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (1175, 14, TRUE, 0, 'sport', -5013364, 'Tour Eiffel', 'Eiffel Tower', 'Eiffelturm', '\"fee\"=>\"10-25€\", \"3dmr\"=>\"4\", \"name\"=>\"Tour Eiffel\", \"layer\"=>\"2\", \"height\"=>\"324\", \"name:af\"=>\"Eiffel-toring\", \"name:ar\"=>\"برج إيفل\", \"name:ba\"=>\"Эйфель башняһы\", \"name:be\"=>\"Вежа Эйфеля\", \"name:cs\"=>\"Eiffelova věž\", \"name:da\"=>\"Eiffeltårnet\", \"name:de\"=>\"Eiffelturm\", \"name:el\"=>\"Πύργος του Άιφελ\", \"name:en\"=>\"Eiffel Tower\", \"name:eo\"=>\"Eiffel-Turo\", \"name:es\"=>\"Torre Eiffel\", \"name:et\"=>\"Eiffeli torn\", \"name:fa\"=>\"برج ایفل\", \"name:fi\"=>\"Eiffel-torni\", \"name:fr\"=>\"Tour Eiffel\", \"name:hr\"=>\"Eiffelov toranj\", \"name:hu\"=>\"Eiffel-torony\", \"name:ia\"=>\"Turre Eiffel\", \"name:id\"=>\"Menara Eiffel\", \"name:io\"=>\"Turmo Eiffel\", \"name:it\"=>\"Torre Eiffel\", \"name:ja\"=>\"エッフェル塔\", \"name:ku\"=>\"Barûya Eyfelê\", \"name:la\"=>\"Turris Eiffelia\", \"name:lb\"=>\"Eiffeltuerm\", \"name:nl\"=>\"Eiffeltoren\", \"name:pl\"=>\"Wieża Eiffla\", \"name:pt\"=>\"Torre Eiffel\", \"name:ru\"=>\"Эйфелева башня\", \"name:sk\"=>\"Eiffelova veža\", \"name:sr\"=>\"Ајфелова кула\", \"name:sv\"=>\"Eiffeltornet\", \"name:tr\"=>\"Eyfel Kulesi\", \"name:tt\"=>\"Эйфель манарасы\", \"name:uk\"=>\"Ейфелева вежа\", \"name:vi\"=>\"Tháp Eiffel\", \"name:me:vo\"=>\"Tüm di Eiffel\", \"name:zh\"=>\"埃菲尔铁塔\", \"ref:mhs\"=>\"PA00088801\", \"tourism\"=>\"attraction\", \"website\"=>\"http://toureiffel.paris\", \"building\"=>\"yes\", \"heritage\"=>\"3\", \"historic\"=>\"yes\", \"man_made\"=>\"tower\", \"name:ast\"=>\"Torrne Eiffel\", \"name_int\"=>\"Eiffel Tower\", \"operator\"=>\"Société d’Exploitation de la Tour Eiffel\", \"wikidata\"=>\"Q243\", \"addr:city\"=>\"Paris\", \"architect\"=>\"Stephen Sauvestre;Gustave Eiffel;Maurice Koechlin;Émile Nouguier\", \"wikipedia\"=>\"fr:Tour Eiffel\", \"importance\"=>\"international\", \"name:latin\"=>\"Tour Eiffel\", \"start_date\"=>\"C19\", \"tower:type\"=>\"communication;observation\", \"wheelchair\"=>\"yes\", \"addr:street\"=>\"Avenue Anatole France\", \"addr:postcode\"=>\"75007\", \"opening_hours\"=>\"09:30-23:45; Jun 21-Sep 02: 09:00-00:45; Jul 14,Jul 15 off\", \"building:shape\"=>\"pyramidal\", \"building:colour\"=>\"#706550\", \"source:heritage\"=>\"data.gouv.fr, Ministère de la Culture - 2016\", \"addr:housenumber\"=>\"5\", \"building:material\"=>\"iron\", \"heritage:operator\"=>\"mhs\", \"tower:construction\"=>\"lattice\", \"building:min_height\"=>\"0\", \"communication:radio\"=>\"fm\", \"mhs:inscription_date\"=>\"1964-06-24\", \"communication:television\"=>\"dvb-t\"', 'attraction', 'tourism',null,null,null,null,null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
@@ -502,7 +525,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
             .search_and_filter("name:*", |p| p.is_poi())
             .collect::<Vec<_>>()
             .len(),
-        7
+        8
     );
 
     // Test that the place "Ocean Studio" has been imported in the elastic wrapper
@@ -638,6 +661,24 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .iter()
         .map(|ref mut p| p.poi().unwrap())
         .all(|p| p.weight == 0.0f64));
+
+    let hamlet_somewhere: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("name:I am a lost sheep", |_| true)
+        .collect();
+    assert_eq!(&hamlet_somewhere.len(), &1);
+    assert!(&hamlet_somewhere[0].is_poi());
+    let hamlet_somewhere = &hamlet_somewhere[0].poi().unwrap();
+    let properties_hamlet_somewhere = &hamlet_somewhere.properties;
+    let poi_class = properties_hamlet_somewhere
+        .into_iter()
+        .find(|&p| p.key == "poi_class")
+        .unwrap();
+    assert_eq!(poi_class.value, "locality".to_string());
+    let poi_subclass = properties_hamlet_somewhere
+        .into_iter()
+        .find(|&p| p.key == "poi_subclass")
+        .unwrap();
+    assert_eq!(poi_subclass.value, "hamlet".to_string());
 }
 
 pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
