@@ -1035,7 +1035,7 @@ dependencies = [
 
 [[package]]
 name = "fafnir"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "approx 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bragi 1.2.0 (git+https://github.com/canalTP/mimirsbrunn?rev=9219baa)",
