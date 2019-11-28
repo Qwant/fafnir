@@ -154,6 +154,9 @@ fn populate_tables(conn: &Connection) {
 
     // Insert the "Hôtel Auteuil Tour Eiffel" POI
     conn.execute("INSERT INTO osm_poi_polygon (id, level, indoor, layer, sport, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (10980, 14, TRUE, 0, 'sport', -84194390, 'Hôtel Auteuil Tour Eiffel', null, null, '\"name\"=>\"Hôtel Auteuil Tour Eiffel\", \"source\"=>\"cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2010\", \"tourism\"=>\"hotel\", \"building\"=>\"yes\", \"name_int\"=>\"Hôtel Auteuil Tour Eiffel\", \"name:latin\"=>\"Hôtel Auteuil Tour Eiffel\", \"addr:street\"=>\"Rue Félicien David\", \"addr:postcode\"=>\"75016\", \"addr:housenumber\"=>\"10\"','hotel', 'tourism', null, null, null, null, null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
+
+    conn.execute("INSERT INTO osm_poi_polygon (osm_id, name, subclass, mapping_key, religion, geometry) VALUES
+        (-63638108, 'Église Saint-Ambroise', 'place_of_worship', 'amenity', 'christian', '0101000020E610000000000000000014400000000000001440')", &[]).unwrap();
 }
 
 /// This function uses the poi_class function from
@@ -515,7 +518,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let rows = &pg_wrapper.get_rows(&"osm_poi_point");
     assert_eq!(rows.len(), 5);
     let rows = &pg_wrapper.get_rows(&"osm_poi_polygon");
-    assert_eq!(rows.len(), 2);
+    assert_eq!(rows.len(), 3);
 
     // @TODO: the comment on the line below is wrong: the poi "poi too far" is imported
     //        -> we should check if a distance max is defined to connect an address to a POI ?
@@ -679,6 +682,26 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .find(|&p| p.key == "poi_subclass")
         .unwrap();
     assert_eq!(poi_subclass.value, "hamlet".to_string());
+
+    // Test class/subclass for place_of_worship
+    let church_query: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("name:saint-ambroise", |_| true)
+        .collect();
+    assert_eq!(&church_query.len(), &1);
+    let church = &church_query[0].poi().unwrap();
+    assert_eq!(church.name, "Église Saint-Ambroise");
+    let church_class = church
+        .properties
+        .iter()
+        .find(|&p| p.key == "poi_class")
+        .unwrap();
+    let church_subclass = church
+        .properties
+        .iter()
+        .find(|&p| p.key == "poi_subclass")
+        .unwrap();
+    assert_eq!(church_class.value, "place_of_worship");
+    assert_eq!(church_subclass.value, "christian");
 }
 
 pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {

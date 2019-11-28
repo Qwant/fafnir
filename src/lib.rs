@@ -385,7 +385,7 @@ pub fn load_and_index_pois(
                 global_id AS id,
                 st_x(st_transform(geometry, 4326)) AS lon,
                 st_y(st_transform(geometry, 4326)) AS lat,
-                poi_class(subclass, mapping_key) AS class,
+                class,
                 name,
                 mapping_key,
                 subclass,
