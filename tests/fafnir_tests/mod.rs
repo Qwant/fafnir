@@ -23,6 +23,7 @@ fn init_tests(
     load_labelgrid_function(&conn);
     load_poi_class_rank_function(&conn);
     load_layer_poi_function(&conn);
+    load_poi_display_weight_function(&conn);
     load_es_data(es_wrapper, country_code);
 }
 
@@ -387,6 +388,31 @@ RETURNS TEXT AS $$
     );
 $$ LANGUAGE SQL IMMUTABLE;
     ",
+        &[],
+    )
+    .unwrap();
+}
+
+/// This is a quick placeholder for the actual weight function.
+fn load_poi_display_weight_function(conn: &Connection) {
+    conn.execute(
+        "
+        CREATE OR REPLACE FUNCTION poi_display_weight(
+            name varchar,
+            subclass varchar,
+            mapping_key varchar,
+            tags hstore
+        )
+        RETURNS REAL AS $$
+            DECLARE
+                result REAL;
+            BEGIN
+                SELECT INTO result
+                    1.0 - 1.0 / (1.0 + LENGTH(name)::real);
+                RETURN result;
+            END
+        $$ LANGUAGE plpgsql IMMUTABLE;
+        ",
         &[],
     )
     .unwrap();
