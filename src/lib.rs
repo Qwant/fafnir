@@ -16,6 +16,7 @@ use mimirsbrunn::labels::format_international_poi_label;
 use mimirsbrunn::labels::{format_addr_name_and_label, format_poi_label, format_street_label};
 use mimirsbrunn::utils::find_country_codes;
 use std::ops::Deref;
+use std::time::Duration;
 
 use par_map::ParMap;
 use postgres::fallible_iterator::FallibleIterator;
@@ -24,11 +25,14 @@ use postgres::Client;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+const ES_TIMEOUT: std::time::Duration = Duration::from_secs(30);
+
 fn properties_from_row(row: &Row) -> Result<Vec<Property>, String> {
     let properties = row
         .try_get::<_, Option<HashMap<_, _>>>("tags")
         .map_err(|err| {
-            warn!("Unable to get tags: {:?}", err);
+            let id: String = row.get("id");
+            warn!("Unable to get tags from row '{}': {:?}", id, err);
             err.to_string()
         })?
         .unwrap_or_else(HashMap::new)
@@ -69,16 +73,16 @@ fn build_names(langs: &[String], properties: &[Property]) -> Result<mimir::I18nP
 
 fn build_poi_properties(
     row: &Row,
-    name: &str,
+    id: &str,
     mut properties: Vec<Property>,
 ) -> Result<Vec<Property>, String> {
     let poi_subclass = row.try_get("subclass").map_err(|e| {
-        warn!("impossible to get poi_subclass for {} because {}", name, e);
+        warn!("impossible to get poi_subclass for {} because {}", id, e);
         e.to_string()
     })?;
 
     let poi_class = row.try_get("class").map_err(|e| {
-        warn!("impossible to get poi_class for {} because {}", name, e);
+        warn!("impossible to get poi_class for {} because {}", id, e);
         e.to_string()
     })?;
 
@@ -194,9 +198,16 @@ fn find_address(
         )),
         _ => rubber
             .get_address(&poi.coord)
+            .map_err(|e| {
+                warn!("get_address returned ES error for {}: {}", poi.id, e);
+                e
+            })
             .ok()
             .and_then(|addrs| addrs.into_iter().next())
-            .map(|addr| addr.address().unwrap()),
+            .map(|addr| {
+                addr.address()
+                    .expect("get_address returned a non-address object")
+            }),
     }
 }
 
@@ -228,15 +239,8 @@ fn locate_poi(
         });
 
     if admins.is_empty() {
-        debug!("The poi {} is not on any admins", &poi.name);
+        debug!("The poi {} is not on any admins", &poi.id);
         return None;
-    }
-
-    if poi_address.is_none() {
-        debug!(
-            "The poi {} doesn't have any address (admins: {:?})",
-            &poi.name, &admins
-        );
     }
 
     let zip_codes = match poi_address {
@@ -265,7 +269,7 @@ fn locate_poi(
 }
 
 fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
-    let id = row.get("id");
+    let id: String = row.get("id");
     let name: String = row.get("name");
 
     let class: String = row.get("class");
@@ -278,11 +282,11 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
 
     let lat = row
         .try_get("lat")
-        .map_err(|e| warn!("impossible to get lat for {} because {}", name, e))
+        .map_err(|e| warn!("impossible to get lat for {} because {}", id, e))
         .ok()?;
     let lon = row
         .try_get("lon")
-        .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
+        .map_err(|e| warn!("impossible to get lon for {} because {}", id, e))
         .ok()?;
 
     let poi_coord = Coord::new(lon, lat);
@@ -300,7 +304,7 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
     let names =
         build_names(langs, &row_properties).unwrap_or_else(|_| mimir::I18nProperties::default());
 
-    let properties = build_poi_properties(&row, &name, row_properties).unwrap_or_else(|_| vec![]);
+    let properties = build_poi_properties(&row, &id, row_properties).unwrap_or_else(|_| vec![]);
 
     Some(Poi {
         id,
@@ -424,12 +428,6 @@ pub fn load_and_index_pois(
         bbox_filter
     );
 
-    let stmt = client.prepare(&query).unwrap();
-    let rows_iterator = client
-        .query_raw(&stmt, vec![])?
-        .fuse() // Avoids consuming exhausted stream when using par_map
-        .iterator();
-
     let index_settings = IndexSettings {
         nb_shards,
         nb_replicas,
@@ -439,34 +437,50 @@ pub fn load_and_index_pois(
     let poi_index: mimir::rubber::TypedIndex<Poi> =
         rubber.make_index(&dataset, &index_settings).unwrap();
 
+    let mut total_nb_pois = 0;
+    let stmt = client.prepare(&query).unwrap();
+    let rows_iterator = client
+        .query_raw(&stmt, vec![])?
+        .fuse() // Avoids consuming exhausted stream when using par_map
+        .iterator();
+
+    info!("Processing query results...");
+
     // "process_results" will early return on first error
     // from the postgres iterator
     process_results(rows_iterator, |rows| {
-        rows.filter_map(|row| {
-            build_poi(row, &langs)
-                .ok_or_else(|| warn!("Problem occurred in build_poi()"))
-                .ok()
-        })
-        .pack(1000)
-        .with_nb_threads(nb_threads)
-        .par_map({
-            let i = poi_index.clone();
-            let langs = langs.clone();
-            move |p| {
-                let mut rub = Rubber::new(&es);
-                let pois = p
-                    .into_iter()
-                    .filter_map(|poi| locate_poi(poi, &admins_geofinder, &mut rub, &langs));
-                let mut rub2 = Rubber::new(&es);
-                match rub2.bulk_index(&i, pois) {
-                    Err(e) => panic!("Failed to bulk insert pois because: {}", e),
-                    Ok(nb) => info!("Nb of indexed pois: {}", nb),
-                };
-            }
-        })
-        .for_each(|_| {})
+        rows.filter_map(|row| build_poi(row, &langs))
+            .pack(1000)
+            .with_nb_threads(nb_threads)
+            .par_map({
+                let i = poi_index.clone();
+                let langs = langs.clone();
+                move |p| {
+                    let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
+                    let pois = p
+                        .into_iter()
+                        .filter_map(|poi| locate_poi(poi, &admins_geofinder, &mut rub, &langs));
+                    let mut rub2 = Rubber::new_with_timeout(&es, ES_TIMEOUT);
+                    match rub2.bulk_index(&i, pois) {
+                        Err(e) => panic!("Failed to bulk insert pois because: {}", e),
+                        Ok(nb_indexed_pois) => nb_indexed_pois,
+                    }
+                }
+            })
+            .enumerate()
+            .for_each(|(i, n)| {
+                total_nb_pois += n;
+                let chunk_idx = i + 1;
+                if chunk_idx % 100 == 0 {
+                    info!(
+                        "Nb of indexed pois after {} chunks: {}",
+                        chunk_idx, total_nb_pois
+                    );
+                }
+            })
     })?;
 
+    info!("Total number of indexed pois: {}", total_nb_pois);
     rubber
         .publish_index(&dataset, poi_index, IndexVisibility::Public)
         .unwrap();
