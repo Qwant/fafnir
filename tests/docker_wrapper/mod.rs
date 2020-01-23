@@ -2,7 +2,7 @@ extern crate retry;
 
 use super::hyper;
 use mimir::rubber::Rubber;
-use postgres::{Connection, TlsMode};
+use postgres::{tls, Client};
 use retry::delay::Fixed;
 use std::error::Error;
 use std::process::Command;
@@ -60,9 +60,9 @@ impl PostgresDocker {
         info!("Waiting for Postgres in docker to be up and running...");
 
         let retry = retry::retry(Fixed::from_millis(1000).take(30), || {
-            Connection::connect(
-                format!("postgres://test@{}/test", &self.host()),
-                TlsMode::None,
+            Client::connect(
+                &format!("postgres://test@{}/test", &self.host()),
+                tls::NoTls,
             )
         });
         match retry {
