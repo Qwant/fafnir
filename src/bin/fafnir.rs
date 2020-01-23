@@ -6,7 +6,7 @@ extern crate structopt;
 extern crate num_cpus;
 
 #[derive(StructOpt, Debug)]
-#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
+#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
 struct Args {
     /// Postgresql parameters
     #[structopt(long = "pg")]
@@ -36,16 +36,15 @@ struct Args {
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
-    let conn =
-        postgres::Connection::connect(args.pg, postgres::TlsMode::None).unwrap_or_else(|err| {
-            panic!("Unable to connect to postgres: {}", err);
-        });
+    let client = postgres::Client::connect(&args.pg, postgres::tls::NoTls).unwrap_or_else(|err| {
+        panic!("Unable to connect to postgres: {}", err);
+    });
 
     let dataset = args.dataset;
     let nb_threads = args.nb_threads.unwrap_or_else(num_cpus::get);
     fafnir::load_and_index_pois(
         args.es,
-        conn,
+        client,
         dataset,
         nb_threads,
         args.bounding_box,

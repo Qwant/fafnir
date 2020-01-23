@@ -18,8 +18,8 @@ pub mod fafnir_tests;
 use crate::docker_wrapper::*;
 use hyper::client::response::Response;
 use mimir::rubber::{IndexSettings, IndexVisibility};
-use postgres::rows;
-use postgres::{Connection, TlsMode};
+use postgres::row;
+use postgres::{tls, Client};
 use serde_json::value::Value;
 use std::process::Command;
 
@@ -35,10 +35,10 @@ impl<'a> PostgresWrapper<'a> {
         self.docker_wrapper.host()
     }
 
-    pub fn get_conn(&self) -> Connection {
-        Connection::connect(
-            format!("postgres://test@{}/test", &self.host()),
-            TlsMode::None,
+    pub fn get_conn(&self) -> Client {
+        Client::connect(
+            &format!("postgres://test@{}/test", &self.host()),
+            tls::NoTls,
         )
         .unwrap_or_else(|err| {
             panic!(
@@ -49,9 +49,9 @@ impl<'a> PostgresWrapper<'a> {
         })
     }
 
-    pub fn get_rows(&self, table: &str) -> rows::Rows {
-        let conn = self.get_conn();
-        conn.query(&format!("SELECT * FROM {}", table), &[])
+    pub fn get_rows(&self, table: &str) -> Vec<row::Row> {
+        let mut conn = self.get_conn();
+        conn.query(&*format!("SELECT * FROM {}", table), &[])
             .unwrap()
     }
 

@@ -6,8 +6,6 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
     && apt-get install -y \
         make \
-        libgeos-c1v5 \
-        libgeos-dev \
         libssl-dev \
         git \
     && apt-get clean \
@@ -25,8 +23,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
     && apt-get install -y \
         libcurl3 \
-        libgeos-c1v5 \
-        libssl-dev \
+        sqlite3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

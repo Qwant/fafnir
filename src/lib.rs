@@ -1,5 +1,3 @@
-extern crate fallible_iterator;
-extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
 extern crate postgres;
@@ -10,7 +8,6 @@ extern crate itertools;
 extern crate num_cpus;
 extern crate par_map;
 
-use fallible_iterator::FallibleIterator;
 use itertools::process_results;
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::{Coord, Poi, PoiType, Property};
@@ -21,21 +18,20 @@ use mimirsbrunn::utils::find_country_codes;
 use std::ops::Deref;
 
 use par_map::ParMap;
-use postgres::rows::Row;
-use postgres::Connection;
+use postgres::fallible_iterator::FallibleIterator;
+use postgres::row::Row;
+use postgres::Client;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-const PG_BATCH_SIZE: i32 = 5000;
-
 fn properties_from_row(row: &Row) -> Result<Vec<Property>, String> {
     let properties = row
-        .get_opt::<_, HashMap<_, _>>("tags")
-        .unwrap()
+        .try_get::<_, Option<HashMap<_, _>>>("tags")
         .map_err(|err| {
             warn!("Unable to get tags: {:?}", err);
             err.to_string()
         })?
+        .unwrap_or_else(HashMap::new)
         .into_iter()
         .map(|(k, v)| Property {
             key: k,
@@ -76,12 +72,12 @@ fn build_poi_properties(
     name: &str,
     mut properties: Vec<Property>,
 ) -> Result<Vec<Property>, String> {
-    let poi_subclass = row.get_opt("subclass").unwrap().map_err(|e| {
+    let poi_subclass = row.try_get("subclass").map_err(|e| {
         warn!("impossible to get poi_subclass for {} because {}", name, e);
         e.to_string()
     })?;
 
-    let poi_class = row.get_opt("class").unwrap().map_err(|e| {
+    let poi_class = row.try_get("class").map_err(|e| {
         warn!("impossible to get poi_class for {} because {}", name, e);
         e.to_string()
     })?;
@@ -139,7 +135,7 @@ fn build_new_addr(
             name: street_tag.to_string(),
             label: street_label,
             administrative_regions: admins,
-            weight: weight,
+            weight,
             zip_codes: postcodes.clone(),
             coord: poi.coord,
             country_codes: country_codes.clone(),
@@ -148,10 +144,11 @@ fn build_new_addr(
         label: addr_label,
         coord: poi.coord,
         approx_coord: None,
-        weight: weight,
+        weight,
         zip_codes: postcodes,
         distance: None,
         country_codes,
+        context: None,
     })
 }
 
@@ -280,11 +277,11 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
     let weight = row.get("weight");
 
     let lat = row
-        .get_opt("lat")?
+        .try_get("lat")
         .map_err(|e| warn!("impossible to get lat for {} because {}", name, e))
         .ok()?;
     let lon = row
-        .get_opt("lon")?
+        .try_get("lon")
         .map_err(|e| warn!("impossible to get lon for {} because {}", name, e))
         .ok()?;
 
@@ -306,14 +303,14 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
     let properties = build_poi_properties(&row, &name, row_properties).unwrap_or_else(|_| vec![]);
 
     Some(Poi {
-        id: id,
+        id,
         coord: poi_coord,
         poi_type: PoiType {
             id: poi_type_id,
             name: poi_type_name,
         },
         label: "".into(),
-        properties: properties,
+        properties,
         name,
         weight,
         names,
@@ -324,7 +321,7 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
 
 pub fn load_and_index_pois(
     es: String,
-    conn: Connection,
+    mut client: Client,
     dataset: String,
     nb_threads: usize,
     bounding_box: Option<String>,
@@ -427,21 +424,20 @@ pub fn load_and_index_pois(
         bbox_filter
     );
 
-    let stmt = conn.prepare(&query).unwrap();
-    let trans = conn.transaction().unwrap();
-
-    let rows_iterator = stmt
-        .lazy_query(&trans, &[], PG_BATCH_SIZE)
-        .expect("failed to execute query")
+    let stmt = client.prepare(&query).unwrap();
+    let rows_iterator = client
+        .query_raw(&stmt, vec![])?
+        .fuse() // Avoids consuming exhausted stream when using par_map
         .iterator();
 
     let index_settings = IndexSettings {
-        nb_shards: nb_shards,
-        nb_replicas: nb_replicas,
+        nb_shards,
+        nb_replicas,
     };
 
     rubber.initialize_templates()?;
-    let poi_index = rubber.make_index(&dataset, &index_settings).unwrap();
+    let poi_index: mimir::rubber::TypedIndex<Poi> =
+        rubber.make_index(&dataset, &index_settings).unwrap();
 
     // "process_results" will early return on first error
     // from the postgres iterator

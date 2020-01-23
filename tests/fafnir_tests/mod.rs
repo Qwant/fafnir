@@ -3,7 +3,7 @@ use super::DATASET;
 use super::{ElasticSearchWrapper, PostgresWrapper};
 use geo_types as geo;
 use mimirsbrunn::utils;
-use postgres::Connection;
+use postgres::Client;
 use std;
 use std::f64;
 use std::sync::Arc;
@@ -14,20 +14,20 @@ fn init_tests(
     pg_wrapper: &PostgresWrapper,
     country_code: &str,
 ) {
-    let conn = pg_wrapper.get_conn();
-    create_tests_tables(&conn);
-    populate_tables(&conn);
-    load_poi_class_function(&conn);
-    load_osm_hash_from_imposm_function(&conn);
-    load_global_id_from_imposm_function(&conn);
-    load_labelgrid_function(&conn);
-    load_poi_class_rank_function(&conn);
-    load_layer_poi_function(&conn);
-    load_poi_display_weight_function(&conn);
+    let mut conn = pg_wrapper.get_conn();
+    create_tests_tables(&mut conn);
+    populate_tables(&mut conn);
+    load_poi_class_function(&mut conn);
+    load_osm_hash_from_imposm_function(&mut conn);
+    load_global_id_from_imposm_function(&mut conn);
+    load_labelgrid_function(&mut conn);
+    load_poi_class_rank_function(&mut conn);
+    load_layer_poi_function(&mut conn);
+    load_poi_display_weight_function(&mut conn);
     load_es_data(es_wrapper, country_code);
 }
 
-fn create_tests_tables(conn: &Connection) {
+fn create_tests_tables(conn: &mut Client) {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS osm_poi_point(
                          id                 serial primary key,
@@ -119,7 +119,7 @@ fn create_tests_tables(conn: &Connection) {
     conn.execute("TRUNCATE TABLE osm_city_point", &[]).unwrap();
 }
 
-fn populate_tables(conn: &Connection) {
+fn populate_tables(conn: &mut Client) {
     // this poi is located at lon=1, lat=1
     conn.execute("INSERT INTO osm_poi_point (osm_id, level, indoor, layer, sport, name, name_en, name_de, subclass, mapping_key, station, funicular, information, uic_ref, geometry, tags) VALUES (5589618289, 14, TRUE, 0, 'sport', 'Ocean Studio',null,null, 'cafe', 'amenity',null,null,null,null, '0101000020E6100000000000000000F03F000000000000F03F'
     , '\"name\"=>\"Ocean Studio\", \"amenity\"=>\"cafe\", \"name:ru\"=>\"студия океана\", \"name:it\"=>\"Oceano Studioso\", \"name_int\"=>\"Ocean Studio\", \"name:latin\"=>\"Ocean Studio\"')", &[]).unwrap();
@@ -162,7 +162,7 @@ fn populate_tables(conn: &Connection) {
 
 /// This function uses the poi_class function from
 /// https://github.com/openmaptiles/openmaptiles/blob/master/layers/poi/class.sql
-fn load_poi_class_function(conn: &Connection) {
+fn load_poi_class_function(conn: &mut Client) {
     conn.execute("
             CREATE OR REPLACE FUNCTION poi_class(subclass TEXT, mapping_key TEXT)
             RETURNS TEXT AS $$
@@ -205,7 +205,7 @@ fn load_poi_class_function(conn: &Connection) {
             $$ LANGUAGE SQL IMMUTABLE;", &[]).unwrap();
 }
 
-fn load_labelgrid_function(conn: &Connection) {
+fn load_labelgrid_function(conn: &mut Client) {
     conn.execute(
         "
 create or replace function LabelGrid (
@@ -236,7 +236,7 @@ $func$;",
     .unwrap();
 }
 
-fn load_layer_poi_function(conn: &Connection) {
+fn load_layer_poi_function(conn: &mut Client) {
     conn.execute(
         r#"
         CREATE OR REPLACE FUNCTION layer_poi(bbox geometry, zoom_level integer, pixel_width numeric)
@@ -320,7 +320,7 @@ $$ LANGUAGE SQL IMMUTABLE;
     .unwrap();
 }
 
-fn load_poi_class_rank_function(conn: &Connection) {
+fn load_poi_class_rank_function(conn: &mut Client) {
     conn.execute(
         "
 CREATE OR REPLACE FUNCTION poi_class_rank(class TEXT)
@@ -357,7 +357,7 @@ $$ LANGUAGE SQL IMMUTABLE;
     .unwrap();
 }
 
-fn load_osm_hash_from_imposm_function(conn: &Connection) {
+fn load_osm_hash_from_imposm_function(conn: &mut Client) {
     conn.execute(
         "
 CREATE OR REPLACE FUNCTION osm_hash_from_imposm(imposm_id bigint)
@@ -374,7 +374,7 @@ $$ LANGUAGE SQL IMMUTABLE;
     .unwrap();
 }
 
-fn load_global_id_from_imposm_function(conn: &Connection) {
+fn load_global_id_from_imposm_function(conn: &mut Client) {
     conn.execute(
         "
 CREATE OR REPLACE FUNCTION global_id_from_imposm(imposm_id bigint)
@@ -394,7 +394,7 @@ $$ LANGUAGE SQL IMMUTABLE;
 }
 
 /// This is a quick placeholder for the actual weight function.
-fn load_poi_display_weight_function(conn: &Connection) {
+fn load_poi_display_weight_function(conn: &mut Client) {
     conn.execute(
         "
         CREATE OR REPLACE FUNCTION poi_display_weight(
@@ -488,6 +488,7 @@ fn make_test_address(city: mimir::Admin) -> mimir::Addr {
         distance: None,
         approx_coord: None,
         country_codes,
+        context: None,
     }
 }
 
