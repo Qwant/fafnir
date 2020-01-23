@@ -15,7 +15,6 @@ slog-scope = "4.0"
 itertools = "0.8"
 par-map = "0.1.4"
 num_cpus = "1.12"
-navitia-poi-model = "^0.2.2"
 
 [dev-dependencies]
 retry = "*"
