@@ -8,6 +8,9 @@ extern crate itertools;
 extern crate num_cpus;
 extern crate par_map;
 
+mod pois;
+use pois::IndexedPoi;
+
 use itertools::process_results;
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::{Coord, Poi, PoiType, Property};
@@ -268,10 +271,11 @@ fn locate_poi(
     Some(poi)
 }
 
-fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
+fn build_poi(row: Row, langs: &[String]) -> Option<pois::IndexedPoi> {
     let id: String = row.get("id");
     let name: String = row.get("name");
 
+    let mapping_key: String = row.get("mapping_key");
     let class: String = row.get("class");
     let subclass: String = row.get("subclass");
 
@@ -306,7 +310,7 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
 
     let properties = build_poi_properties(&row, &id, row_properties).unwrap_or_else(|_| vec![]);
 
-    Some(Poi {
+    let poi = Poi {
         id,
         coord: poi_coord,
         poi_type: PoiType {
@@ -320,7 +324,10 @@ fn build_poi(row: Row, langs: &[String]) -> Option<Poi> {
         names,
         labels: mimir::I18nProperties::default(),
         ..Default::default()
-    })
+    };
+
+    let searchable = pois::is_searchable(&poi, &mapping_key, &subclass);
+    Some(pois::IndexedPoi { poi, searchable })
 }
 
 pub fn load_and_index_pois(
@@ -343,7 +350,7 @@ pub fn load_and_index_pois(
     let bbox_filter = bounding_box
         .map(|b| {
             format!(
-                "and ST_MakeEnvelope({}, 4326) && st_transform(geometry, 4326)",
+                "WHERE ST_MakeEnvelope({}, 4326) && st_transform(geometry, 4326)",
                 b
             )
         })
@@ -359,6 +366,7 @@ pub fn load_and_index_pois(
             name,
             tags,
             subclass,
+            mapping_key,
             poi_display_weight(name, subclass, mapping_key, tags)::float as weight
         FROM (
             SELECT
@@ -372,7 +380,6 @@ pub fn load_and_index_pois(
                 subclass,
                 tags
             FROM layer_poi(NULL, 14, 1)
-                WHERE name <> ''
             UNION ALL
             SELECT
                 geometry,
@@ -400,31 +407,7 @@ pub fn load_and_index_pois(
             FROM osm_city_point
                 WHERE name <> '' AND place='hamlet'
         ) AS unionall
-        WHERE (unionall.mapping_key,unionall.subclass) not in
-            (('highway','bus_stop'),
-             ('barrier','gate'),
-             ('amenity','waste_basket'),
-             ('amenity','post_box'),
-             ('tourism','information'),
-             ('amenity','recycling'),
-             ('barrier','lift_gate'),
-             ('barrier','bollard'),
-             ('barrier','cycle_barrier'),
-             ('amenity','bicycle_rental'),
-             ('tourism','artwork'),
-             ('amenity','toilets'),
-             ('leisure','playground'),
-             ('amenity','telephone'),
-             ('amenity','taxi'),
-             ('leisure','pitch'),
-             ('amenity','shelter'),
-             ('barrier','sally_port'),
-             ('barrier','stile'),
-             ('amenity','ferry_terminal'),
-             ('amenity','post_office'),
-             ('railway','subway_entrance'),
-             ('railway','train_station_entrance'))
-         {}",
+        {}",
         bbox_filter
     );
 
@@ -436,6 +419,8 @@ pub fn load_and_index_pois(
     rubber.initialize_templates()?;
     let poi_index: mimir::rubber::TypedIndex<Poi> =
         rubber.make_index(&dataset, &index_settings).unwrap();
+    let poi_index_nosearch: mimir::rubber::TypedIndex<Poi> =
+        rubber.make_index("nosearch", &index_settings).unwrap();
 
     let mut total_nb_pois = 0;
     let stmt = client.prepare(&query).unwrap();
@@ -450,21 +435,38 @@ pub fn load_and_index_pois(
     // from the postgres iterator
     process_results(rows_iterator, |rows| {
         rows.filter_map(|row| build_poi(row, &langs))
-            .pack(1000)
+            .pack(2000)
             .with_nb_threads(nb_threads)
             .par_map({
                 let i = poi_index.clone();
+                let i_nosearch = poi_index_nosearch.clone();
                 let langs = langs.clone();
                 move |p| {
                     let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
-                    let pois = p
-                        .into_iter()
-                        .filter_map(|poi| locate_poi(poi, &admins_geofinder, &mut rub, &langs));
+                    let pois = p.into_iter().filter_map(|indexed_poi| {
+                        let searchable = indexed_poi.searchable;
+                        let poi = indexed_poi.poi;
+                        locate_poi(poi, &admins_geofinder, &mut rub, &langs)
+                            .map(|poi| pois::IndexedPoi { poi, searchable })
+                    });
                     let mut rub2 = Rubber::new_with_timeout(&es, ES_TIMEOUT);
-                    match rub2.bulk_index(&i, pois) {
+
+                    let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
+                        pois.partition(|p| p.searchable);
+                    let mut nb_indexed_pois = 0;
+                    match rub2.bulk_index(&i, search.into_iter().map(|indexed_poi| indexed_poi.poi))
+                    {
                         Err(e) => panic!("Failed to bulk insert pois because: {}", e),
-                        Ok(nb_indexed_pois) => nb_indexed_pois,
-                    }
+                        Ok(nb) => nb_indexed_pois += nb,
+                    };
+                    match rub2.bulk_index(
+                        &i_nosearch,
+                        no_search.into_iter().map(|indexed_poi| indexed_poi.poi),
+                    ) {
+                        Err(e) => panic!("Failed to bulk insert pois because: {}", e),
+                        Ok(nb) => nb_indexed_pois += nb,
+                    };
+                    nb_indexed_pois
                 }
             })
             .enumerate()
@@ -483,6 +485,9 @@ pub fn load_and_index_pois(
     info!("Total number of indexed pois: {}", total_nb_pois);
     rubber
         .publish_index(&dataset, poi_index, IndexVisibility::Public)
+        .unwrap();
+    rubber
+        .publish_index("nosearch", poi_index_nosearch, IndexVisibility::Private)
         .unwrap();
     Ok(())
 }
