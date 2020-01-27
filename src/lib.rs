@@ -119,7 +119,6 @@ pub fn load_and_index_pois(
                 'airport' AS subclass,
                 tags
             FROM osm_aerodrome_label_point
-                WHERE name <> ''
             UNION ALL
             SELECT
                 geometry,
