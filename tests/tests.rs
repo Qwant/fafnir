@@ -138,7 +138,7 @@ impl<'a> ElasticSearchWrapper<'a> {
     pub fn search(&self, word: &str) -> serde_json::Value {
         let mut res = self
             .rubber
-            .get(&format!("munin/_search?q={}", word))
+            .get(&format!("munin/_search?q={}&size=100", word))
             .unwrap();
         assert!(res.status().is_success());
         res.json().expect("failed to parse json")

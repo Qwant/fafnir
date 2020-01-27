@@ -144,9 +144,10 @@ fn populate_tables(conn: &mut Client) {
     conn.execute("INSERT INTO osm_aerodrome_label_point (id, osm_id, name, name_en, name_de, aerodrome_type, aerodrome, military, iata, icao, ele, geometry, tags) VALUES (30334, 1042050310, 'South Pole Station Airport',null, null, null, null, null, null,  null, null, '0101000020110F0000714501E743E172BF010000000000F87F',
      '\"name\"=>\"South Pole Station Airport\", \"aeroway\"=>\"aerodrome\", \"name_int\"=>\"South Pole Station Airport\", \"name:latin\"=>\"South Pole Station Airport\"')", &[]).unwrap();
 
-    // some lost hamlet
+    // Some lost hamlet
     conn.execute("INSERT INTO osm_city_point (id, osm_id, name, name_en, name_de, place, population, capital, geometry, tags) VALUES (30336, 1042050311, 'I am a lost sheep',null, null, 'hamlet', 3, 'somewhere', '0101000020E610000000000000000014400000000000001440',
      '\"name\"=>\"I am a lost sheep\",\"population\"=>\"3\",\"capital\"=>\"somewhere\"')", &[]).unwrap();
+    // Other city_point (not imported)
     conn.execute("INSERT INTO osm_city_point (id, osm_id, name, name_en, name_de, place, population, capital, geometry, tags) VALUES (303362, 1042050311, 'I am a lost sheep',null, null, 'other', 3, 'somewhere', '0101000020E610000000000000000014400000000000001440',
      '\"name\"=>\"I am a lost sheep\",\"population\"=>\"3\",\"capital\"=>\"somewhere\"')", &[]).unwrap();
 
@@ -156,8 +157,13 @@ fn populate_tables(conn: &mut Client) {
     // Insert the "Hôtel Auteuil Tour Eiffel" POI
     conn.execute("INSERT INTO osm_poi_polygon (id, level, indoor, layer, sport, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (10980, 14, TRUE, 0, 'sport', -84194390, 'Hôtel Auteuil Tour Eiffel', null, null, '\"name\"=>\"Hôtel Auteuil Tour Eiffel\", \"source\"=>\"cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2010\", \"tourism\"=>\"hotel\", \"building\"=>\"yes\", \"name_int\"=>\"Hôtel Auteuil Tour Eiffel\", \"name:latin\"=>\"Hôtel Auteuil Tour Eiffel\", \"addr:street\"=>\"Rue Félicien David\", \"addr:postcode\"=>\"75016\", \"addr:housenumber\"=>\"10\"','hotel', 'tourism', null, null, null, null, null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
 
+    // A church with "religion" defined
     conn.execute("INSERT INTO osm_poi_polygon (osm_id, name, subclass, mapping_key, religion, geometry) VALUES
         (-63638108, 'Église Saint-Ambroise', 'place_of_worship', 'amenity', 'christian', '0101000020E610000000000000000014400000000000001440')", &[]).unwrap();
+
+    // Not searchable bus station
+    conn.execute("INSERT INTO osm_poi_point (osm_id, name, subclass, mapping_key, geometry) VALUES
+        (901, 'Victor Hugo - Poincaré', 'bus_stop', 'highway', ST_GeomFromText('POINT(5.901 5.901)', 4326))", &[]).unwrap();
 }
 
 /// This function uses the poi_class function from
@@ -540,22 +546,17 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         &es_wrapper,
     );
 
-    // Test that the postgres wrapper contains 5 rows in osm_poi_point
-    // and 2 rows in osm_poi_polygon
     let rows = &pg_wrapper.get_rows(&"osm_poi_point");
-    assert_eq!(rows.len(), 5);
+    assert_eq!(rows.len(), 6);
     let rows = &pg_wrapper.get_rows(&"osm_poi_polygon");
     assert_eq!(rows.len(), 3);
 
-    // @TODO: the comment on the line below is wrong: the poi "poi too far" is imported
-    //        -> we should check if a distance max is defined to connect an address to a POI ?
-    // but the elastic search contains only 4 because the poi "poi too far" has not been loaded
     assert_eq!(
         es_wrapper
             .search_and_filter("name:*", |p| p.is_poi())
             .collect::<Vec<_>>()
             .len(),
-        8
+        9 // 5 valid points + 2 valid polygons + 1 airport + 1 hamlet
     );
 
     // Test that the place "Ocean Studio" has been imported in the elastic wrapper
@@ -693,7 +694,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .all(|p| p.weight == 0.0f64));
 
     let hamlet_somewhere: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("name:I am a lost sheep", |_| true)
+        .search_and_filter("name:(I am a lost sheep)", |_| true)
         .collect();
     assert_eq!(&hamlet_somewhere.len(), &1);
     assert!(&hamlet_somewhere[0].is_poi());
@@ -729,6 +730,13 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .unwrap();
     assert_eq!(church_class.value, "place_of_worship");
     assert_eq!(church_subclass.value, "christian");
+
+    // 1 poi in nosearch index
+    let nosearch_pois: Vec<mimir::Poi> = es_wrapper
+        .rubber
+        .get_all_objects_from_index("munin_poi_nosearch")
+        .unwrap();
+    assert_eq!(nosearch_pois.len(), 1);
 }
 
 pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
@@ -745,9 +753,9 @@ pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         &es_wrapper,
     );
 
-    // We filtered the import by a bounding box, we still have 5 rows in PG
+    // We filtered the import by a bounding box, we still have 6 rows in PG
     let rows = &pg_wrapper.get_rows(&"osm_poi_point");
-    assert_eq!(rows.len(), 5);
+    assert_eq!(rows.len(), 6);
     // but there is only 3 elements in the ES now, 'Le nomade' and 'Isla Cristina Agricultural Airstrip'
     // have been filtered
     assert_eq!(
