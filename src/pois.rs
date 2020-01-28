@@ -1,6 +1,5 @@
 use crate::addresses::find_address;
 use crate::addresses::iter_admins;
-use lazy_static::lazy_static;
 use mimir::rubber::Rubber;
 use mimir::Poi;
 use mimir::Property;
@@ -13,8 +12,10 @@ use postgres::Row;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
-lazy_static! {
-    static ref NON_SEARCHABLE_ITEMS: BTreeSet<(String, String)> = [
+use once_cell::sync::Lazy;
+
+static NON_SEARCHABLE_ITEMS: Lazy<BTreeSet<(String, String)>> = Lazy::new(|| {
+    [
         /* List of (mapping_key, subclass) */
         ("highway", "bus_stop"),
         ("barrier", "gate"),
@@ -42,8 +43,8 @@ lazy_static! {
     ]
     .iter()
     .map(|(a, b)| ((*a).to_string(), (*b).to_string()))
-    .collect();
-}
+    .collect()
+});
 
 pub struct IndexedPoi {
     pub poi: Poi,
