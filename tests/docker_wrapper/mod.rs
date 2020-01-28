@@ -80,7 +80,9 @@ impl ElasticsearchDocker {
         let mut el_docker = ElasticsearchDocker { ip: "".to_string() };
         el_docker.setup()?;
         let rubber = Rubber::new(&el_docker.host());
-        &rubber.initialize_templates().unwrap();
+        &rubber
+            .initialize_templates()
+            .expect("failed to initialize ES templates");
         Ok(el_docker)
     }
 

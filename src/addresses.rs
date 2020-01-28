@@ -7,17 +7,7 @@ use mimirsbrunn::utils::find_country_codes;
 use std::ops::Deref;
 use std::sync::Arc;
 
-/// Read the osm address tags and build a mimir address from them
-///
-/// For the moment we read mostly `addr:city` or `addr:country`
-/// if available we also read `addr:postcode`
-///
-/// We also search for the admins that contains the coordinates of the poi
-/// and add them as the address's admins.
-///
-/// For the moment we do not read `addr:city` or `addr:country` as it could
-/// lead to inconsistency with the admins hierarchy
-pub fn build_new_addr(
+fn build_new_addr(
     addr_tag: &str,
     street_tag: &str,
     poi: &Poi,
@@ -27,7 +17,7 @@ pub fn build_new_addr(
         .properties
         .iter()
         .find(|p| &p.key == "addr:postcode")
-        .map(|p| p.value.clone());
+        .map(|p| p.value.to_owned());
     let postcodes = postcode.map_or(vec![], |p| vec![p]);
     let country_codes = find_country_codes(iter_admins(&admins));
     let street_label = format_street_label(street_tag, iter_admins(&admins), &country_codes);
@@ -60,6 +50,11 @@ pub fn build_new_addr(
     })
 }
 
+/// Build mimir Address from Poi,using osm address tags (if present)
+/// or using reverse geocoding
+///
+/// We also search for the admins that contains the coordinates of the poi
+/// and add them as the address's admins.
 pub fn find_address(
     poi: &Poi,
     geofinder: &AdminGeoFinder,

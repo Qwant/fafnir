@@ -735,7 +735,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let nosearch_pois: Vec<mimir::Poi> = es_wrapper
         .rubber
         .get_all_objects_from_index("munin_poi_nosearch")
-        .unwrap();
+        .expect("failed to fetch poi_nosearch documents");
     assert_eq!(nosearch_pois.len(), 1);
 }
 

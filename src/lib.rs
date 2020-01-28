@@ -143,14 +143,15 @@ pub fn load_and_index_pois(
     };
 
     rubber.initialize_templates()?;
-    let poi_index: mimir::rubber::TypedIndex<Poi> =
-        rubber.make_index(&args.dataset, &index_settings).unwrap();
+    let poi_index: mimir::rubber::TypedIndex<Poi> = rubber
+        .make_index(&args.dataset, &index_settings)
+        .expect("failed to make index");
     let poi_index_nosearch: mimir::rubber::TypedIndex<Poi> = rubber
         .make_index(&args.dataset_nosearch, &index_settings)
-        .unwrap();
+        .expect("failed to make index");
 
     let mut total_nb_pois = 0;
-    let stmt = client.prepare(&query).unwrap();
+    let stmt = client.prepare(&query).expect("failed to prepare query");
     let rows_iterator = client
         .query_raw(&stmt, vec![])?
         .fuse() // Avoids consuming exhausted stream when using par_map
@@ -209,13 +210,13 @@ pub fn load_and_index_pois(
     info!("Total number of indexed pois: {}", total_nb_pois);
     rubber
         .publish_index(&args.dataset, poi_index, IndexVisibility::Public)
-        .unwrap();
+        .expect("failed to publish public index");
     rubber
         .publish_index(
             &args.dataset_nosearch,
             poi_index_nosearch,
             IndexVisibility::Private,
         )
-        .unwrap();
+        .expect("failed to publish private index");
     Ok(())
 }

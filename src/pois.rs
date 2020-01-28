@@ -226,16 +226,13 @@ fn build_names(langs: &[String], properties: &[Property]) -> Result<mimir::I18nP
             if property.key.starts_with(&NAME_TAG_PREFIX) {
                 let lang = property.key[NAME_TAG_PREFIX.len()..].to_string();
                 if langs.contains(&lang) {
-                    Some(mimir::Property {
+                    return Some(mimir::Property {
                         key: lang,
                         value: property.value.to_string(),
-                    })
-                } else {
-                    None
+                    });
                 }
-            } else {
-                None
             }
+            None
         })
         .collect();
 
