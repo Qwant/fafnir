@@ -106,7 +106,7 @@ pub fn load_and_index_pois(
                 mapping_key,
                 subclass,
                 tags
-            FROM layer_poi(NULL, 14, 1)
+            FROM all_pois(14)
             UNION ALL
             SELECT
                 geometry,
