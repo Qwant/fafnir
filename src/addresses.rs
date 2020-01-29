@@ -51,7 +51,7 @@ fn build_new_addr(
 }
 
 /// Build mimir Address from Poi,using osm address tags (if present)
-/// or using reverse geocoding
+/// or using reverse geocoding.
 ///
 /// We also search for the admins that contains the coordinates of the poi
 /// and add them as the address's admins.
