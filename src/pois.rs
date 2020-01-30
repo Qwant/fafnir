@@ -54,9 +54,7 @@ pub struct IndexedPoi {
 impl IndexedPoi {
     pub fn from_row(row: Row, langs: &[String]) -> Option<IndexedPoi> {
         let id: String = row.get("id");
-        let name = row
-            .get::<_, Option<String>>("name")
-            .unwrap_or_else(|| "".to_string());
+        let name = row.get::<_, Option<String>>("name").unwrap_or_default();
 
         let mapping_key: String = row.get("mapping_key");
         let class: String = row.get("class");
