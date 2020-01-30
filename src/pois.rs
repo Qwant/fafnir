@@ -54,7 +54,7 @@ pub struct IndexedPoi {
 impl IndexedPoi {
     pub fn from_row(row: Row, langs: &[String]) -> Option<IndexedPoi> {
         let id: String = row.get("id");
-        let name: String = row.get("name");
+        let name = row.get::<_, Option<String>>("name").unwrap_or_default();
 
         let mapping_key: String = row.get("mapping_key");
         let class: String = row.get("class");
@@ -63,7 +63,7 @@ impl IndexedPoi {
         let poi_type_id: String = format!("class_{}:subclass_{}", class, subclass);
         let poi_type_name: String = format!("class_{} subclass_{}", class, subclass);
 
-        let weight = row.get("weight");
+        let weight = row.get::<_, Option<f64>>("weight").unwrap_or(0.);
 
         let lat = row
             .try_get("lat")

@@ -164,6 +164,14 @@ fn populate_tables(conn: &mut Client) {
     // Not searchable bus station
     conn.execute("INSERT INTO osm_poi_point (osm_id, name, subclass, mapping_key, geometry) VALUES
         (901, 'Victor Hugo - Poincaré', 'bus_stop', 'highway', ST_GeomFromText('POINT(5.901 5.901)', 4326))", &[]).unwrap();
+
+    // Not searchable poi (with no name)
+    conn.execute(
+        "INSERT INTO osm_poi_point (osm_id, name, subclass, mapping_key, geometry) VALUES
+        (902, NULL, 'bicycle_parking', 'amenity', ST_GeomFromText('POINT(5.902 5.902)', 4326))",
+        &[],
+    )
+    .unwrap();
 }
 
 /// This function uses the poi_class function from
@@ -541,7 +549,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     );
 
     let rows = &pg_wrapper.get_rows(&"osm_poi_point");
-    assert_eq!(rows.len(), 6);
+    assert_eq!(rows.len(), 7);
     let rows = &pg_wrapper.get_rows(&"osm_poi_polygon");
     assert_eq!(rows.len(), 3);
 
@@ -725,12 +733,12 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert_eq!(church_class.value, "place_of_worship");
     assert_eq!(church_subclass.value, "christian");
 
-    // 1 poi in nosearch index
+    // 2 pois in nosearch index
     let nosearch_pois: Vec<mimir::Poi> = es_wrapper
         .rubber
         .get_all_objects_from_index("munin_poi_nosearch")
         .expect("failed to fetch poi_nosearch documents");
-    assert_eq!(nosearch_pois.len(), 1);
+    assert_eq!(nosearch_pois.len(), 2);
 }
 
 pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
@@ -749,7 +757,7 @@ pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
 
     // We filtered the import by a bounding box, we still have 6 rows in PG
     let rows = &pg_wrapper.get_rows(&"osm_poi_point");
-    assert_eq!(rows.len(), 6);
+    assert_eq!(rows.len(), 7);
     // but there is only 3 elements in the ES now, 'Le nomade' and 'Isla Cristina Agricultural Airstrip'
     // have been filtered
     assert_eq!(
