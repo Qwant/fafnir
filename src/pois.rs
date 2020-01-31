@@ -58,7 +58,7 @@ impl IndexedPoi {
 
         let mapping_key: String = row.get("mapping_key");
         let class: String = row.get("class");
-        let subclass: String = row.get("subclass");
+        let subclass = row.get::<_, Option<String>>("subclass").unwrap_or_default();
 
         let poi_type_id: String = format!("class_{}:subclass_{}", class, subclass);
         let poi_type_name: String = format!("class_{} subclass_{}", class, subclass);
@@ -89,7 +89,7 @@ impl IndexedPoi {
         let names = build_names(langs, &row_properties)
             .unwrap_or_else(|_| mimir::I18nProperties::default());
 
-        let properties = build_poi_properties(&row, &id, row_properties).unwrap_or_else(|_| vec![]);
+        let properties = build_poi_properties(&row, row_properties);
 
         let is_searchable =
             !name.is_empty() && !NON_SEARCHABLE_ITEMS.contains(&(mapping_key, subclass));
@@ -190,32 +190,20 @@ fn properties_from_row(row: &Row) -> Result<Vec<Property>, String> {
     Ok(properties)
 }
 
-fn build_poi_properties(
-    row: &Row,
-    id: &str,
-    mut properties: Vec<Property>,
-) -> Result<Vec<Property>, String> {
-    let poi_subclass = row.try_get("subclass").map_err(|e| {
-        warn!("impossible to get poi_subclass for {} because {}", id, e);
-        e.to_string()
-    })?;
-
-    let poi_class = row.try_get("class").map_err(|e| {
-        warn!("impossible to get poi_class for {} because {}", id, e);
-        e.to_string()
-    })?;
-
-    properties.push(Property {
-        key: "poi_subclass".to_string(),
-        value: poi_subclass,
-    });
-
-    properties.push(Property {
-        key: "poi_class".to_string(),
-        value: poi_class,
-    });
-
-    Ok(properties)
+fn build_poi_properties(row: &Row, mut properties: Vec<Property>) -> Vec<Property> {
+    if let Ok(poi_subclass) = row.try_get("subclass") {
+        properties.push(Property {
+            key: "poi_subclass".to_string(),
+            value: poi_subclass,
+        });
+    };
+    if let Ok(poi_class) = row.try_get("class") {
+        properties.push(Property {
+            key: "poi_class".to_string(),
+            value: poi_class,
+        });
+    };
+    properties
 }
 
 fn build_names(langs: &[String], properties: &[Property]) -> Result<mimir::I18nProperties, String> {
