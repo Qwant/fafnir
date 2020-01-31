@@ -168,7 +168,7 @@ fn populate_tables(conn: &mut Client) {
     // Not searchable poi (with no name)
     conn.execute(
         "INSERT INTO osm_poi_point (osm_id, name, subclass, mapping_key, geometry) VALUES
-        (902, NULL, 'bicycle_parking', 'amenity', ST_GeomFromText('POINT(5.902 5.902)', 4326))",
+        (902, NULL, 'place_of_worship', 'amenity', ST_GeomFromText('POINT(5.902 5.902)', 4326))",
         &[],
     )
     .unwrap();

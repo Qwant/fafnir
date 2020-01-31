@@ -58,7 +58,7 @@ impl IndexedPoi {
 
         let mapping_key: String = row.get("mapping_key");
         let class: String = row.get("class");
-        let subclass: String = row.get("subclass");
+        let subclass = row.get::<_, Option<String>>("subclass").unwrap_or_default();
 
         let poi_type_id: String = format!("class_{}:subclass_{}", class, subclass);
         let poi_type_name: String = format!("class_{} subclass_{}", class, subclass);
