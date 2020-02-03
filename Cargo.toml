@@ -10,6 +10,7 @@ postgres = "0.17"
 mimirsbrunn = { git = "https://github.com/canalTP/mimirsbrunn", rev = "456e0be" }
 mimir = { git = "https://github.com/canalTP/mimirsbrunn", rev = "456e0be" }
 structopt = "0.3"
+log = { version = "0.4", features = ["release_max_level_info"] }
 slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
 slog-scope = "4.0"
 itertools = "0.8"
