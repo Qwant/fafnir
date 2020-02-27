@@ -4,6 +4,7 @@ extern crate postgres;
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
+extern crate geojson;
 extern crate itertools;
 extern crate num_cpus;
 extern crate par_map;

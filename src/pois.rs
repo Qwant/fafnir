@@ -1,5 +1,6 @@
 use crate::addresses::find_address;
 use crate::addresses::iter_admins;
+use geojson::{Geometry, Value};
 use mimir::rubber::Rubber;
 use mimir::Poi;
 use mimir::Property;
@@ -75,6 +76,7 @@ impl IndexedPoi {
             .ok()?;
 
         let poi_coord = Coord::new(lon, lat);
+        let approx_coord = Geometry::new(Value::Point(vec![lon, lat]));
 
         if !poi_coord.is_valid() {
             // Ignore PoI if its coords from db are invalid.
@@ -97,6 +99,7 @@ impl IndexedPoi {
         let poi = Poi {
             id,
             coord: poi_coord,
+            approx_coord: Some(approx_coord),
             poi_type: PoiType {
                 id: poi_type_id,
                 name: poi_type_name,

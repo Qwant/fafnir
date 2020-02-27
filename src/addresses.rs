@@ -41,7 +41,7 @@ fn build_new_addr(
         },
         label: addr_label,
         coord: poi.coord,
-        approx_coord: None,
+        approx_coord: poi.approx_coord.clone(),
         weight,
         zip_codes: postcodes,
         distance: None,
