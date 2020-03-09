@@ -97,6 +97,7 @@ impl IndexedPoi {
         let poi = Poi {
             id,
             coord: poi_coord,
+            approx_coord: Some(poi_coord.into()),
             poi_type: PoiType {
                 id: poi_type_id,
                 name: poi_type_name,

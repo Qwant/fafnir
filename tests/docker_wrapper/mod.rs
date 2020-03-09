@@ -37,6 +37,8 @@ impl PostgresDocker {
                 "POSTGRES_DB=test",
                 "--env",
                 "POSTGRES_USER=test",
+                "--env",
+                "POSTGRES_HOST_AUTH_METHOD=trust",
                 "-P",
                 "-d",
                 &format!("--name={}", name),
