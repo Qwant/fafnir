@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 fn build_new_addr(
-    addr_tag: &str,
+    house_number_tag: &str,
     street_tag: &str,
     poi: &Poi,
     admins: Vec<Arc<mimir::Admin>>,
@@ -21,12 +21,16 @@ fn build_new_addr(
     let postcodes = postcode.map_or(vec![], |p| vec![p]);
     let country_codes = find_country_codes(iter_admins(&admins));
     let street_label = format_street_label(street_tag, iter_admins(&admins), &country_codes);
-    let (addr_name, addr_label) =
-        format_addr_name_and_label(addr_tag, street_tag, iter_admins(&admins), &country_codes);
+    let (addr_name, addr_label) = format_addr_name_and_label(
+        house_number_tag,
+        street_tag,
+        iter_admins(&admins),
+        &country_codes,
+    );
     let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
     mimir::Address::Addr(mimir::Addr {
         id: format!("addr_poi:{}", &poi.id),
-        house_number: addr_tag.into(),
+        house_number: house_number_tag.into(),
         name: addr_name,
         street: mimir::Street {
             id: format!("street_poi:{}", &poi.id),
@@ -89,12 +93,35 @@ pub fn find_address(
         .next();
 
     match (osm_addr_tag, osm_street_tag) {
-        (Some(addr_tag), Some(street_tag)) => Some(build_new_addr(
-            addr_tag,
+        (Some(house_number_tag), Some(street_tag)) => Some(build_new_addr(
+            house_number_tag,
             street_tag,
             poi,
             geofinder.get(&poi.coord),
         )),
+        (None, Some(street_tag)) => {
+            if let Ok(addrs) = rubber.get_address(&poi.coord) {
+                for addr in addrs.into_iter() {
+                    if let Some(address) = addr.address() {
+                        match address {
+                            mimir::Address::Street(_) => continue,
+                            mimir::Address::Addr(ref a) => {
+                                if a.street.name != *street_tag {
+                                    continue;
+                                }
+                            }
+                        }
+                        return Some(address);
+                    }
+                }
+            }
+            Some(build_new_addr(
+                "",
+                street_tag,
+                poi,
+                geofinder.get(&poi.coord),
+            ))
+        }
         _ => rubber
             .get_address(&poi.coord)
             .map_err(|e| {
