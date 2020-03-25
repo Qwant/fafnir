@@ -28,11 +28,33 @@ fn build_new_addr(
         &country_codes,
     );
     let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
-    mimir::Address::Addr(mimir::Addr {
-        id: format!("addr_poi:{}", &poi.id),
-        house_number: house_number_tag.into(),
-        name: addr_name,
-        street: mimir::Street {
+    if !house_number_tag.is_empty() {
+        mimir::Address::Addr(mimir::Addr {
+            id: format!("addr_poi:{}", &poi.id),
+            house_number: house_number_tag.into(),
+            name: addr_name,
+            street: mimir::Street {
+                id: format!("street_poi:{}", &poi.id),
+                name: street_tag.to_string(),
+                label: street_label,
+                administrative_regions: admins,
+                weight,
+                zip_codes: postcodes.clone(),
+                coord: poi.coord,
+                country_codes: country_codes.clone(),
+                ..Default::default()
+            },
+            label: addr_label,
+            coord: poi.coord,
+            approx_coord: poi.approx_coord.clone(),
+            weight,
+            zip_codes: postcodes,
+            distance: None,
+            country_codes,
+            context: None,
+        })
+    } else {
+        mimir::Address::Street(mimir::Street {
             id: format!("street_poi:{}", &poi.id),
             name: street_tag.to_string(),
             label: street_label,
@@ -42,16 +64,8 @@ fn build_new_addr(
             coord: poi.coord,
             country_codes: country_codes.clone(),
             ..Default::default()
-        },
-        label: addr_label,
-        coord: poi.coord,
-        approx_coord: poi.approx_coord.clone(),
-        weight,
-        zip_codes: postcodes,
-        distance: None,
-        country_codes,
-        context: None,
-    })
+        })
+    }
 }
 
 /// Build mimir Address from Poi,using osm address tags (if present)
