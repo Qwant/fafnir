@@ -653,8 +653,8 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .unwrap();
     assert_eq!(poi_subclass.value, "airport".to_string());
 
-    // the '4 gusto' has a tag addr:street but no housenumber, we should not read the address from osm
-    // and since it's too far from another address it should not have an address
+    // the '4 gusto' has a tag addr:street but no housenumber, we therefore get an address without
+    // a housenumber.
     let gusto_query: Vec<mimir::Place> = es_wrapper
         .search_and_filter("name:4 gusto", |_| true)
         .collect();
@@ -663,7 +663,9 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert!(&gusto.is_poi());
     let gusto = &gusto.poi().unwrap();
     assert_eq!(&gusto.id, "osm:node:5590601521");
-    assert!(&gusto.address.is_none());
+    let bob = gusto.address.as_ref().unwrap();
+    assert_eq!(get_label(bob), "rue spontini (bob's town)");
+    assert_eq!(get_house_number(bob), "");
 
     // the Spagnolo has some osm address tags and no addr:postcode
     // we should still read it's address from osm
