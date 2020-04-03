@@ -1,11 +1,64 @@
+use mimir::rubber::make_place;
 use mimir::rubber::Rubber;
 use mimir::Poi;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::labels::format_addr_name_and_label;
 use mimirsbrunn::labels::format_street_label;
 use mimirsbrunn::utils::find_country_codes;
+use serde::Deserialize;
 use std::ops::Deref;
 use std::sync::Arc;
+
+/// TODO: doc
+pub fn get_current_addr(
+    rubber: &mut mimir::rubber::Rubber,
+    poi_dataset: &str,
+    osm_id: &str,
+) -> Option<mimir::Address> {
+    // TODO: isn't there some higher level way?
+    let query = format!(
+        "{}/poi/{}/_source?_source_include=address",
+        poi_dataset, osm_id
+    );
+
+    #[derive(Deserialize)]
+    struct FetchAddr {
+        address: serde_json::Value,
+    }
+
+    let place = rubber
+        .get(&query)
+        .map_err(|err| warn!("failed to connect to ES: {:?}", err))
+        .ok()
+        .and_then(|mut res| {
+            res.json()
+                .map_err(|err| warn!("failed to parse ES response: {:?}", err))
+                .ok()
+        })
+        .and_then(|addr_json: FetchAddr| {
+            // TODO: use the field to check which branch is the good one (or find a function for it)
+            make_place(
+                "addr".to_string(),
+                Some(Box::new(addr_json.address.clone())),
+                None,
+            )
+            .or_else(|| {
+                make_place(
+                    "street".to_string(),
+                    Some(Box::new(addr_json.address)),
+                    None,
+                )
+            })
+        });
+
+    place.map(|place| match place{
+        mimir::Place::Addr(addr) => mimir::Address::Addr(addr),
+        mimir::Place::Street(st) => mimir::Address::Street(st),
+        _ => unreachable!(
+            r#"`make_place("addr", ...) should return an address and `make_place("street", ...)` should return a street"#
+        ),
+    })
+}
 
 fn build_new_addr(
     house_number_tag: &str,
@@ -77,6 +130,7 @@ pub fn find_address(
     poi: &Poi,
     geofinder: &AdminGeoFinder,
     rubber: &mut Rubber,
+    poi_dataset: &str,
 ) -> Option<mimir::Address> {
     if poi
         .properties
@@ -136,18 +190,24 @@ pub fn find_address(
                 geofinder.get(&poi.coord),
             ))
         }
-        _ => rubber
-            .get_address(&poi.coord)
-            .map_err(|e| {
-                warn!("get_address returned ES error for {}: {}", poi.id, e);
-                e
-            })
-            .ok()
-            .and_then(|addrs| addrs.into_iter().next())
-            .map(|addr| {
-                addr.address()
-                    .expect("get_address returned a non-address object")
-            }),
+        _ => {
+            if let Some(addr) = get_current_addr(rubber, poi_dataset, &poi.id) {
+                Some(addr)
+            } else {
+                rubber
+                    .get_address(&poi.coord)
+                    .map_err(|e| {
+                        warn!("get_address returned ES error for {}: {}", poi.id, e);
+                        e
+                    })
+                    .ok()
+                    .and_then(|addrs| addrs.into_iter().next())
+                    .map(|addr| {
+                        addr.address()
+                            .expect("get_address returned a non-address object")
+                    })
+            }
+        }
     }
 }
 

@@ -7,12 +7,15 @@ extern crate slog_scope;
 extern crate itertools;
 extern crate num_cpus;
 extern crate par_map;
+extern crate serde;
+extern crate serde_json;
 
 mod addresses;
 mod pois;
 use crate::par_map::ParMap;
 use pois::IndexedPoi;
 
+use addresses::get_current_addr;
 use itertools::process_results;
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Poi;
@@ -66,6 +69,7 @@ pub fn load_and_index_pois(
     let es = args.es.clone();
     let langs = &args.langs;
     let rubber = &mut mimir::rubber::Rubber::new(&es);
+    let poi_dataset = format!("{}_poi_default", &args.dataset); // TODO: is this right?
     let admins = rubber.get_all_admins().map_err(|err| {
         error!("Administratives regions not found in es db");
         err
@@ -172,7 +176,7 @@ pub fn load_and_index_pois(
                 move |p| {
                     let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
                     let pois = p.into_iter().filter_map(|indexed_poi| {
-                        indexed_poi.locate_poi(&admins_geofinder, &mut rub, &langs)
+                        indexed_poi.locate_poi(&admins_geofinder, &mut rub, &langs, &poi_dataset)
                     });
                     let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
                         pois.partition(|p| p.is_searchable);
