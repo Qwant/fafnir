@@ -15,7 +15,6 @@ mod pois;
 use crate::par_map::ParMap;
 use pois::IndexedPoi;
 
-use addresses::get_current_addr;
 use itertools::process_results;
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Poi;
@@ -69,7 +68,7 @@ pub fn load_and_index_pois(
     let es = args.es.clone();
     let langs = &args.langs;
     let rubber = &mut mimir::rubber::Rubber::new(&es);
-    let poi_dataset = format!("{}_poi_default", &args.dataset); // TODO: is this right?
+    let poi_dataset = format!("{}_poi_default", &args.dataset); // TODO: is `{}_poi_default` right?
     let admins = rubber.get_all_admins().map_err(|err| {
         error!("Administratives regions not found in es db");
         err

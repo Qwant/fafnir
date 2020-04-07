@@ -9,13 +9,12 @@ use serde::Deserialize;
 use std::ops::Deref;
 use std::sync::Arc;
 
-/// TODO: doc
+/// Get current value of address associated with a POI in the ES database if any.
 pub fn get_current_addr(
     rubber: &mut mimir::rubber::Rubber,
     poi_dataset: &str,
     osm_id: &str,
 ) -> Option<mimir::Address> {
-    // TODO: isn't there some higher level way?
     let query = format!(
         "{}/poi/{}/_source?_source_include=address",
         poi_dataset, osm_id
@@ -26,7 +25,7 @@ pub fn get_current_addr(
         address: serde_json::Value,
     }
 
-    let place = rubber
+    rubber
         .get(&query)
         .map_err(|err| warn!("failed to connect to ES: {:?}", err))
         .ok()
@@ -36,28 +35,26 @@ pub fn get_current_addr(
                 .ok()
         })
         .and_then(|addr_json: FetchAddr| {
-            // TODO: use the field to check which branch is the good one (or find a function for it)
-            make_place(
-                "addr".to_string(),
-                Some(Box::new(addr_json.address.clone())),
-                None,
-            )
-            .or_else(|| {
-                make_place(
-                    "street".to_string(),
-                    Some(Box::new(addr_json.address)),
-                    None,
-                )
-            })
-        });
+            let field_type = addr_json.address.get("type").and_then(|t| t.as_str());
 
-    place.map(|place| match place{
-        mimir::Place::Addr(addr) => mimir::Address::Addr(addr),
-        mimir::Place::Street(st) => mimir::Address::Street(st),
-        _ => unreachable!(
-            r#"`make_place("addr", ...) should return an address and `make_place("street", ...)` should return a street"#
-        ),
-    })
+            match field_type {
+                Some(t) if t == "addr" || t == "street" => {
+                    make_place(t.to_string(), Some(Box::new(addr_json.address)), None)
+                }
+                Some(t) => {
+                    warn!("got an existing address with unknown type: {:?}", t);
+                    None
+                }
+                None => None,
+            }
+        })
+        .map(|place| match place {
+            mimir::Place::Addr(addr) => mimir::Address::Addr(addr),
+            mimir::Place::Street(st) => mimir::Address::Street(st),
+            _ => unreachable!(
+                r#"`make_place("addr", ...) should return an address and `make_place("street", ...)` should return a street"#
+            ),
+        })
 }
 
 fn build_new_addr(
