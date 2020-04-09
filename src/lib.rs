@@ -12,6 +12,7 @@ extern crate serde_json;
 
 mod addresses;
 mod pois;
+mod utils;
 use crate::par_map::ParMap;
 use pois::IndexedPoi;
 
@@ -21,6 +22,7 @@ use mimir::Poi;
 use postgres::fallible_iterator::FallibleIterator;
 use postgres::Client;
 use std::time::Duration;
+use utils::get_index_creation_date;
 
 #[macro_use]
 extern crate structopt;
@@ -68,7 +70,18 @@ pub fn load_and_index_pois(
     let es = args.es.clone();
     let langs = &args.langs;
     let rubber = &mut mimir::rubber::Rubber::new(&es);
-    let poi_dataset = format!("{}_poi_default", &args.dataset); // TODO: is `{}_poi_default` right?
+
+    let poi_creation_date = get_index_creation_date(rubber, &format!("{}_poi", &args.dataset));
+    let addr_creation_date = get_index_creation_date(rubber, &format!("{}_addr", &args.dataset));
+
+    let addr_updated = match (poi_creation_date, addr_creation_date) {
+        (Some(poi_ts), Some(addr_ts)) => addr_ts > poi_ts,
+        _ => true,
+    };
+    if !addr_updated {
+        info!("addresses have not been updated since last update, reverse on old POIs won't be performed");
+    }
+
     let admins = rubber.get_all_admins().map_err(|err| {
         error!("Administratives regions not found in es db");
         err
@@ -162,6 +175,9 @@ pub fn load_and_index_pois(
 
     info!("Processing query results...");
 
+    let poi_index_name = format!("{}/poi", args.dataset);
+    let poi_index_nosearch_name = format!("{}/poi", args.dataset_nosearch);
+
     // "process_results" will early return on first error
     // from the postgres iterator
     process_results(rows_iterator, |rows| {
@@ -175,7 +191,14 @@ pub fn load_and_index_pois(
                 move |p| {
                     let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
                     let pois = p.into_iter().filter_map(|indexed_poi| {
-                        indexed_poi.locate_poi(&admins_geofinder, &mut rub, &langs, &poi_dataset)
+                        indexed_poi.locate_poi(
+                            &admins_geofinder,
+                            &mut rub,
+                            &langs,
+                            &poi_index_name,
+                            &poi_index_nosearch_name,
+                            addr_updated,
+                        )
                     });
                     let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
                         pois.partition(|p| p.is_searchable);

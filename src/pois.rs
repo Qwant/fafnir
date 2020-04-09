@@ -119,9 +119,17 @@ impl IndexedPoi {
         geofinder: &AdminGeoFinder,
         rubber: &mut Rubber,
         langs: &[String],
-        poi_dataset: &str,
+        poi_index: &str,
+        poi_index_nosearch: &str,
+        addr_updated: bool,
     ) -> Option<IndexedPoi> {
-        let poi_address = find_address(&self.poi, geofinder, rubber, poi_dataset);
+        let index = if self.is_searchable {
+            poi_index
+        } else {
+            poi_index_nosearch
+        };
+
+        let poi_address = find_address(&self.poi, geofinder, rubber, index, addr_updated);
 
         // if we have an address, we take the address's admin as the poi's admin
         // else we lookup the admin by the poi's coordinates
