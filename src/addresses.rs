@@ -16,8 +16,9 @@ pub fn is_osm_addr(addr: &mimir::Address) -> bool {
     }
 }
 
-/// Get current value of address associated with a POI in the ES database if any together with
-/// current coordinates of the POI that have been used to perform a reverse.
+/// Get current value of address associated with a POI in the ES database if
+/// any, together with current coordinates of the POI that have been used to
+/// perform a reverse
 pub fn get_current_addr(
     rubber: &mut Rubber,
     poi_index: &str,
@@ -99,9 +100,9 @@ fn build_new_addr(
             label: street_label,
             administrative_regions: admins,
             weight,
-            zip_codes: postcodes.clone(),
+            zip_codes: postcodes,
             coord: poi.coord,
-            country_codes: country_codes.clone(),
+            country_codes,
             ..Default::default()
         })
     }
