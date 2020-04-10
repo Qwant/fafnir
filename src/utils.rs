@@ -1,8 +1,8 @@
 use mimir::rubber::Rubber;
 
 /// Get creation date of an index as a timestamp.
-pub fn get_index_creation_date(rubber: &mut Rubber, dataset: &str) -> Option<u64> {
-    let query = format!("/_cat/indices/{}?h=creation.date", dataset);
+pub fn get_index_creation_date(rubber: &mut Rubber, index: &str) -> Option<u64> {
+    let query = format!("/_cat/indices/{}?h=creation.date", index);
 
     rubber
         .get(&query)

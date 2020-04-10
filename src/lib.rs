@@ -29,6 +29,9 @@ extern crate structopt;
 
 const ES_TIMEOUT: std::time::Duration = Duration::from_secs(30);
 
+// Prefix to ES index names for mimirsbrunn
+const MIMIR_PREFIX: &str = "munin";
+
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
 pub struct Args {
@@ -71,8 +74,8 @@ pub fn load_and_index_pois(
     let langs = &args.langs;
     let rubber = &mut mimir::rubber::Rubber::new(&es);
 
-    let poi_creation_date = get_index_creation_date(rubber, &format!("{}_poi", &args.dataset));
-    let addr_creation_date = get_index_creation_date(rubber, &format!("{}_addr", &args.dataset));
+    let poi_creation_date = get_index_creation_date(rubber, &format!("{}_poi", MIMIR_PREFIX));
+    let addr_creation_date = get_index_creation_date(rubber, &format!("{}_addr", MIMIR_PREFIX));
 
     let addr_updated = match (poi_creation_date, addr_creation_date) {
         (Some(poi_ts), Some(addr_ts)) => addr_ts > poi_ts,
@@ -175,8 +178,8 @@ pub fn load_and_index_pois(
 
     info!("Processing query results...");
 
-    let poi_index_name = format!("{}/poi", args.dataset);
-    let poi_index_nosearch_name = format!("{}/poi", args.dataset_nosearch);
+    let poi_index_name = format!("{}_poi_{}", MIMIR_PREFIX, args.dataset);
+    let poi_index_nosearch_name = format!("{}_poi_{}", MIMIR_PREFIX, args.dataset_nosearch);
 
     // "process_results" will early return on first error
     // from the postgres iterator
