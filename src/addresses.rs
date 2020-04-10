@@ -4,6 +4,7 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::labels::format_addr_name_and_label;
 use mimirsbrunn::labels::format_street_label;
 use mimirsbrunn::utils::find_country_codes;
+use reqwest::StatusCode;
 use serde::Deserialize;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -37,12 +38,21 @@ pub fn get_current_addr(
 
     rubber
         .get(&query)
-        .map_err(|err| warn!("failed to connect to ES: {:?}", err))
+        .map_err(|err| warn!("query to elasticsearch failed: {:?}", err))
         .ok()
         .and_then(|mut res| {
-            res.json()
-                .map_err(|err| warn!("failed to parse ES response: {:?}", err))
-                .ok()
+            if res.status() != StatusCode::NOT_FOUND {
+                res.json()
+                    .map_err(|err| {
+                        warn!(
+                            "failed to parse ES response while reading old address for {}: {:?}",
+                            osm_id, err
+                        )
+                    })
+                    .ok()
+            } else {
+                None
+            }
         })
         .map(|poi_json: FetchPOI| (poi_json.coord, poi_json.address))
 }
