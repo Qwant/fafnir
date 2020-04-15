@@ -17,14 +17,22 @@ pub fn is_osm_addr(addr: &mimir::Address) -> bool {
     }
 }
 
+pub enum CurPoiAddress {
+    /// No address was searched yet for this POI
+    NotFound,
+    /// A search already was performed, but the result was empty
+    None,
+    /// An address has already been found
+    Some {
+        coord: mimir::Coord,
+        address: mimir::Address,
+    },
+}
+
 /// Get current value of address associated with a POI in the ES database if
 /// any, together with current coordinates of the POI that have been used to
 /// perform a reverse
-pub fn get_current_addr(
-    rubber: &mut Rubber,
-    poi_index: &str,
-    osm_id: &str,
-) -> Option<(mimir::Coord, mimir::Address)> {
+pub fn get_current_addr(rubber: &mut Rubber, poi_index: &str, osm_id: &str) -> CurPoiAddress {
     let query = format!(
         "{}/poi/{}/_source?_source_include=address,coord",
         poi_index, osm_id
@@ -33,7 +41,7 @@ pub fn get_current_addr(
     #[derive(Deserialize)]
     struct FetchPOI {
         coord: mimir::Coord,
-        address: mimir::Address,
+        address: Option<mimir::Address>,
     }
 
     rubber
@@ -50,11 +58,20 @@ pub fn get_current_addr(
                         )
                     })
                     .ok()
+                    .map(|poi_json: FetchPOI| {
+                        let coord = poi_json.coord;
+
+                        if let Some(address) = poi_json.address {
+                            CurPoiAddress::Some { coord, address }
+                        } else {
+                            CurPoiAddress::None
+                        }
+                    })
             } else {
                 None
             }
         })
-        .map(|poi_json: FetchPOI| (poi_json.coord, poi_json.address))
+        .unwrap_or(CurPoiAddress::NotFound)
 }
 
 fn build_new_addr(
@@ -195,12 +212,19 @@ pub fn find_address(
             if !addr_updated {
                 // Fetch the address already attached to the POI to avoid computing an unnecessary
                 // reverse.
-                if let Some((old_coord, addr)) = get_current_addr(rubber, poi_index, &poi.id) {
-                    let unchanged_coords = (old_coord.lon() - poi.coord.lon()).abs() < 1e-6
-                        && (old_coord.lat() - poi.coord.lat()).abs() < 1e-6;
+                match get_current_addr(rubber, poi_index, &poi.id) {
+                    CurPoiAddress::None => {}
+                    CurPoiAddress::NotFound => return None,
+                    CurPoiAddress::Some {
+                        coord: old_coord,
+                        address,
+                    } => {
+                        let unchanged_coords = (old_coord.lon() - poi.coord.lon()).abs() < 1e-6
+                            && (old_coord.lat() - poi.coord.lat()).abs() < 1e-6;
 
-                    if unchanged_coords && !is_osm_addr(&addr) {
-                        return Some(addr);
+                        if unchanged_coords && !is_osm_addr(&address) {
+                            return Some(address);
+                        }
                     }
                 }
             }
