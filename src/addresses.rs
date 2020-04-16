@@ -21,7 +21,7 @@ pub enum CurPoiAddress {
     /// No address was searched yet for this POI
     NotFound,
     /// A search already was performed, but the result was empty
-    None,
+    None { coord: mimir::Coord },
     /// An address has already been found
     Some {
         coord: mimir::Coord,
@@ -64,7 +64,7 @@ pub fn get_current_addr(rubber: &mut Rubber, poi_index: &str, osm_id: &str) -> C
                         if let Some(address) = poi_json.address {
                             CurPoiAddress::Some { coord, address }
                         } else {
-                            CurPoiAddress::None
+                            CurPoiAddress::None { coord }
                         }
                     })
             } else {
@@ -212,20 +212,17 @@ pub fn find_address(
             if !addr_updated {
                 // Fetch the address already attached to the POI to avoid computing an unnecessary
                 // reverse.
-                match get_current_addr(rubber, poi_index, &poi.id) {
-                    CurPoiAddress::None => {}
-                    CurPoiAddress::NotFound => return None,
-                    CurPoiAddress::Some {
-                        coord: old_coord,
-                        address,
-                    } => {
-                        let unchanged_coords = (old_coord.lon() - poi.coord.lon()).abs() < 1e-6
-                            && (old_coord.lat() - poi.coord.lat()).abs() < 1e-6;
+                let changed_coords = |old_coord: mimir::Coord| {
+                    (old_coord.lon() - poi.coord.lon()).abs() > 1e-6
+                        || (old_coord.lat() - poi.coord.lat()).abs() > 1e-6
+                };
 
-                        if unchanged_coords && !is_osm_addr(&address) {
-                            return Some(address);
-                        }
+                match get_current_addr(rubber, poi_index, &poi.id) {
+                    CurPoiAddress::None { coord } if !changed_coords(coord) => return None,
+                    CurPoiAddress::Some { coord, address } if !changed_coords(coord) => {
+                        return Some(address);
                     }
+                    _ => {}
                 }
             }
 
