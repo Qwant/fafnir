@@ -219,7 +219,9 @@ pub fn find_address(
 
                 match get_current_addr(rubber, poi_index, &poi.id) {
                     CurPoiAddress::None { coord } if !changed_coords(coord) => return None,
-                    CurPoiAddress::Some { coord, address } if !changed_coords(coord) => {
+                    CurPoiAddress::Some { coord, address }
+                        if !is_osm_addr(&address) && !changed_coords(coord) =>
+                    {
                         return Some(address);
                     }
                     _ => {}
