@@ -141,14 +141,14 @@ fn build_new_addr(
 /// We also search for the admins that contains the coordinates of the poi
 /// and add them as the address's admins.
 ///
-/// If addr_updated is set to false, we will reuse the address already
+/// If try_skip_reverse is set to try, it will reuse the address already
 /// attached to a POI in the ES database.
 pub fn find_address(
     poi: &Poi,
     geofinder: &AdminGeoFinder,
     rubber: &mut Rubber,
     poi_index: &str,
-    addr_updated: bool,
+    try_skip_reverse: bool,
 ) -> Option<mimir::Address> {
     if poi
         .properties
@@ -209,7 +209,7 @@ pub fn find_address(
             ))
         }
         _ => {
-            if !addr_updated {
+            if try_skip_reverse {
                 // Fetch the address already attached to the POI to avoid computing an unnecessary
                 // reverse.
                 let changed_coords = |old_coord: mimir::Coord| {

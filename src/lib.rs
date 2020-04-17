@@ -63,6 +63,9 @@ pub struct Args {
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
+    /// Do not skip reverse when address information can be retrieved from previous data
+    #[structopt(long)]
+    no_skip_reverse: bool,
 }
 
 pub fn load_and_index_pois(
@@ -81,7 +84,8 @@ pub fn load_and_index_pois(
         (Some(poi_ts), Some(addr_ts)) => addr_ts > poi_ts,
         _ => true,
     };
-    if !addr_updated {
+    let try_skip_reverse = !args.no_skip_reverse && !addr_updated;
+    if try_skip_reverse {
         info!("addresses have not been updated since last update, reverse on old POIs won't be performed");
     }
 
@@ -200,7 +204,7 @@ pub fn load_and_index_pois(
                             &langs,
                             &poi_index_name,
                             &poi_index_nosearch_name,
-                            addr_updated,
+                            try_skip_reverse,
                         )
                     });
                     let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =

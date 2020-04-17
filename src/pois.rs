@@ -121,7 +121,7 @@ impl IndexedPoi {
         langs: &[String],
         poi_index: &str,
         poi_index_nosearch: &str,
-        addr_updated: bool,
+        try_skip_reverse: bool,
     ) -> Option<IndexedPoi> {
         let index = if self.is_searchable {
             poi_index
@@ -129,7 +129,7 @@ impl IndexedPoi {
             poi_index_nosearch
         };
 
-        let poi_address = find_address(&self.poi, geofinder, rubber, index, addr_updated);
+        let poi_address = find_address(&self.poi, geofinder, rubber, index, try_skip_reverse);
 
         // if we have an address, we take the address's admin as the poi's admin
         // else we lookup the admin by the poi's coordinates
