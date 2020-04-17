@@ -7,9 +7,12 @@ extern crate slog_scope;
 extern crate itertools;
 extern crate num_cpus;
 extern crate par_map;
+extern crate serde;
+extern crate serde_json;
 
 mod addresses;
 mod pois;
+mod utils;
 use crate::par_map::ParMap;
 use pois::IndexedPoi;
 
@@ -19,11 +22,15 @@ use mimir::Poi;
 use postgres::fallible_iterator::FallibleIterator;
 use postgres::Client;
 use std::time::Duration;
+use utils::get_index_creation_date;
 
 #[macro_use]
 extern crate structopt;
 
 const ES_TIMEOUT: std::time::Duration = Duration::from_secs(30);
+
+// Prefix to ES index names for mimirsbrunn
+const MIMIR_PREFIX: &str = "munin";
 
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
@@ -56,6 +63,9 @@ pub struct Args {
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
+    /// Do not skip reverse when address information can be retrieved from previous data
+    #[structopt(long)]
+    no_skip_reverse: bool,
 }
 
 pub fn load_and_index_pois(
@@ -66,6 +76,19 @@ pub fn load_and_index_pois(
     let es = args.es.clone();
     let langs = &args.langs;
     let rubber = &mut mimir::rubber::Rubber::new(&es);
+
+    let poi_creation_date = get_index_creation_date(rubber, &format!("{}_poi", MIMIR_PREFIX));
+    let addr_creation_date = get_index_creation_date(rubber, &format!("{}_addr", MIMIR_PREFIX));
+
+    let addr_updated = match (poi_creation_date, addr_creation_date) {
+        (Some(poi_ts), Some(addr_ts)) => addr_ts > poi_ts,
+        _ => true,
+    };
+    let try_skip_reverse = !args.no_skip_reverse && !addr_updated;
+    if try_skip_reverse {
+        info!("addresses have not been updated since last update, reverse on old POIs won't be performed");
+    }
+
     let admins = rubber.get_all_admins().map_err(|err| {
         error!("Administratives regions not found in es db");
         err
@@ -159,6 +182,9 @@ pub fn load_and_index_pois(
 
     info!("Processing query results...");
 
+    let poi_index_name = format!("{}_poi_{}", MIMIR_PREFIX, args.dataset);
+    let poi_index_nosearch_name = format!("{}_poi_{}", MIMIR_PREFIX, args.dataset_nosearch);
+
     // "process_results" will early return on first error
     // from the postgres iterator
     process_results(rows_iterator, |rows| {
@@ -172,7 +198,14 @@ pub fn load_and_index_pois(
                 move |p| {
                     let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
                     let pois = p.into_iter().filter_map(|indexed_poi| {
-                        indexed_poi.locate_poi(&admins_geofinder, &mut rub, &langs)
+                        indexed_poi.locate_poi(
+                            &admins_geofinder,
+                            &mut rub,
+                            &langs,
+                            &poi_index_name,
+                            &poi_index_nosearch_name,
+                            try_skip_reverse,
+                        )
                     });
                     let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
                         pois.partition(|p| p.is_searchable);

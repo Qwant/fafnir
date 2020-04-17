@@ -4,8 +4,75 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::labels::format_addr_name_and_label;
 use mimirsbrunn::labels::format_street_label;
 use mimirsbrunn::utils::find_country_codes;
+use reqwest::StatusCode;
+use serde::Deserialize;
 use std::ops::Deref;
 use std::sync::Arc;
+
+/// Check if a mimir address originates from OSM data.
+pub fn is_osm_addr(addr: &mimir::Address) -> bool {
+    match addr {
+        mimir::Address::Addr(addr) => addr.id.contains(":osm:"),
+        mimir::Address::Street(st) => st.id.contains(":osm:"),
+    }
+}
+
+pub enum CurPoiAddress {
+    /// No address was searched yet for this POI
+    NotFound,
+    /// A search already was performed, but the result was empty
+    None { coord: mimir::Coord },
+    /// An address has already been found
+    Some {
+        coord: mimir::Coord,
+        address: mimir::Address,
+    },
+}
+
+/// Get current value of address associated with a POI in the ES database if
+/// any, together with current coordinates of the POI that have been used to
+/// perform a reverse
+pub fn get_current_addr(rubber: &mut Rubber, poi_index: &str, osm_id: &str) -> CurPoiAddress {
+    let query = format!(
+        "{}/poi/{}/_source?_source_include=address,coord",
+        poi_index, osm_id
+    );
+
+    #[derive(Deserialize)]
+    struct FetchPOI {
+        coord: mimir::Coord,
+        address: Option<mimir::Address>,
+    }
+
+    rubber
+        .get(&query)
+        .map_err(|err| warn!("query to elasticsearch failed: {:?}", err))
+        .ok()
+        .and_then(|mut res| {
+            if res.status() != StatusCode::NOT_FOUND {
+                res.json()
+                    .map_err(|err| {
+                        warn!(
+                            "failed to parse ES response while reading old address for {}: {:?}",
+                            osm_id, err
+                        )
+                    })
+                    .ok()
+                    .map(|poi_json: FetchPOI| {
+                        let coord = poi_json.coord;
+
+                        if let Some(address) = poi_json.address {
+                            CurPoiAddress::Some { coord, address }
+                        } else {
+                            CurPoiAddress::None { coord }
+                        }
+                    })
+            } else {
+                None
+            }
+        })
+        .unwrap_or(CurPoiAddress::NotFound)
+}
 
 fn build_new_addr(
     house_number_tag: &str,
@@ -60,9 +127,9 @@ fn build_new_addr(
             label: street_label,
             administrative_regions: admins,
             weight,
-            zip_codes: postcodes.clone(),
+            zip_codes: postcodes,
             coord: poi.coord,
-            country_codes: country_codes.clone(),
+            country_codes,
             ..Default::default()
         })
     }
@@ -73,10 +140,15 @@ fn build_new_addr(
 ///
 /// We also search for the admins that contains the coordinates of the poi
 /// and add them as the address's admins.
+///
+/// If try_skip_reverse is set to try, it will reuse the address already
+/// attached to a POI in the ES database.
 pub fn find_address(
     poi: &Poi,
     geofinder: &AdminGeoFinder,
     rubber: &mut Rubber,
+    poi_index: &str,
+    try_skip_reverse: bool,
 ) -> Option<mimir::Address> {
     if poi
         .properties
@@ -136,18 +208,36 @@ pub fn find_address(
                 geofinder.get(&poi.coord),
             ))
         }
-        _ => rubber
-            .get_address(&poi.coord)
-            .map_err(|e| {
-                warn!("get_address returned ES error for {}: {}", poi.id, e);
-                e
-            })
-            .ok()
-            .and_then(|addrs| addrs.into_iter().next())
-            .map(|addr| {
-                addr.address()
-                    .expect("get_address returned a non-address object")
-            }),
+        _ => {
+            if try_skip_reverse {
+                // Fetch the address already attached to the POI to avoid computing an unnecessary
+                // reverse.
+                let changed_coords = |old_coord: mimir::Coord| {
+                    (old_coord.lon() - poi.coord.lon()).abs() > 1e-6
+                        || (old_coord.lat() - poi.coord.lat()).abs() > 1e-6
+                };
+
+                match get_current_addr(rubber, poi_index, &poi.id) {
+                    CurPoiAddress::None { coord } if !changed_coords(coord) => return None,
+                    CurPoiAddress::Some { coord, address }
+                        if !is_osm_addr(&address) && !changed_coords(coord) =>
+                    {
+                        return Some(address);
+                    }
+                    _ => {}
+                }
+            }
+
+            rubber
+                .get_address(&poi.coord)
+                .map_err(|e| warn!("`get_address` returned ES error for {}: {}", poi.id, e))
+                .ok()
+                .and_then(|addrs| addrs.into_iter().next())
+                .map(|addr| {
+                    addr.address()
+                        .expect("`get_address` returned a non-address object")
+                })
+        }
     }
 }
 
