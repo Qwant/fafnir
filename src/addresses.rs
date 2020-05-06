@@ -9,11 +9,15 @@ use serde::Deserialize;
 use std::ops::Deref;
 use std::sync::Arc;
 
+// Prefixes used in ids for Address objects derived from OSM tags
+const FAFNIR_ADDR_NAMESPACE: &str = "addr_poi:";
+const FAFNIR_STREET_NAMESPACE: &str = "street_poi:";
+
 /// Check if a mimir address originates from OSM data.
-pub fn is_osm_addr(addr: &mimir::Address) -> bool {
+pub fn is_addr_derived_from_tags(addr: &mimir::Address) -> bool {
     match addr {
-        mimir::Address::Addr(addr) => addr.id.contains(":osm:"),
-        mimir::Address::Street(st) => st.id.contains(":osm:"),
+        mimir::Address::Addr(addr) => addr.id.starts_with(FAFNIR_ADDR_NAMESPACE),
+        mimir::Address::Street(st) => st.id.starts_with(FAFNIR_STREET_NAMESPACE),
     }
 }
 
@@ -97,7 +101,7 @@ fn build_new_addr(
     let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
     if !house_number_tag.is_empty() {
         mimir::Address::Addr(mimir::Addr {
-            id: format!("addr_poi:{}", &poi.id),
+            id: format!("{}{}", FAFNIR_ADDR_NAMESPACE, &poi.id),
             house_number: house_number_tag.into(),
             name: addr_name,
             street: mimir::Street {
@@ -122,7 +126,7 @@ fn build_new_addr(
         })
     } else {
         mimir::Address::Street(mimir::Street {
-            id: format!("street_poi:{}", &poi.id),
+            id: format!("{}{}", FAFNIR_STREET_NAMESPACE, &poi.id),
             name: street_tag.to_string(),
             label: street_label,
             administrative_regions: admins,
@@ -220,7 +224,7 @@ pub fn find_address(
                 match get_current_addr(rubber, poi_index, &poi.id) {
                     CurPoiAddress::None { coord } if !changed_coords(coord) => return None,
                     CurPoiAddress::Some { coord, address }
-                        if !is_osm_addr(&address) && !changed_coords(coord) =>
+                        if !is_addr_derived_from_tags(&address) && !changed_coords(coord) =>
                     {
                         return Some(address);
                     }
