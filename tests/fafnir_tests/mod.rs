@@ -152,7 +152,7 @@ fn populate_tables(conn: &mut Client) {
      '\"name\"=>\"I am a lost sheep\",\"population\"=>\"3\",\"capital\"=>\"somewhere\"')", &[]).unwrap();
 
     // Insert the "Eiffel Tower" POI
-    conn.execute("INSERT INTO osm_poi_polygon (id, level, indoor, layer, sport, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (1175, 14, TRUE, 0, 'sport', -5013364, 'Tour Eiffel', 'Eiffel Tower', 'Eiffelturm', '\"fee\"=>\"10-25€\", \"3dmr\"=>\"4\", \"name\"=>\"Tour Eiffel\", \"layer\"=>\"2\", \"height\"=>\"324\", \"name:af\"=>\"Eiffel-toring\", \"name:ar\"=>\"برج إيفل\", \"name:ba\"=>\"Эйфель башняһы\", \"name:be\"=>\"Вежа Эйфеля\", \"name:cs\"=>\"Eiffelova věž\", \"name:da\"=>\"Eiffeltårnet\", \"name:de\"=>\"Eiffelturm\", \"name:el\"=>\"Πύργος του Άιφελ\", \"name:en\"=>\"Eiffel Tower\", \"name:eo\"=>\"Eiffel-Turo\", \"name:es\"=>\"Torre Eiffel\", \"name:et\"=>\"Eiffeli torn\", \"name:fa\"=>\"برج ایفل\", \"name:fi\"=>\"Eiffel-torni\", \"name:fr\"=>\"Tour Eiffel\", \"name:hr\"=>\"Eiffelov toranj\", \"name:hu\"=>\"Eiffel-torony\", \"name:ia\"=>\"Turre Eiffel\", \"name:id\"=>\"Menara Eiffel\", \"name:io\"=>\"Turmo Eiffel\", \"name:it\"=>\"Torre Eiffel\", \"name:ja\"=>\"エッフェル塔\", \"name:ku\"=>\"Barûya Eyfelê\", \"name:la\"=>\"Turris Eiffelia\", \"name:lb\"=>\"Eiffeltuerm\", \"name:nl\"=>\"Eiffeltoren\", \"name:pl\"=>\"Wieża Eiffla\", \"name:pt\"=>\"Torre Eiffel\", \"name:ru\"=>\"Эйфелева башня\", \"name:sk\"=>\"Eiffelova veža\", \"name:sr\"=>\"Ајфелова кула\", \"name:sv\"=>\"Eiffeltornet\", \"name:tr\"=>\"Eyfel Kulesi\", \"name:tt\"=>\"Эйфель манарасы\", \"name:uk\"=>\"Ейфелева вежа\", \"name:vi\"=>\"Tháp Eiffel\", \"name:me:vo\"=>\"Tüm di Eiffel\", \"name:zh\"=>\"埃菲尔铁塔\", \"ref:mhs\"=>\"PA00088801\", \"tourism\"=>\"attraction\", \"website\"=>\"http://toureiffel.paris\", \"building\"=>\"yes\", \"heritage\"=>\"3\", \"historic\"=>\"yes\", \"man_made\"=>\"tower\", \"name:ast\"=>\"Torrne Eiffel\", \"name_int\"=>\"Eiffel Tower\", \"operator\"=>\"Société d’Exploitation de la Tour Eiffel\", \"wikidata\"=>\"Q243\", \"addr:city\"=>\"Paris\", \"architect\"=>\"Stephen Sauvestre;Gustave Eiffel;Maurice Koechlin;Émile Nouguier\", \"wikipedia\"=>\"fr:Tour Eiffel\", \"importance\"=>\"international\", \"name:latin\"=>\"Tour Eiffel\", \"start_date\"=>\"C19\", \"tower:type\"=>\"communication;observation\", \"wheelchair\"=>\"yes\", \"addr:street\"=>\"Avenue Anatole France\", \"addr:postcode\"=>\"75007\", \"opening_hours\"=>\"09:30-23:45; Jun 21-Sep 02: 09:00-00:45; Jul 14,Jul 15 off\", \"building:shape\"=>\"pyramidal\", \"building:colour\"=>\"#706550\", \"source:heritage\"=>\"data.gouv.fr, Ministère de la Culture - 2016\", \"addr:housenumber\"=>\"5\", \"building:material\"=>\"iron\", \"heritage:operator\"=>\"mhs\", \"tower:construction\"=>\"lattice\", \"building:min_height\"=>\"0\", \"communication:radio\"=>\"fm\", \"mhs:inscription_date\"=>\"1964-06-24\", \"communication:television\"=>\"dvb-t\"', 'attraction', 'tourism',null,null,null,null,null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
+    conn.execute("INSERT INTO osm_poi_polygon (id, level, indoor, layer, sport, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (1175, 14, TRUE, 0, 'sport', -5013364, 'Tour Eiffel', 'Eiffel Tower', 'Eiffelturm', '\"fee\"=>\"10-25€\", \"3dmr\"=>\"4\", \"name\"=>\"Tour Eiffel\", \"layer\"=>\"2\", \"height\"=>\"324\", \"name:af\"=>\"Eiffel-toring\", \"name:ar\"=>\"برج إيفل\", \"name:ba\"=>\"Эйфель башняһы\", \"name:be\"=>\"Вежа Эйфеля\", \"name:cs\"=>\"Eiffelova věž\", \"name:da\"=>\"Eiffeltårnet\", \"name:de\"=>\"Eiffelturm\", \"name:el\"=>\"Πύργος του Άιφελ\", \"name:en\"=>\"Eiffel Tower\", \"name:eo\"=>\"Eiffel-Turo\", \"name:es\"=>\"Torre Eiffel\", \"name:et\"=>\"Eiffeli torn\", \"name:fa\"=>\"برج ایفل\", \"name:fi\"=>\"Eiffel-torni\", \"name:hr\"=>\"Eiffelov toranj\", \"name:hu\"=>\"Eiffel-torony\", \"name:ia\"=>\"Turre Eiffel\", \"name:id\"=>\"Menara Eiffel\", \"name:io\"=>\"Turmo Eiffel\", \"name:it\"=>\"Torre Eiffel\", \"name:ja\"=>\"エッフェル塔\", \"name:ku\"=>\"Barûya Eyfelê\", \"name:la\"=>\"Turris Eiffelia\", \"name:lb\"=>\"Eiffeltuerm\", \"name:nl\"=>\"Eiffeltoren\", \"name:pl\"=>\"Wieża Eiffla\", \"name:pt\"=>\"Torre Eiffel\", \"name:ru\"=>\"Эйфелева башня\", \"name:sk\"=>\"Eiffelova veža\", \"name:sr\"=>\"Ајфелова кула\", \"name:sv\"=>\"Eiffeltornet\", \"name:tr\"=>\"Eyfel Kulesi\", \"name:tt\"=>\"Эйфель манарасы\", \"name:uk\"=>\"Ейфелева вежа\", \"name:vi\"=>\"Tháp Eiffel\", \"name:me:vo\"=>\"Tüm di Eiffel\", \"name:zh\"=>\"埃菲尔铁塔\", \"ref:mhs\"=>\"PA00088801\", \"tourism\"=>\"attraction\", \"website\"=>\"http://toureiffel.paris\", \"building\"=>\"yes\", \"heritage\"=>\"3\", \"historic\"=>\"yes\", \"man_made\"=>\"tower\", \"name:ast\"=>\"Torrne Eiffel\", \"name_int\"=>\"Eiffel Tower\", \"operator\"=>\"Société d’Exploitation de la Tour Eiffel\", \"wikidata\"=>\"Q243\", \"addr:city\"=>\"Paris\", \"architect\"=>\"Stephen Sauvestre;Gustave Eiffel;Maurice Koechlin;Émile Nouguier\", \"wikipedia\"=>\"fr:Tour Eiffel\", \"importance\"=>\"international\", \"name:latin\"=>\"Tour Eiffel\", \"start_date\"=>\"C19\", \"tower:type\"=>\"communication;observation\", \"wheelchair\"=>\"yes\", \"addr:street\"=>\"Avenue Anatole France\", \"addr:postcode\"=>\"75007\", \"opening_hours\"=>\"09:30-23:45; Jun 21-Sep 02: 09:00-00:45; Jul 14,Jul 15 off\", \"building:shape\"=>\"pyramidal\", \"building:colour\"=>\"#706550\", \"source:heritage\"=>\"data.gouv.fr, Ministère de la Culture - 2016\", \"addr:housenumber\"=>\"5\", \"building:material\"=>\"iron\", \"heritage:operator\"=>\"mhs\", \"tower:construction\"=>\"lattice\", \"building:min_height\"=>\"0\", \"communication:radio\"=>\"fm\", \"mhs:inscription_date\"=>\"1964-06-24\", \"communication:television\"=>\"dvb-t\"', 'attraction', 'tourism',null,null,null,null,null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
 
     // Insert the "Hôtel Auteuil Tour Eiffel" POI
     conn.execute("INSERT INTO osm_poi_polygon (id, level, indoor, layer, sport, osm_id, name, name_en, name_de, tags, subclass, mapping_key, station, funicular, information, uic_ref, religion, geometry) VALUES (10980, 14, TRUE, 0, 'sport', -84194390, 'Hôtel Auteuil Tour Eiffel', null, null, '\"name\"=>\"Hôtel Auteuil Tour Eiffel\", \"source\"=>\"cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2010\", \"tourism\"=>\"hotel\", \"building\"=>\"yes\", \"name_int\"=>\"Hôtel Auteuil Tour Eiffel\", \"name:latin\"=>\"Hôtel Auteuil Tour Eiffel\", \"addr:street\"=>\"Rue Félicien David\", \"addr:postcode\"=>\"75016\", \"addr:housenumber\"=>\"10\"','hotel', 'tourism', null, null, null, null, null, '0101000020E610000000000000000000400000000000000040')", &[]).unwrap();
@@ -843,4 +843,32 @@ pub fn test_address_format(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Pos
     // German format: housenumber comes after street name
     assert_eq!(get_label(spagnolo_addr), "rue bob 12 (bob's town)");
     assert_eq!(get_house_number(spagnolo_addr), &"12".to_string());
+}
+
+pub fn test_current_country_label(
+    mut es_wrapper: ElasticSearchWrapper,
+    pg_wrapper: PostgresWrapper,
+) {
+    init_tests(&mut es_wrapper, &pg_wrapper, "FR");
+    let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
+    super::launch_and_assert(
+        fafnir,
+        vec![
+            format!("--dataset={}", DATASET),
+            format!("--es={}", &es_wrapper.host()),
+            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
+            "--lang=it".into(),
+        ],
+        &es_wrapper,
+    );
+
+    let eiffels: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("name:(Tour Eiffel)", |_| true)
+        .collect();
+
+    assert!(eiffels.iter().map(|ref mut p| p.poi().unwrap()).any(|p| p
+        .labels
+        .0
+        .iter()
+        .any(|l| l.key == "fr" && l.value == "Tour Eiffel")));
 }

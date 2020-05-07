@@ -176,6 +176,18 @@ impl IndexedPoi {
             &country_codes,
             langs,
         );
+        let mut self_country_labels_to_add = Vec::new();
+        for country_code in country_codes.iter() {
+            if !self.poi.labels.0.iter().any(|x| x.key == *country_code) {
+                self_country_labels_to_add.push(country_code.to_lowercase());
+            }
+        }
+        for country_code in self_country_labels_to_add {
+            self.poi.labels.0.push(Property {
+                key: country_code,
+                value: self.poi.name.clone(),
+            });
+        }
         self.poi.zip_codes = zip_codes;
         Some(self)
     }
