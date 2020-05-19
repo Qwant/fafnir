@@ -5,7 +5,6 @@ use mimir::Poi;
 use mimir::Property;
 use mimir::{Coord, PoiType};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::labels::format_international_poi_label;
 use mimirsbrunn::labels::format_poi_label;
 use mimirsbrunn::utils::find_country_codes;
 use postgres::Row;
@@ -45,6 +44,151 @@ static NON_SEARCHABLE_ITEMS: Lazy<BTreeSet<(String, String)>> = Lazy::new(|| {
     .map(|(a, b)| ((*a).to_string(), (*b).to_string()))
     .collect()
 });
+// This map has been filled from https://en.wikipedia.org/wiki/ISO_3166-1
+static COUNTRIES_LANGS: Lazy<HashMap<String, Vec<&'static str>>> = Lazy::new(|| {
+    [
+        // australia
+        ("AU", vec!["en"]),
+        // austria
+        ("AT", vec!["de"]),
+        // belarus
+        ("BY", vec!["be", "ru"]),
+        // belgium
+        ("BE", vec!["fr", "de", "nl"]),
+        // brazil
+        ("BR", vec!["pt"]),
+        // bulgaria
+        ("BG", vec!["bg"]),
+        // canada
+        ("CA", vec!["en", "fr"]),
+        // china
+        ("CN", vec!["zh"]),
+        // croatia
+        ("HR", vec!["hr"]),
+        // czechia
+        ("CZ", vec!["cs"]),
+        // denmark
+        ("DK", vec!["da"]),
+        // estonia
+        ("EE", vec!["et"]),
+        // france
+        ("FR", vec!["fr"]),
+        // germany
+        ("DE", vec!["de"]),
+        // greece
+        ("GR", vec!["el"]),
+        // ireland
+        ("IE", vec!["ga", "en"]),
+        // italy
+        ("IT", vec!["it"]),
+        // japan
+        ("JP", vec!["ja"]),
+        // south korea
+        ("KR", vec!["ko"]),
+        // latvia
+        ("LV", vec!["lv"]),
+        // lithuania
+        ("LT", vec!["lt"]),
+        // luxembourg
+        ("LU", vec!["lb", "fr", "de"]),
+        // mexico
+        ("MX", vec!["es"]),
+        // moldova
+        ("MD", vec!["ro"]),
+        // netherlands
+        ("NL", vec!["nl"]),
+        // new zealand
+        ("NZ", vec!["en", "mi"]),
+        // north macedonia
+        ("MK", vec!["mk", "sq"]),
+        // norway
+        ("NO", vec!["no"]),
+        // poland
+        ("PL", vec!["pl"]),
+        // portugal
+        ("PT", vec!["pt"]),
+        // romania
+        ("RO", vec!["ro"]),
+        // russia
+        ("RU", vec!["ru"]),
+        // serbia
+        ("RS", vec!["sr"]),
+        // singapour
+        ("SG", vec!["en", "ms", "ta"]),
+        // slovakia
+        ("SK", vec!["sk"]),
+        // slovenia
+        ("SL", vec!["sl"]),
+        // spain
+        ("ES", vec!["es"]),
+        // sweden
+        ("SE", vec!["sv"]),
+        // switzerland
+        ("CH", vec!["de", "fr", "it", "rm"]),
+        // thailand
+        ("TH", vec!["th"]),
+        // tunisia
+        ("TN", vec!["ar"]),
+        // turkey
+        ("TR", vec!["tr"]),
+        // ukraine
+        ("UA", vec!["uk"]),
+        // united kingdom
+        ("GB", vec!["en"]),
+        // usa
+        ("US", vec!["en"]),
+        // uruguay
+        ("UY", vec!["es"]),
+        // uzbekistan
+        ("UZ", vec!["uz"]),
+        // venezuela
+        ("VE", vec!["es"]),
+        // viet nam
+        ("VN", vec!["vi"]),
+    ]
+    .iter()
+    .map(|(a, b)| (a.to_string(), b.clone()))
+    .collect()
+});
+
+fn format_i18n_label<'a>(
+    nice_name: &str,
+    mut admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    _country_codes: &[String], // Note: for the moment the country code is not used, but this could change
+    lang: &str,
+) -> String {
+    admins.find(|adm| adm.is_city()).map_or_else(
+        || nice_name.to_string(),
+        |adm| {
+            let local_admin_name = &adm.names.get(lang).unwrap_or(&adm.name);
+            format!("{} ({})", nice_name, local_admin_name)
+        },
+    )
+}
+
+fn format_international_poi_label<'a>(
+    poi_names: &mimir::I18nProperties,
+    default_poi_name: &str,
+    default_poi_label: &str,
+    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    country_codes: &[String],
+    langs: &[String],
+) -> mimir::I18nProperties {
+    let labels = langs
+        .iter()
+        .map(|ref lang| {
+            let local_poi_name = poi_names.get(lang).unwrap_or(default_poi_name);
+            let i18n_poi_label =
+                format_i18n_label(local_poi_name, admins.clone(), country_codes, lang);
+
+            mimir::Property {
+                key: (*lang).to_string(),
+                value: i18n_poi_label,
+            }
+        })
+        .collect();
+    mimir::I18nProperties(labels)
+}
 
 pub struct IndexedPoi {
     pub poi: Poi,
@@ -176,15 +320,19 @@ impl IndexedPoi {
             &country_codes,
             langs,
         );
-        let mut self_country_labels_to_add = Vec::new();
+        let mut self_country_langs_to_add: Vec<String> = Vec::new();
         for country_code in country_codes.iter() {
-            if !self.poi.labels.0.iter().any(|x| x.key == *country_code) {
-                self_country_labels_to_add.push(country_code.to_lowercase());
+            if let Some(langs) = COUNTRIES_LANGS.get(country_code) {
+                for lang in langs {
+                    if !self.poi.labels.0.iter().any(|x| x.key == *lang) {
+                        self_country_langs_to_add.push((*lang).to_owned());
+                    }
+                }
             }
         }
-        for country_code in self_country_labels_to_add {
+        for lang in self_country_langs_to_add {
             self.poi.labels.0.push(Property {
-                key: country_code,
+                key: lang,
                 value: self.poi.name.clone(),
             });
         }
