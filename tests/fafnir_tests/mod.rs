@@ -866,9 +866,29 @@ pub fn test_current_country_label(
         .search_and_filter("name:(Tour Eiffel)", |_| true)
         .collect();
 
+    assert!(!eiffels.iter().map(|ref mut p| p.poi().unwrap()).any(|p| p
+        .labels
+        .0
+        .iter()
+        .any(|l| l.key == "fr")));
+
+    // Now check that we have the fr label too!
+    super::launch_and_assert(
+        fafnir,
+        vec![
+            format!("--dataset={}", DATASET),
+            format!("--es={}", &es_wrapper.host()),
+            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
+            "--lang=fr".into(),
+        ],
+        &es_wrapper,
+    );
+    let eiffels: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("name:(Tour Eiffel)", |_| true)
+        .collect();
     assert!(eiffels.iter().map(|ref mut p| p.poi().unwrap()).any(|p| p
         .labels
         .0
         .iter()
-        .any(|l| l.key == "fr" && l.value == "Tour Eiffel")));
+        .any(|l| l.key == "fr" && l.value == "Tour Eiffel (bob's town)")));
 }

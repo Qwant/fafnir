@@ -5,6 +5,7 @@ use mimir::Poi;
 use mimir::Property;
 use mimir::{Coord, PoiType};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use mimirsbrunn::labels::format_international_poi_label;
 use mimirsbrunn::labels::format_poi_label;
 use mimirsbrunn::utils::find_country_codes;
 use postgres::Row;
@@ -151,45 +152,6 @@ static COUNTRIES_LANGS: Lazy<HashMap<String, Vec<&'static str>>> = Lazy::new(|| 
     .collect()
 });
 
-fn format_i18n_label<'a>(
-    nice_name: &str,
-    mut admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
-    _country_codes: &[String], // Note: for the moment the country code is not used, but this could change
-    lang: &str,
-) -> String {
-    admins.find(|adm| adm.is_city()).map_or_else(
-        || nice_name.to_string(),
-        |adm| {
-            let local_admin_name = &adm.names.get(lang).unwrap_or(&adm.name);
-            format!("{} ({})", nice_name, local_admin_name)
-        },
-    )
-}
-
-fn format_international_poi_label<'a>(
-    poi_names: &mimir::I18nProperties,
-    default_poi_name: &str,
-    default_poi_label: &str,
-    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
-    country_codes: &[String],
-    langs: &[String],
-) -> mimir::I18nProperties {
-    let labels = langs
-        .iter()
-        .map(|ref lang| {
-            let local_poi_name = poi_names.get(lang).unwrap_or(default_poi_name);
-            let i18n_poi_label =
-                format_i18n_label(local_poi_name, admins.clone(), country_codes, lang);
-
-            mimir::Property {
-                key: (*lang).to_string(),
-                value: i18n_poi_label,
-            }
-        })
-        .collect();
-    mimir::I18nProperties(labels)
-}
-
 pub struct IndexedPoi {
     pub poi: Poi,
     pub is_searchable: bool,
@@ -330,10 +292,13 @@ impl IndexedPoi {
                 }
             }
         }
-        for lang in self_country_langs_to_add {
+        for lang in self_country_langs_to_add
+            .into_iter()
+            .filter(|l| langs.iter().any(|lang| lang == l))
+        {
             self.poi.labels.0.push(Property {
                 key: lang,
-                value: self.poi.name.clone(),
+                value: self.poi.label.clone(),
             });
         }
         self.poi.zip_codes = zip_codes;
