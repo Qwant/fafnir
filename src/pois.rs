@@ -199,6 +199,7 @@ impl IndexedPoi {
             }
         }
         self.poi.zip_codes = zip_codes;
+        self.poi.country_codes = country_codes;
         Some(self)
     }
 }
