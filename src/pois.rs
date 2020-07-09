@@ -178,7 +178,7 @@ impl IndexedPoi {
             langs,
         );
         for country_code in country_codes.iter() {
-            if let Some(country_langs) = COUNTRIES_LANGS.get(country_code) {
+            if let Some(country_langs) = COUNTRIES_LANGS.get(&country_code.to_uppercase()) {
                 let poi_labels_langs = self
                     .poi
                     .labels
