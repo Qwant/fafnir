@@ -857,20 +857,19 @@ pub fn test_current_country_label(
             format!("--dataset={}", DATASET),
             format!("--es={}", &es_wrapper.host()),
             format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
-            "--lang=it".into(),
+            "--lang=en".into(),
         ],
         &es_wrapper,
     );
 
     let eiffels: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("name:(Tour Eiffel)", |_| true)
+        .search_and_filter("names.en:(Eiffel Tower)", |_| true)
         .collect();
 
-    assert!(!eiffels.iter().map(|ref mut p| p.poi().unwrap()).any(|p| p
-        .labels
-        .0
-        .iter()
-        .any(|l| l.key == "fr")));
+    assert_eq!(eiffels.len(), 1);
+    let eiffel_tower = eiffels[0].poi().unwrap();
+
+    assert!(!eiffel_tower.labels.0.iter().any(|l| l.key == "fr"));
 
     // Now check that we have the fr label too!
     super::launch_and_assert(
@@ -880,15 +879,23 @@ pub fn test_current_country_label(
             format!("--es={}", &es_wrapper.host()),
             format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
             "--lang=fr".into(),
+            "--lang=en".into(),
         ],
         &es_wrapper,
     );
     let eiffels: Vec<mimir::Place> = es_wrapper
-        .search_and_filter("name:(Tour Eiffel)", |_| true)
+        .search_and_filter("names.en:(Eiffel Tower)", |_| true)
         .collect();
-    assert!(eiffels.iter().map(|ref mut p| p.poi().unwrap()).any(|p| p
+    assert_eq!(eiffels.len(), 1);
+    let eiffel_tower = eiffels[0].poi().unwrap();
+    assert!(eiffel_tower
         .labels
         .0
         .iter()
-        .any(|l| l.key == "fr" && l.value == "Tour Eiffel (bob's town)")));
+        .any(|l| l.key == "fr" && l.value == "Tour Eiffel (bob's town)"));
+    assert!(eiffel_tower
+        .names
+        .0
+        .iter()
+        .any(|n| n.key == "fr" && n.value == "Tour Eiffel"))
 }

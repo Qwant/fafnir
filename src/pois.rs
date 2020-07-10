@@ -196,6 +196,24 @@ impl IndexedPoi {
                         });
                     }
                 }
+
+                let poi_names_langs = self
+                    .poi
+                    .names
+                    .0
+                    .iter()
+                    .map(|x| x.key.clone())
+                    .collect::<Vec<_>>();
+                for lang in country_langs {
+                    if langs.contains(&lang.to_string())
+                        && !poi_names_langs.contains(&lang.to_string())
+                    {
+                        self.poi.names.0.push(Property {
+                            key: lang.to_string(),
+                            value: self.poi.name.clone(),
+                        })
+                    }
+                }
             }
         }
         self.poi.zip_codes = zip_codes;
