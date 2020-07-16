@@ -196,35 +196,48 @@ impl<'a> ElasticSearchWrapper<'a> {
             .and_then(|hits| {
                 match hits {
                     Value::Array(v) => {
-                        Some(Box::new(
-                            v.into_iter()
-                                .filter_map(|json| {
-                                    into_object(json).and_then(|obj| {
-                                        let doc_type = obj
-                                            .get("_type")
-                                            .and_then(|doc_type| doc_type.as_str())
-                                            .map(|doc_type| doc_type.into());
-
-                                        doc_type.and_then(|doc_type| {
-                                            // The real object is contained in the _source section.
-                                            obj.get("_source").and_then(|src| {
-                                                bragi::query::make_place(
-                                                    doc_type,
-                                                    Some(Box::new(src.clone())),
-                                                )
-                                            })
-                                        })
+                        Some(Box::new(v
+                            .into_iter()
+                            .filter_map(into_object)
+                            .filter_map(|obj| obj
+                                .get("_type")
+                                .and_then(|doc_type| doc_type.as_str())
+                                .map(|doc_type| doc_type.into())
+                                .and_then(|doc_type: String| {
+                                    // The real object is contained in the _source section.
+                                    obj.get("_source").and_then(|src| {
+                                        let v = src.clone();
+                                        match doc_type.as_ref() {
+                                            "addr" => convert(v, mimir::Place::Addr),
+                                            "street" => convert(v, mimir::Place::Street),
+                                            "admin" => convert(v, mimir::Place::Admin),
+                                            "poi" => convert(v, mimir::Place::Poi),
+                                            "stop" => convert(v, mimir::Place::Stop),
+                                            _ => {
+                                                panic!("unknown ES return value, _type field = {}", doc_type);
+                                            }
+                                        }
                                     })
                                 })
-                                .filter(predicate),
-                        )
-                            as Box<dyn Iterator<Item = mimir::Place>>)
+                            )
+                            .filter(predicate),
+                        ) as Box<dyn Iterator<Item = mimir::Place>>)
                     }
                     _ => None,
                 }
             })
             .unwrap_or(Box::new(None.into_iter()) as Box<dyn Iterator<Item = mimir::Place>>)
     }
+}
+
+fn convert<T>(v: serde_json::Value, f: fn(T) -> mimir::Place) -> Option<mimir::Place>
+where
+    for<'de> T: serde::Deserialize<'de>,
+{
+    serde_json::from_value::<T>(v)
+        .map_err(|err| warn!("Impossible to load ES result: {}", err))
+        .ok()
+        .map(f)
 }
 
 fn launch_and_assert(
@@ -257,6 +270,10 @@ fn main_test() {
         PostgresWrapper::new(&pg_docker),
     );
     fafnir_tests::test_address_format(
+        ElasticSearchWrapper::new(&mut el_docker),
+        PostgresWrapper::new(&pg_docker),
+    );
+    fafnir_tests::test_current_country_label(
         ElasticSearchWrapper::new(&mut el_docker),
         PostgresWrapper::new(&pg_docker),
     );

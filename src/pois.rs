@@ -1,5 +1,7 @@
 use crate::addresses::find_address;
 use crate::addresses::iter_admins;
+use crate::langs::COUNTRIES_LANGS;
+use mimir::objects::I18nProperties;
 use mimir::rubber::Rubber;
 use mimir::Poi;
 use mimir::Property;
@@ -176,7 +178,33 @@ impl IndexedPoi {
             &country_codes,
             langs,
         );
+        for country_code in country_codes.iter() {
+            if let Some(country_langs) = COUNTRIES_LANGS.get(country_code.to_uppercase().as_str()) {
+                let has_lang = |props: &I18nProperties, lang: &str| {
+                    props.0.iter().any(|prop| prop.key == lang)
+                };
+
+                for lang in country_langs {
+                    if langs.contains(&lang.to_string()) && !has_lang(&self.poi.labels, lang) {
+                        self.poi.labels.0.push(Property {
+                            key: lang.to_string(),
+                            value: self.poi.label.clone(),
+                        });
+                    }
+                }
+
+                for lang in country_langs {
+                    if langs.contains(&lang.to_string()) && !has_lang(&self.poi.names, lang) {
+                        self.poi.names.0.push(Property {
+                            key: lang.to_string(),
+                            value: self.poi.name.clone(),
+                        })
+                    }
+                }
+            }
+        }
         self.poi.zip_codes = zip_codes;
+        self.poi.country_codes = country_codes;
         Some(self)
     }
 }

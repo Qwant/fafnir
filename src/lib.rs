@@ -11,6 +11,7 @@ extern crate serde;
 extern crate serde_json;
 
 mod addresses;
+mod langs;
 mod pois;
 mod utils;
 use crate::par_map::ParMap;
