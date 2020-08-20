@@ -7,8 +7,8 @@ edition = "2018"
 [dependencies]
 geo-types = "0.4"
 postgres = "0.17.4"
-mimirsbrunn = { git = "https://github.com/canalTP/mimirsbrunn", rev = "478ff0c" }
-mimir = { git = "https://github.com/canalTP/mimirsbrunn", rev = "478ff0c" }
+mimirsbrunn = { git = "https://github.com/canalTP/mimirsbrunn", rev = "e87d6db" }
+mimir = { git = "https://github.com/canalTP/mimirsbrunn", rev = "e87d6db" }
 structopt = "0.3"
 log = { version = "0.4", features = ["release_max_level_info"] }
 slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
@@ -24,7 +24,7 @@ serde_json = "1"
 [dev-dependencies]
 retry = "*"
 hyper = "0.10"
-bragi = { git = "https://github.com/canalTP/mimirsbrunn", rev = "478ff0c" }
+bragi = { git = "https://github.com/canalTP/mimirsbrunn", rev = "e87d6db" }
 cosmogony = "0.7"
 rs-es = {git = "https://github.com/canaltp/rs-es", default-features = false, rev = "ea4913e"}
 serde_derive = "1"
