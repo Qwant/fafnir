@@ -160,7 +160,7 @@ impl IndexedPoi {
         let zip_codes = match poi_address {
             Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
             Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
-            _ => vec![],
+            None => vec![],
         };
 
         self.poi.administrative_regions = admins;
