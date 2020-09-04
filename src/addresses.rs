@@ -29,7 +29,7 @@ pub enum CurPoiAddress {
     /// An address has already been found
     Some {
         coord: mimir::Coord,
-        address: mimir::Address,
+        address: Box<mimir::Address>,
     },
 }
 
@@ -66,7 +66,10 @@ pub fn get_current_addr(rubber: &mut Rubber, poi_index: &str, osm_id: &str) -> C
                         let coord = poi_json.coord;
 
                         if let Some(address) = poi_json.address {
-                            CurPoiAddress::Some { coord, address }
+                            CurPoiAddress::Some {
+                                coord,
+                                address: Box::new(address),
+                            }
                         } else {
                             CurPoiAddress::None { coord }
                         }
@@ -226,7 +229,7 @@ pub fn find_address(
                     CurPoiAddress::Some { coord, address }
                         if !is_addr_derived_from_tags(&address) && !changed_coords(coord) =>
                     {
-                        return Some(address);
+                        return Some(*address);
                     }
                     _ => {}
                 }
