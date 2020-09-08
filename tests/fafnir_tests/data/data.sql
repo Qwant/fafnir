@@ -369,10 +369,51 @@ INSERT INTO osm_aerodrome_label_point (
         null,
         null,
         '0101000020110F0000714501E743E172BF010000000000F87F',
-         '
+        '
              "name" => "South Pole Station Airport",
              "aeroway" => "aerodrome",
              "name_int" => "South Pole Station Airport",
              "name:latin" => "South Pole Station Airport"
+        '
+    );
+
+--
+-- osm_water_point
+--
+
+INSERT INTO osm_water_point (osm_id, name, area, tags)
+VALUES
+    (
+        -438255678,
+        'Fontaine-Lavoir Saint-Guimond',
+        27.6204336789181,
+        '
+            "name" => "Fontaine-Lavoir Saint-Guimond",
+            "natural" => "water",
+            "name_int" => "Fontaine-Lavoir Saint-Guimond",
+            "name:latin" => "Fontaine-Lavoir Saint-Guimond"
+        '
+    );
+
+--
+-- osm_water_polygon
+--
+
+INSERT INTO osm_water_polygon (id, osm_id, area, name, name_en, "natural", tags)
+VALUES
+    (
+        258,
+        -100000000002824804,
+        8.5789e8,
+        'Baie du Mont Saint-Michel',
+        'Mont Saint-Michel Bay',
+        'bay',
+        '
+            "name" => "Baie du Mont Saint-Michel",
+            "type" => "multipolygon",
+            "name:br" => "Bae Menez-Mikael",
+            "name:en" => "Mont Saint-Michel Bay",
+            "name:fr" => "Baie du Mont Saint-Michel",
+            "natural" => "bay"
         '
     );

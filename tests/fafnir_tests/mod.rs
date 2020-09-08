@@ -342,6 +342,13 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         .get_all_objects_from_index("munin_poi_nosearch")
         .expect("failed to fetch poi_nosearch documents");
     assert_eq!(nosearch_pois.len(), 2);
+
+    // Test existance of water POIs
+    let res = es_wrapper.search_and_filter("name:(Fontaine-Lavoir Saint-Guimond)", |_| true);
+    assert_eq!(res.count(), 1);
+
+    let res = es_wrapper.search_and_filter("name:(Baie du Mont Saint-Michel)", |_| true);
+    assert_eq!(res.count(), 1);
 }
 
 pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
