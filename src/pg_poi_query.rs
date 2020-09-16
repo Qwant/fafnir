@@ -101,8 +101,8 @@ impl TableQuery {
                 SELECT
                     geometry,
                     {id_column} AS id,
-                    st_x(st_transform(geometry, 4326)) AS lon,
-                    st_y(st_transform(geometry, 4326)) AS lat,
+                    ST_X({geometry_point}) AS lon,
+                    ST_Y({geometry_point}) AS lat,
                     name,
                     tags,
                     {class},
@@ -123,7 +123,8 @@ impl TableQuery {
             subclass = self.override_subclass.as_ref().map_or_else(
                 || "subclass".to_string(),
                 |name| format!("'{}' AS subclass", name)
-            )
+            ),
+            geometry_point = "ST_Transform(ST_Centroid(geometry), 4326)",
         );
 
         if let Some(ref filter) = self.filter {
