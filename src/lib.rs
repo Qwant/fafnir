@@ -103,34 +103,29 @@ pub fn load_and_index_pois(
         .with_table(TableQuery::new("all_pois(14)").id_column("global_id"))
         .with_table(
             TableQuery::new("osm_aerodrome_label_point")
-                .override_class("aerodrome")
-                .override_subclass("airport"),
+                .override_class("'aerodrome'")
+                .override_subclass("'airport'"),
         )
         .with_table(
             TableQuery::new("osm_city_point")
-                .override_class("locality")
-                .override_subclass("hamlet")
+                .override_class("'locality'")
+                .override_subclass("'hamlet'")
                 .filter("name <> '' AND place='hamlet'"),
         )
         .with_table(
             TableQuery::new("osm_water_lakeline")
-                .override_class("water")
-                .override_subclass("lake"),
+                .override_class("'water'")
+                .override_subclass("'lake'"),
         )
         .with_table(
             TableQuery::new("osm_water_point")
-                .override_class("water")
-                .override_subclass("river"),
-        )
-        .with_table(
-            TableQuery::new("osm_water_polygon")
-                .override_class("water")
-                .override_subclass("river"),
+                .override_class("'water'")
+                .override_subclass("'water'"),
         )
         .with_table(
             TableQuery::new("osm_marine_point")
-                .override_class("water")
-                .override_subclass("marine"),
+                .override_class("'water'")
+                .override_subclass("place"),
         );
 
     if let Some(ref bbox) = args.bounding_box {

@@ -112,19 +112,19 @@ impl TableQuery {
             ",
             table = self.table,
             id_column = self.id_column,
-            class = self.override_class.as_ref().map_or_else(
-                || "class".to_string(),
-                |name| format!("'{}' AS class", name)
-            ),
+            class = self
+                .override_class
+                .as_ref()
+                .map_or_else(|| "class".to_string(), |name| format!("{} AS class", name)),
             mapping_key = self.override_class.as_ref().map_or_else(
                 || "mapping_key".to_string(),
-                |name| format!("'{}' AS class", name)
+                |name| format!("{} AS mapping_key", name)
             ),
             subclass = self.override_subclass.as_ref().map_or_else(
                 || "subclass".to_string(),
-                |name| format!("'{}' AS subclass", name)
+                |name| format!("{} AS subclass", name)
             ),
-            geometry_point = "ST_Transform(ST_Centroid(geometry), 4326)",
+            geometry_point = "ST_Transform(ST_PointOnSurface(geometry), 4326)",
         );
 
         if let Some(ref filter) = self.filter {

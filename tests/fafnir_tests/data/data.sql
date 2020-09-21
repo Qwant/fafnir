@@ -394,21 +394,11 @@ VALUES
             "name_int" => "Fontaine-Lavoir Saint-Guimond",
             "name:latin" => "Fontaine-Lavoir Saint-Guimond"
         '
-    );
-
---
--- osm_water_polygon
---
-
-INSERT INTO osm_water_polygon (id, osm_id, area, name, name_en, "natural", geometry, tags)
-VALUES
+    ),
     (
-        258,
         -100000000002824804,
-        8.5789e8,
         'Baie du Mont Saint-Michel',
-        'Mont Saint-Michel Bay',
-        'bay',
+        8.5789e8,
         '0103000020110F00000100000004000000F27883B9B67009C18F0786D67CB5574195D4017BC25905C17CD2E1E06DC55741A6FF1B7A406202C11717A7032BB35741F27883B9B67009C18F0786D67CB55741',
         '
             "name" => "Baie du Mont Saint-Michel",
