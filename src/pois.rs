@@ -24,7 +24,6 @@ static NON_SEARCHABLE_ITEMS: Lazy<BTreeSet<(String, String)>> = Lazy::new(|| {
         ("amenity", "waste_basket"),
         ("amenity", "post_box"),
         ("tourism", "information"),
-        ("amenity", "recycling"),
         ("barrier", "lift_gate"),
         ("barrier", "bollard"),
         ("barrier", "cycle_barrier"),
