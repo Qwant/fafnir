@@ -61,7 +61,7 @@ impl PostgresDocker {
 
         info!("Waiting for Postgres in docker to be up and running...");
 
-        let retry = retry::retry(Fixed::from_millis(1000).take(30), || {
+        let retry = retry::retry(Fixed::from_millis(1000).take(60), || {
             Client::connect(
                 &format!("postgres://test@{}/test", &self.host()),
                 tls::NoTls,

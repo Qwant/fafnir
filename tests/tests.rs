@@ -245,8 +245,19 @@ fn launch_and_assert(
     args: Vec<std::string::String>,
     es_wrapper: &ElasticSearchWrapper,
 ) {
-    let status = Command::new(cmd).args(&args).status().unwrap();
-    assert!(status.success(), "`{}` failed {}", cmd, &status);
+    let mut command = Command::new(cmd);
+    command.args(&args).env("RUST_BACKTRACE", "1");
+    let output = command.output().unwrap();
+
+    if !output.status.success() {
+        eprintln!("=== stdout for {}", cmd);
+        eprintln!("{}", String::from_utf8(output.stdout).unwrap());
+        eprintln!("=== stderr for {}", cmd);
+        eprintln!("{}", String::from_utf8(output.stderr).unwrap());
+        eprintln!("===");
+        panic!("`{}` failed {}", cmd, output.status);
+    }
+
     es_wrapper.refresh();
 }
 

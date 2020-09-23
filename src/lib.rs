@@ -12,6 +12,7 @@ extern crate serde_json;
 
 mod addresses;
 mod langs;
+mod pg_poi_query;
 mod pois;
 mod utils;
 use crate::par_map::ParMap;
@@ -96,70 +97,40 @@ pub fn load_and_index_pois(
     })?;
     let admins_geofinder = admins.into_iter().collect();
 
-    let bbox_filter = args
-        .bounding_box
-        .as_ref()
-        .map(|b| {
-            format!(
-                "WHERE ST_MakeEnvelope({}, 4326) && st_transform(geometry, 4326)",
-                b
-            )
-        })
-        .unwrap_or_else(|| "".into());
+    use pg_poi_query::{POIsQuery, TableQuery};
 
-    let query = format!(
-        "
-        SELECT
-            id,
-            lon,
-            lat,
-            class,
-            name,
-            tags,
-            subclass,
-            mapping_key,
-            poi_display_weight(name, subclass, mapping_key, tags)::float as weight
-        FROM (
-            SELECT
-                geometry,
-                global_id AS id,
-                st_x(st_transform(geometry, 4326)) AS lon,
-                st_y(st_transform(geometry, 4326)) AS lat,
-                class,
-                name,
-                mapping_key,
-                subclass,
-                tags
-            FROM all_pois(14)
-            UNION ALL
-            SELECT
-                geometry,
-                global_id_from_imposm(osm_id) AS id,
-                st_x(st_transform(geometry, 4326)) AS lon,
-                st_y(st_transform(geometry, 4326)) AS lat,
-                'aerodrome' AS class,
-                name,
-                'aerodrome' AS mapping_key,
-                'airport' AS subclass,
-                tags
-            FROM osm_aerodrome_label_point
-            UNION ALL
-            SELECT
-                geometry,
-                global_id_from_imposm(osm_id) AS id,
-                st_x(st_transform(geometry, 4326)) AS lon,
-                st_y(st_transform(geometry, 4326)) AS lat,
-                'locality' AS class,
-                name,
-                'locality' AS mapping_key,
-                'hamlet' AS subclass,
-                tags
-            FROM osm_city_point
-                WHERE name <> '' AND place='hamlet'
-        ) AS unionall
-        {}",
-        bbox_filter
-    );
+    let mut query = POIsQuery::new()
+        .with_table(TableQuery::new("all_pois(14)").id_column("global_id"))
+        .with_table(
+            TableQuery::new("osm_aerodrome_label_point")
+                .override_class("'aerodrome'")
+                .override_subclass("'airport'"),
+        )
+        .with_table(
+            TableQuery::new("osm_city_point")
+                .override_class("'locality'")
+                .override_subclass("'hamlet'")
+                .filter("name <> '' AND place='hamlet'"),
+        )
+        .with_table(
+            TableQuery::new("osm_water_lakeline")
+                .override_class("'water'")
+                .override_subclass("'lake'"),
+        )
+        .with_table(
+            TableQuery::new("osm_water_point")
+                .override_class("'water'")
+                .override_subclass("'water'"),
+        )
+        .with_table(
+            TableQuery::new("osm_marine_point")
+                .override_class("'water'")
+                .override_subclass("place"),
+        );
+
+    if let Some(ref bbox) = args.bounding_box {
+        query = query.bbox(bbox);
+    }
 
     let index_settings = IndexSettings {
         nb_shards: args.nb_shards,
@@ -175,7 +146,9 @@ pub fn load_and_index_pois(
         .expect("failed to make index");
 
     let mut total_nb_pois = 0;
-    let stmt = client.prepare(&query).expect("failed to prepare query");
+    let stmt = client
+        .prepare(&query.build())
+        .expect("failed to prepare query");
     let rows_iterator = client
         .query_raw(&stmt, vec![])?
         .fuse() // Avoids consuming exhausted stream when using par_map
