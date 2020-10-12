@@ -18,29 +18,37 @@ use once_cell::sync::Lazy;
 
 static NON_SEARCHABLE_ITEMS: Lazy<BTreeSet<(String, String)>> = Lazy::new(|| {
     [
-        /* List of (mapping_key, subclass) */
+        /*
+            List of (mapping_key, subclass)
+        */
+        // POIs likely to produce lots of duplicates
         ("highway", "bus_stop"),
-        ("barrier", "gate"),
-        ("amenity", "waste_basket"),
-        ("amenity", "post_box"),
-        ("tourism", "information"),
-        ("barrier", "lift_gate"),
-        ("barrier", "bollard"),
-        ("barrier", "cycle_barrier"),
         ("amenity", "bicycle_rental"),
-        ("tourism", "artwork"),
-        ("amenity", "toilets"),
-        ("leisure", "playground"),
-        ("amenity", "telephone"),
-        ("amenity", "taxi"),
-        ("leisure", "pitch"),
-        ("amenity", "shelter"),
-        ("barrier", "sally_port"),
-        ("barrier", "stile"),
+        ("amenity", "car_sharing"),
         ("amenity", "ferry_terminal"),
         ("amenity", "post_office"),
+        // Street furniture and minor items
+        ("amenity", "post_box"),
+        ("amenity", "shelter"),
+        ("amenity", "taxi"),
+        ("amenity", "telephone"),
+        ("amenity", "toilets"),
+        ("amenity", "waste_basket"),
+        ("leisure", "fitness_station"),
+        ("leisure", "playground"),
+        ("leisure", "pitch"),
+        ("tourism", "artwork"),
+        ("tourism", "information"),
+        // Railway sub-items
         ("railway", "subway_entrance"),
         ("railway", "train_station_entrance"),
+        // Barriers
+        ("barrier", "bollard"),
+        ("barrier", "cycle_barrier"),
+        ("barrier", "gate"),
+        ("barrier", "lift_gate"),
+        ("barrier", "sally_port"),
+        ("barrier", "stile"),
     ]
     .iter()
     .map(|(a, b)| ((*a).to_string(), (*b).to_string()))
