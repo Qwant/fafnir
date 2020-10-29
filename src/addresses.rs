@@ -91,12 +91,12 @@ fn build_new_addr(
     let postcodes = poi
         .properties
         .iter()
-        .find(|p| &p.key == "addr:postcode")
+        .find(|p| ["addr:postcode", "contact:postcode"].contains(&p.key.as_str()))
         .map_or_else(
             || {
                 admins
                     .iter()
-                    .filter(|admin| !admin.zip_codes.is_empty())
+                    .filter(|admin| admin.zip_codes.len() == 1)
                     .sorted_by_key(|admin| admin.zone_type)
                     .map(|admin| admin.zip_codes.clone())
                     .next()
