@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use mimir::rubber::Rubber;
 use mimir::Poi;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -87,12 +88,22 @@ fn build_new_addr(
     poi: &Poi,
     admins: Vec<Arc<mimir::Admin>>,
 ) -> mimir::Address {
-    let postcode = poi
+    let postcodes = poi
         .properties
         .iter()
         .find(|p| &p.key == "addr:postcode")
-        .map(|p| p.value.to_owned());
-    let postcodes = postcode.map_or(vec![], |p| vec![p]);
+        .map_or_else(
+            || {
+                admins
+                    .iter()
+                    .filter(|admin| !admin.zip_codes.is_empty())
+                    .sorted_by_key(|admin| admin.zone_type)
+                    .map(|admin| admin.zip_codes.clone())
+                    .next()
+                    .unwrap_or_else(Vec::new)
+            },
+            |p| vec![p.value.to_owned()],
+        );
     let country_codes = find_country_codes(iter_admins(&admins));
     let street_label = format_street_label(street_tag, iter_admins(&admins), &country_codes);
     let (addr_name, addr_label) = format_addr_name_and_label(

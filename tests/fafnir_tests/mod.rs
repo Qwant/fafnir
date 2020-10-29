@@ -281,7 +281,9 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let spagnolo_addr = spagnolo.address.as_ref().unwrap();
     assert_eq!(get_label(spagnolo_addr), "12 rue bob (bob's town)");
     assert_eq!(get_house_number(spagnolo_addr), &"12".to_string());
-    assert!(get_zip_codes(spagnolo_addr).is_empty());
+    // Spagnolo has no postcode but it is read from admins
+    assert_eq!(spagnolo.zip_codes, ["421337".to_string()]);
+    assert_eq!(get_zip_codes(spagnolo_addr), ["421337".to_string()]);
 
     // Test that two "Tour Eiffel" POI should have been imported: the hotel + the monument
     let eiffels: Vec<mimir::Place> = es_wrapper
