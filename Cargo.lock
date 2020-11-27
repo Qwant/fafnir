@@ -557,7 +557,7 @@ dependencies = [
 [[package]]
 name = "bragi"
 version = "1.17.0"
-source = "git+https://github.com/canalTP/mimirsbrunn?rev=bd25371#bd25371879b39ab7aacd0531c5f2e904e418b1fc"
+source = "git+https://github.com/amatissart/mimirsbrunn?rev=f464332#f4643323dc91e4baf9269fe0b2df40e15b2a6c9f"
 dependencies = [
  "actix-cors",
  "actix-http",
@@ -576,7 +576,7 @@ dependencies = [
  "mimir",
  "num_cpus",
  "prometheus",
- "rs-es",
+ "rs-es 0.12.3 (git+https://github.com/canaltp/rs-es)",
  "serde 1.0.117",
  "serde_json",
  "serde_qs",
@@ -1121,7 +1121,7 @@ dependencies = [
  "postgres",
  "reqwest",
  "retry",
- "rs-es",
+ "rs-es 0.12.3 (git+https://github.com/canaltp/rs-es?rev=ce83c8bb)",
  "serde 1.0.117",
  "serde_derive",
  "serde_json",
@@ -2039,7 +2039,7 @@ dependencies = [
 [[package]]
 name = "mimir"
 version = "1.17.0"
-source = "git+https://github.com/canalTP/mimirsbrunn?rev=bd25371#bd25371879b39ab7aacd0531c5f2e904e418b1fc"
+source = "git+https://github.com/amatissart/mimirsbrunn?rev=f464332#f4643323dc91e4baf9269fe0b2df40e15b2a6c9f"
 dependencies = [
  "address-formatter",
  "chrono",
@@ -2054,7 +2054,7 @@ dependencies = [
  "par-map",
  "prometheus",
  "reqwest",
- "rs-es",
+ "rs-es 0.12.3 (git+https://github.com/canaltp/rs-es)",
  "rstar",
  "serde 1.0.117",
  "serde_json",
@@ -2072,7 +2072,7 @@ dependencies = [
 [[package]]
 name = "mimirsbrunn"
 version = "1.17.0"
-source = "git+https://github.com/canalTP/mimirsbrunn?rev=bd25371#bd25371879b39ab7aacd0531c5f2e904e418b1fc"
+source = "git+https://github.com/amatissart/mimirsbrunn?rev=f464332#f4643323dc91e4baf9269fe0b2df40e15b2a6c9f"
 dependencies = [
  "address-formatter",
  "assert_float_eq",
@@ -2099,7 +2099,7 @@ dependencies = [
  "osmpbfreader",
  "par-map",
  "regex",
- "rs-es",
+ "rs-es 0.12.3 (git+https://github.com/canaltp/rs-es)",
  "rstar",
  "serde 1.0.117",
  "serde_json",
@@ -3171,8 +3171,21 @@ checksum = "d1a6eb3bd241993b09a354047bfba030778b347ac4de4bc0fd80e531e7cbfac8"
 
 [[package]]
 name = "rs-es"
-version = "0.12.2"
-source = "git+https://github.com/canaltp/rs-es?rev=f029b406#f029b406de0788c001a19f91602f83a38b8dc62c"
+version = "0.12.3"
+source = "git+https://github.com/canaltp/rs-es?rev=ce83c8bb#ce83c8bb38c44ceb26bcc9255abc1d8d31d13c10"
+dependencies = [
+ "log 0.4.11",
+ "reqwest",
+ "serde 1.0.117",
+ "serde_json",
+ "thiserror",
+ "url 2.1.1",
+]
+
+[[package]]
+name = "rs-es"
+version = "0.12.3"
+source = "git+https://github.com/canaltp/rs-es#ce83c8bb38c44ceb26bcc9255abc1d8d31d13c10"
 dependencies = [
  "geojson",
  "log 0.4.11",
