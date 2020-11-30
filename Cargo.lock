@@ -1135,6 +1135,7 @@ dependencies = [
  "geo-types",
  "hyper 0.10.16",
  "itertools 0.9.0",
+ "log 0.4.11",
  "mimir",
  "mimirsbrunn",
  "num_cpus",
