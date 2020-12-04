@@ -1,4 +1,5 @@
 extern crate fafnir;
+extern crate log;
 extern crate mimirsbrunn;
 extern crate num_cpus;
 extern crate postgres;
