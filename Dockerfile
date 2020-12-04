@@ -1,4 +1,4 @@
-FROM rust:1-stretch as builder
+FROM rust:1-buster as builder
 
 WORKDIR /srv/fafnir
 
@@ -15,14 +15,14 @@ COPY . ./
 
 RUN cargo build --release
 
-FROM debian:stretch-slim
+FROM debian:buster-slim
 
 WORKDIR /srv
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update \
     && apt-get install -y \
-        libcurl3 \
+        libcurl4 \
         sqlite3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
