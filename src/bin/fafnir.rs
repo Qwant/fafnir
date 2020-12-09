@@ -1,12 +1,8 @@
-extern crate fafnir;
-extern crate log;
-extern crate mimirsbrunn;
-extern crate num_cpus;
-extern crate postgres;
-
 use fafnir::Args;
+use log::LevelFilter;
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
+    log::set_max_level(LevelFilter::Info);
     let client = postgres::Client::connect(&args.pg, postgres::tls::NoTls).unwrap_or_else(|err| {
         panic!("Unable to connect to postgres: {}", err);
     });
