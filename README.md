@@ -1,6 +1,6 @@
-[![GH-build](https://travis-ci.org/QwantResearch/fafnir.svg?branch=master)](https://github.com/QwantResearch/fafnir)
+[![CI status](https://github.com/Qwant/fafnir/workflows/Fafnir%20CI/badge.svg)](https://github.com/Qwant/fafnir)
 [![Docker Pulls](https://img.shields.io/docker/pulls/qwantresearch/fafnir.svg)](https://hub.docker.com/r/qwantresearch/fafnir/)
-[![GitHub license](https://img.shields.io/github/license/QwantResearch/fafnir.svg)](https://github.com/QwantResearch/fafnir/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/github/license/Qwant/fafnir.svg)](https://github.com/Qwant/fafnir/blob/master/LICENSE)
 
 # Fafnir
 
