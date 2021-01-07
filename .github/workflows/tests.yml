@@ -3,7 +3,7 @@ name: Fafnir CI
 on: [push, pull_request]
 
 jobs:
-  build:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
