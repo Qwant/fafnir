@@ -51,6 +51,17 @@ pub enum PartialResult<'p, T> {
 }
 
 impl<'p, T: 'p> PartialResult<'p, T> {
+    pub fn get(self) -> Option<T> {
+        match self {
+            Self::Value(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    pub fn has_value(&self) -> bool {
+        matches!(self, Self::Value(_))
+    }
+
     pub fn map<U>(self, func: impl FnOnce(T) -> U + 'p) -> PartialResult<'p, U> {
         self.partial_map(move |x| PartialResult::Value(func(x)))
     }
@@ -72,36 +83,56 @@ impl<'p, T: 'p> PartialResult<'p, T> {
             },
         }
     }
+}
 
-    pub fn make_progress(self, rubber: &mut Rubber) -> PartialResult<'p, T> {
-        match self {
-            PartialResult::Value(_) => self,
-            PartialResult::NeedEsQuery {
-                header,
-                query,
-                progress,
-            } => {
-                let res = rubber
-                    .post("_msearch", &format!("{}\n{}\n", header, query))
-                    .expect("failed to reach ES")
-                    .text()
-                    .expect("failed to read ES multi response");
+pub fn batch_make_progress<'a, T: 'a>(rubber: &mut Rubber, partials: &mut [PartialResult<'a, T>]) {
+    let need_progress: Vec<_> = partials
+        .iter_mut()
+        .filter(|partial| !partial.has_value())
+        .collect();
 
-                let res_vec =
-                    parse_es_multi_response(&res).expect("failed to parse ES multi response");
+    let body: String = {
+        need_progress
+            .iter()
+            .filter_map(|partial| match partial {
+                PartialResult::NeedEsQuery { header, query, .. } => {
+                    Some(format!("{}\n{}\n", header.to_string(), query.to_string()))
+                }
+                _ => None,
+            })
+            .collect()
+    };
 
-                assert_eq!(res_vec.len(), 1);
-                progress(res_vec[0])
+    let es_response = rubber
+        .post("_msearch", &body)
+        .expect("ES query failed")
+        .text()
+        .expect("failed to read ES response");
+
+    let responses = parse_es_multi_response(&es_response).expect("failed to parse ES responses");
+    assert_eq!(responses.len(), need_progress.len());
+
+    for (partial, res) in need_progress.into_iter().zip(responses) {
+        match partial {
+            PartialResult::NeedEsQuery { progress, .. } => {
+                let progress = std::mem::replace(progress, Box::new(|_| unreachable!()));
+                *partial = progress(res);
             }
+            PartialResult::Value(_) => unreachable!("values expected to be filtered out"),
         }
     }
+}
 
-    pub fn make_progress_until_value(self, rubber: &mut Rubber) -> T {
-        match self {
-            PartialResult::Value(x) => x,
-            PartialResult::NeedEsQuery { .. } => {
-                self.make_progress(rubber).make_progress_until_value(rubber)
-            }
-        }
+pub fn batch_make_progress_until_value<'a, T: 'a>(
+    rubber: &mut Rubber,
+    mut partials: Vec<PartialResult<'a, T>>,
+) -> Vec<T> {
+    while partials.iter().any(|x| !x.has_value()) {
+        batch_make_progress(rubber, partials.as_mut_slice());
     }
+
+    partials
+        .into_iter()
+        .map(|partial| partial.get().unwrap())
+        .collect()
 }

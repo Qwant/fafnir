@@ -3,7 +3,6 @@ use crate::addresses::iter_admins;
 use crate::langs::COUNTRIES_LANGS;
 use crate::lazy_es::PartialResult;
 use mimir::objects::I18nProperties;
-use mimir::rubber::Rubber;
 use mimir::Poi;
 use mimir::Property;
 use mimir::{Coord, PoiType};

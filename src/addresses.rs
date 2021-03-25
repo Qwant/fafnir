@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use mimir::rubber::Rubber;
 use mimir::Poi;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::labels::format_addr_name_and_label;
@@ -41,7 +40,7 @@ pub enum CurPoiAddress {
 /// perform a reverse
 pub fn get_current_addr<'a>(poi_index: &str, osm_id: &str) -> PartialResult<'a, CurPoiAddress> {
     #[derive(Deserialize)]
-    struct FetchPOI {
+    struct FetchPoi {
         coord: mimir::Coord,
         address: Option<mimir::Address>,
     }
@@ -53,7 +52,7 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &str) -> PartialResult<'a, 
             "query": {"terms": {"_id": [osm_id]}}
         }),
         progress: Box::new(move |es_response| {
-            let es_response: EsResponse<FetchPOI> =
+            let es_response: EsResponse<FetchPoi> =
                 serde_json::from_str(es_response).expect("failed to parse ES response");
 
             PartialResult::Value({

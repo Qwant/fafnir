@@ -16,6 +16,7 @@ mod lazy_es;
 mod pg_poi_query;
 mod pois;
 mod utils;
+use crate::lazy_es::batch_make_progress_until_value;
 use crate::par_map::ParMap;
 use pois::IndexedPoi;
 
@@ -98,9 +99,9 @@ pub fn load_and_index_pois(
     })?;
     let admins_geofinder = admins.into_iter().collect();
 
-    use pg_poi_query::{POIsQuery, TableQuery};
+    use pg_poi_query::{PoisQuery, TableQuery};
 
-    let mut query = POIsQuery::new()
+    let mut query = PoisQuery::new()
         .with_table(TableQuery::new("all_pois(14)").id_column("global_id"))
         .with_table(
             TableQuery::new("osm_aerodrome_label_point")
@@ -172,17 +173,24 @@ pub fn load_and_index_pois(
                 let langs = langs.clone();
                 move |p| {
                     let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
-                    let pois = p.into_iter().filter_map(|indexed_poi| {
-                        indexed_poi
-                            .locate_poi(
+
+                    let pois: Vec<_> = p
+                        .iter()
+                        .map(|indexed_poi| {
+                            indexed_poi.locate_poi(
                                 &admins_geofinder,
                                 &langs,
                                 &poi_index_name,
                                 &poi_index_nosearch_name,
                                 try_skip_reverse,
                             )
-                            .make_progress_until_value(&mut rub)
-                    });
+                        })
+                        .collect();
+
+                    let pois = batch_make_progress_until_value(&mut rub, pois)
+                        .into_iter()
+                        .filter_map(|poi| poi);
+
                     let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
                         pois.partition(|p| p.is_searchable);
                     let mut nb_indexed_pois = 0;
