@@ -159,7 +159,7 @@ fn build_new_addr(
 /// We also search for the admins that contains the coordinates of the poi
 /// and add them as the address's admins.
 ///
-/// If try_skip_reverse is set to try, it will reuse the address already
+/// If try_skip_reverse is set to true, it will reuse the address already
 /// attached to a POI in the ES database.
 pub fn find_address(
     poi: &Poi,
@@ -178,23 +178,19 @@ pub fn find_address(
     }
     let osm_addr_tag = ["addr:housenumber", "contact:housenumber"]
         .iter()
-        .filter_map(|k| {
+        .find_map(|k| {
             poi.properties
                 .iter()
                 .find(|p| &p.key == k)
                 .map(|p| &p.value)
-        })
-        .next();
+        });
 
-    let osm_street_tag = ["addr:street", "contact:street"]
-        .iter()
-        .filter_map(|k| {
-            poi.properties
-                .iter()
-                .find(|p| &p.key == k)
-                .map(|p| &p.value)
-        })
-        .next();
+    let osm_street_tag = ["addr:street", "contact:street"].iter().find_map(|k| {
+        poi.properties
+            .iter()
+            .find(|p| &p.key == k)
+            .map(|p| &p.value)
+    });
 
     match (osm_addr_tag, osm_street_tag) {
         (Some(house_number_tag), Some(street_tag)) => Some(build_new_addr(

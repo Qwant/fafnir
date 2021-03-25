@@ -94,10 +94,7 @@ impl IndexedPoi {
         }
 
         let row_properties = properties_from_row(&row).unwrap_or_else(|_| vec![]);
-
-        let names = build_names(langs, &row_properties)
-            .unwrap_or_else(|_| mimir::I18nProperties::default());
-
+        let names = build_names(langs, &row_properties);
         let properties = build_poi_properties(&row, row_properties);
 
         let is_searchable =
@@ -251,7 +248,7 @@ fn build_poi_properties(row: &Row, mut properties: Vec<Property>) -> Vec<Propert
     properties
 }
 
-fn build_names(langs: &[String], properties: &[Property]) -> Result<mimir::I18nProperties, String> {
+fn build_names(langs: &[String], properties: &[Property]) -> mimir::I18nProperties {
     const NAME_TAG_PREFIX: &str = "name:";
 
     let properties = properties
@@ -270,5 +267,5 @@ fn build_names(langs: &[String], properties: &[Property]) -> Result<mimir::I18nP
         })
         .collect();
 
-    Ok(mimir::I18nProperties(properties))
+    mimir::I18nProperties(properties)
 }
