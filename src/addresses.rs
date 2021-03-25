@@ -9,7 +9,7 @@ use serde_json::json;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::lazy_es::{EsResponse, PartialResult};
+use crate::lazy_es::{EsResponse, LazyEs};
 
 // Prefixes used in ids for Address objects derived from OSM tags
 const FAFNIR_ADDR_NAMESPACE: &str = "addr_poi:";
@@ -38,14 +38,14 @@ pub enum CurPoiAddress {
 /// Get current value of address associated with a POI in the ES database if
 /// any, together with current coordinates of the POI that have been used to
 /// perform a reverse
-pub fn get_current_addr<'a>(poi_index: &str, osm_id: &str) -> PartialResult<'a, CurPoiAddress> {
+pub fn get_current_addr<'a>(poi_index: &str, osm_id: &str) -> LazyEs<'a, CurPoiAddress> {
     #[derive(Deserialize)]
     struct FetchPoi {
         coord: mimir::Coord,
         address: Option<mimir::Address>,
     }
 
-    PartialResult::NeedEsQuery {
+    LazyEs::NeedEsQuery {
         header: json!({ "index": poi_index }),
         query: json!({
             "_source": ["address", "coord"],
@@ -55,7 +55,7 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &str) -> PartialResult<'a, 
             let es_response: EsResponse<FetchPoi> =
                 serde_json::from_str(es_response).expect("failed to parse ES response");
 
-            PartialResult::Value({
+            LazyEs::Value({
                 if let Some(poi) = es_response.hits.hits.into_iter().next() {
                     let coord = poi.source.coord;
 
@@ -75,10 +75,10 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &str) -> PartialResult<'a, 
     }
 }
 
-pub fn get_addr_from_coords<'a>(coord: &mimir::Coord) -> PartialResult<'a, Vec<mimir::Place>> {
+pub fn get_addr_from_coords<'a>(coord: &mimir::Coord) -> LazyEs<'a, Vec<mimir::Place>> {
     let indexes = mimir::rubber::get_indexes(false, &[], &[], &["house", "street"]);
 
-    PartialResult::NeedEsQuery {
+    LazyEs::NeedEsQuery {
         header: json!({
             "index": indexes,
             "ignore_unavailable": true
@@ -108,7 +108,7 @@ pub fn get_addr_from_coords<'a>(coord: &mimir::Coord) -> PartialResult<'a, Vec<m
                     .expect("could not build place for ES response")
             });
 
-            PartialResult::Value(places.collect())
+            LazyEs::Value(places.collect())
         }),
     }
 }
@@ -197,14 +197,14 @@ pub fn find_address<'p>(
     geofinder: &'p AdminGeoFinder,
     poi_index: &'p str,
     try_skip_reverse: bool,
-) -> PartialResult<'p, Option<mimir::Address>> {
+) -> LazyEs<'p, Option<mimir::Address>> {
     if poi
         .properties
         .iter()
         .any(|p| p.key == "poi_class" && p.value == "locality")
     {
         // We don't want to add address on hamlets.
-        return PartialResult::Value(None);
+        return LazyEs::Value(None);
     }
 
     let osm_addr_tag = ["addr:housenumber", "contact:housenumber"]
@@ -223,37 +223,33 @@ pub fn find_address<'p>(
             .map(|p| &p.value)
     });
 
-    PartialResult::Value(match (osm_addr_tag, osm_street_tag) {
-        (Some(house_number_tag), Some(street_tag)) => Some(build_new_addr(
+    match (osm_addr_tag, osm_street_tag) {
+        (Some(house_number_tag), Some(street_tag)) => LazyEs::Value(Some(build_new_addr(
             house_number_tag,
             street_tag,
             poi,
             geofinder.get(&poi.coord),
-        )),
-        (None, Some(street_tag)) => {
-            return get_addr_from_coords(&poi.coord).map(move |places| {
-                places
-                    .into_iter()
-                    .find_map(|p| {
-                        let as_address = p.address();
+        ))),
+        (None, Some(street_tag)) => get_addr_from_coords(&poi.coord).map(move |places| {
+            places
+                .into_iter()
+                .find_map(|p| {
+                    let as_address = p.address();
 
-                        match &as_address {
-                            Some(mimir::Address::Addr(a)) if a.street.name == *street_tag => {
-                                as_address
-                            }
-                            _ => None,
-                        }
-                    })
-                    .or_else(|| {
-                        Some(build_new_addr(
-                            "",
-                            street_tag,
-                            poi,
-                            geofinder.get(&poi.coord),
-                        ))
-                    })
-            });
-        }
+                    match &as_address {
+                        Some(mimir::Address::Addr(a)) if a.street.name == *street_tag => as_address,
+                        _ => None,
+                    }
+                })
+                .or_else(|| {
+                    Some(build_new_addr(
+                        "",
+                        street_tag,
+                        poi,
+                        geofinder.get(&poi.coord),
+                    ))
+                })
+        }),
         _ => {
             let es_address = get_addr_from_coords(&poi.coord).map(|places| {
                 Some(
@@ -268,7 +264,7 @@ pub fn find_address<'p>(
             if try_skip_reverse {
                 // Fetch the address already attached to the POI to avoid computing an
                 // unnecessary reverse.
-                return get_current_addr(poi_index, &poi.id).partial_map(move |current_address| {
+                get_current_addr(poi_index, &poi.id).then(move |current_address| {
                     let changed_coords = |old_coord: mimir::Coord| {
                         (old_coord.lon() - poi.coord.lon()).abs() > 1e-6
                             || (old_coord.lat() - poi.coord.lat()).abs() > 1e-6
@@ -276,21 +272,21 @@ pub fn find_address<'p>(
 
                     match current_address {
                         CurPoiAddress::None { coord } if !changed_coords(coord) => {
-                            PartialResult::Value(None)
+                            LazyEs::Value(None)
                         }
                         CurPoiAddress::Some { coord, address }
                             if !is_addr_derived_from_tags(&address) && !changed_coords(coord) =>
                         {
-                            PartialResult::Value(Some(*address))
+                            LazyEs::Value(Some(*address))
                         }
                         _ => es_address,
                     }
-                });
+                })
             } else {
-                return es_address;
+                es_address
             }
         }
-    })
+    }
 }
 
 pub fn iter_admins(admins: &[Arc<mimir::Admin>]) -> impl Iterator<Item = &mimir::Admin> + Clone {

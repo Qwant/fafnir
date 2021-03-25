@@ -1,7 +1,7 @@
 use crate::addresses::find_address;
 use crate::addresses::iter_admins;
 use crate::langs::COUNTRIES_LANGS;
-use crate::lazy_es::PartialResult;
+use crate::lazy_es::LazyEs;
 use mimir::objects::I18nProperties;
 use mimir::Poi;
 use mimir::Property;
@@ -128,7 +128,7 @@ impl IndexedPoi {
         poi_index: &'a str,
         poi_index_nosearch: &'a str,
         try_skip_reverse: bool,
-    ) -> PartialResult<'a, Option<IndexedPoi>> {
+    ) -> LazyEs<'a, Option<IndexedPoi>> {
         let index = if self.is_searchable {
             poi_index
         } else {

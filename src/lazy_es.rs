@@ -38,19 +38,19 @@ pub fn parse_es_multi_response(es_multi_response: &str) -> Result<Vec<&str>, Str
 }
 
 // ---
-// --- PartialResult
+// --- LazyEs
 // ---
 
-pub enum PartialResult<'p, T> {
+pub enum LazyEs<'p, T> {
     Value(T),
     NeedEsQuery {
         header: serde_json::Value,
         query: serde_json::Value,
-        progress: Box<dyn FnOnce(&str) -> PartialResult<'p, T> + 'p>,
+        progress: Box<dyn FnOnce(&str) -> LazyEs<'p, T> + 'p>,
     },
 }
 
-impl<'p, T: 'p> PartialResult<'p, T> {
+impl<'p, T: 'p> LazyEs<'p, T> {
     pub fn get(self) -> Option<T> {
         match self {
             Self::Value(x) => Some(x),
@@ -62,30 +62,27 @@ impl<'p, T: 'p> PartialResult<'p, T> {
         matches!(self, Self::Value(_))
     }
 
-    pub fn map<U>(self, func: impl FnOnce(T) -> U + 'p) -> PartialResult<'p, U> {
-        self.partial_map(move |x| PartialResult::Value(func(x)))
+    pub fn map<U>(self, func: impl FnOnce(T) -> U + 'p) -> LazyEs<'p, U> {
+        self.then(move |x| LazyEs::Value(func(x)))
     }
 
-    pub fn partial_map<U>(
-        self,
-        func: impl FnOnce(T) -> PartialResult<'p, U> + 'p,
-    ) -> PartialResult<'p, U> {
+    pub fn then<U>(self, func: impl FnOnce(T) -> LazyEs<'p, U> + 'p) -> LazyEs<'p, U> {
         match self {
             Self::Value(x) => func(x),
             Self::NeedEsQuery {
                 header,
                 query,
                 progress,
-            } => PartialResult::NeedEsQuery {
+            } => LazyEs::NeedEsQuery {
                 header,
                 query,
-                progress: Box::new(move |val| progress(val).partial_map(func)),
+                progress: Box::new(move |val| progress(val).then(func)),
             },
         }
     }
 }
 
-pub fn batch_make_progress<'a, T: 'a>(rubber: &mut Rubber, partials: &mut [PartialResult<'a, T>]) {
+pub fn batch_make_progress<'a, T: 'a>(rubber: &mut Rubber, partials: &mut [LazyEs<'a, T>]) {
     let need_progress: Vec<_> = partials
         .iter_mut()
         .filter(|partial| !partial.has_value())
@@ -95,7 +92,7 @@ pub fn batch_make_progress<'a, T: 'a>(rubber: &mut Rubber, partials: &mut [Parti
         need_progress
             .iter()
             .filter_map(|partial| match partial {
-                PartialResult::NeedEsQuery { header, query, .. } => {
+                LazyEs::NeedEsQuery { header, query, .. } => {
                     Some(format!("{}\n{}\n", header.to_string(), query.to_string()))
                 }
                 _ => None,
@@ -114,18 +111,18 @@ pub fn batch_make_progress<'a, T: 'a>(rubber: &mut Rubber, partials: &mut [Parti
 
     for (partial, res) in need_progress.into_iter().zip(responses) {
         match partial {
-            PartialResult::NeedEsQuery { progress, .. } => {
+            LazyEs::NeedEsQuery { progress, .. } => {
                 let progress = std::mem::replace(progress, Box::new(|_| unreachable!()));
                 *partial = progress(res);
             }
-            PartialResult::Value(_) => unreachable!("values expected to be filtered out"),
+            LazyEs::Value(_) => unreachable!("values expected to be filtered out"),
         }
     }
 }
 
 pub fn batch_make_progress_until_value<'a, T: 'a>(
     rubber: &mut Rubber,
-    mut partials: Vec<PartialResult<'a, T>>,
+    mut partials: Vec<LazyEs<'a, T>>,
 ) -> Vec<T> {
     while partials.iter().any(|x| !x.has_value()) {
         batch_make_progress(rubber, partials.as_mut_slice());
