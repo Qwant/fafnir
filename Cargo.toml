@@ -19,8 +19,8 @@ par-map = "0.1.4"
 num_cpus = "1.13"
 once_cell = "1.4"
 reqwest = "0.10"
-serde = {version = "1", features = ["rc"]}
-serde_json = "1"
+serde = { version = "1", features = ["rc"] }
+serde_json = { version = "1", features = ["raw_value"] }
 
 [dev-dependencies]
 retry = "*"
@@ -31,3 +31,8 @@ rs-es = {git = "https://github.com/canaltp/rs-es", default-features = false, rev
 serde_derive = "1"
 failure = "0.1"
 approx = "0.2.0"
+
+[patch.'https://github.com/canalTP/mimirsbrunn']
+mimirsbrunn = { git = "https://github.com/remi-dupre/mimirsbrunn", rev = "5ebc280" }
+mimir = { git = "https://github.com/remi-dupre/mimirsbrunn", rev = "5ebc280" }
+bragi = { git = "https://github.com/remi-dupre/mimirsbrunn", rev = "5ebc280" }
