@@ -12,6 +12,7 @@ extern crate serde_json;
 
 mod addresses;
 mod langs;
+mod lazy_es;
 mod pg_poi_query;
 mod pois;
 mod utils;
@@ -172,14 +173,15 @@ pub fn load_and_index_pois(
                 move |p| {
                     let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
                     let pois = p.into_iter().filter_map(|indexed_poi| {
-                        indexed_poi.locate_poi(
-                            &admins_geofinder,
-                            &mut rub,
-                            &langs,
-                            &poi_index_name,
-                            &poi_index_nosearch_name,
-                            try_skip_reverse,
-                        )
+                        indexed_poi
+                            .locate_poi(
+                                &admins_geofinder,
+                                &langs,
+                                &poi_index_name,
+                                &poi_index_nosearch_name,
+                                try_skip_reverse,
+                            )
+                            .make_progress_until_value(&mut rub)
                     });
                     let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
                         pois.partition(|p| p.is_searchable);

@@ -7,31 +7,14 @@ use mimirsbrunn::labels::format_street_label;
 use mimirsbrunn::utils::find_country_codes;
 use serde::Deserialize;
 use serde_json::json;
-use serde_json::value::RawValue;
 use std::ops::Deref;
 use std::sync::Arc;
+
+use crate::lazy_es::{EsResponse, PartialResult};
 
 // Prefixes used in ids for Address objects derived from OSM tags
 const FAFNIR_ADDR_NAMESPACE: &str = "addr_poi:";
 const FAFNIR_STREET_NAMESPACE: &str = "street_poi:";
-
-#[derive(Deserialize)]
-struct EsHit<U> {
-    #[serde(rename = "_source")]
-    source: U,
-    #[serde(rename = "_type")]
-    doc_type: String,
-}
-
-#[derive(Deserialize)]
-struct EsHits<U> {
-    hits: Vec<EsHit<U>>,
-}
-
-#[derive(Deserialize)]
-struct EsResponse<U> {
-    hits: EsHits<U>,
-}
 
 /// Check if a mimir address originates from OSM data.
 pub fn is_addr_derived_from_tags(addr: &mimir::Address) -> bool {
@@ -51,23 +34,6 @@ pub enum CurPoiAddress {
         coord: mimir::Coord,
         address: Box<mimir::Address>,
     },
-}
-
-pub fn parse_es_multi_response(es_multi_response: &str) -> Result<Vec<&str>, String> {
-    #[derive(Deserialize)]
-    struct EsResponse<'a> {
-        #[serde(borrow)]
-        responses: Vec<&'a RawValue>,
-    }
-
-    let es_response: EsResponse = serde_json::from_str(es_multi_response)
-        .map_err(|err| format!("failed to parse ES multi response: {:?}", err))?;
-
-    Ok(es_response
-        .responses
-        .into_iter()
-        .map(RawValue::get)
-        .collect())
 }
 
 /// Get current value of address associated with a POI in the ES database if
@@ -219,71 +185,6 @@ fn build_new_addr(
     }
 }
 
-pub enum PartialResult<'p, T> {
-    Value(T),
-    NeedEsQuery {
-        header: serde_json::Value,
-        query: serde_json::Value,
-        progress: Box<dyn FnOnce(&str) -> PartialResult<'p, T> + 'p>,
-    },
-}
-
-impl<'p, T: 'p> PartialResult<'p, T> {
-    pub fn map<U>(self, func: impl FnOnce(T) -> U + 'p) -> PartialResult<'p, U> {
-        self.partial_map(move |x| PartialResult::Value(func(x)))
-    }
-
-    pub fn partial_map<U>(
-        self,
-        func: impl FnOnce(T) -> PartialResult<'p, U> + 'p,
-    ) -> PartialResult<'p, U> {
-        match self {
-            Self::Value(x) => func(x),
-            Self::NeedEsQuery {
-                header,
-                query,
-                progress,
-            } => PartialResult::NeedEsQuery {
-                header,
-                query,
-                progress: Box::new(move |val| progress(val).partial_map(func)),
-            },
-        }
-    }
-
-    pub fn make_progress(self, rubber: &mut Rubber) -> PartialResult<'p, T> {
-        match self {
-            PartialResult::Value(_) => self,
-            PartialResult::NeedEsQuery {
-                header,
-                query,
-                progress,
-            } => {
-                let res = rubber
-                    .post("_msearch", &format!("{}\n{}\n", header, query))
-                    .expect("failed to reach ES")
-                    .text()
-                    .expect("failed to read ES multi response");
-
-                let res_vec =
-                    parse_es_multi_response(&res).expect("failed to parse ES multi response");
-
-                assert_eq!(res_vec.len(), 1);
-                progress(res_vec[0])
-            }
-        }
-    }
-
-    pub fn make_progress_until_value(self, rubber: &mut Rubber) -> T {
-        match self {
-            PartialResult::Value(x) => x,
-            PartialResult::NeedEsQuery { .. } => {
-                self.make_progress(rubber).make_progress_until_value(rubber)
-            }
-        }
-    }
-}
-
 /// Build mimir Address from Poi,using osm address tags (if present)
 /// or using reverse geocoding.
 ///
@@ -292,7 +193,7 @@ impl<'p, T: 'p> PartialResult<'p, T> {
 ///
 /// If try_skip_reverse is set to true, it will reuse the address already
 /// attached to a POI in the ES database.
-pub fn new_find_address<'p>(
+pub fn find_address<'p>(
     poi: &'p Poi,
     geofinder: &'p AdminGeoFinder,
     poi_index: &'p str,
@@ -391,24 +292,6 @@ pub fn new_find_address<'p>(
             }
         }
     })
-}
-
-/// Build mimir Address from Poi,using osm address tags (if present)
-/// or using reverse geocoding.
-///
-/// We also search for the admins that contains the coordinates of the poi
-/// and add them as the address's admins.
-///
-/// If try_skip_reverse is set to true, it will reuse the address already
-/// attached to a POI in the ES database.
-pub fn find_address(
-    poi: &Poi,
-    geofinder: &AdminGeoFinder,
-    rubber: &mut Rubber,
-    poi_index: &str,
-    try_skip_reverse: bool,
-) -> Option<mimir::Address> {
-    new_find_address(poi, geofinder, poi_index, try_skip_reverse).make_progress_until_value(rubber)
 }
 
 pub fn iter_admins(admins: &[Arc<mimir::Admin>]) -> impl Iterator<Item = &mimir::Admin> + Clone {
