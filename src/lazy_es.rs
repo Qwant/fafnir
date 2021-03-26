@@ -63,6 +63,8 @@ pub fn batch_make_progress<'a, T: 'a>(rubber: &mut Rubber, partials: &mut [LazyE
         .filter(|partial| partial.value().is_none())
         .collect();
 
+    info!("sending {} requests to ES", need_progress.len());
+
     let body: String = {
         need_progress
             .iter()
