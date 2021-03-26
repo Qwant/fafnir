@@ -2,41 +2,6 @@ use mimir::rubber::Rubber;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 
-#[derive(Deserialize)]
-pub struct EsHit<U> {
-    #[serde(rename = "_source")]
-    pub source: U,
-    #[serde(rename = "_type")]
-    pub doc_type: String,
-}
-
-#[derive(Deserialize)]
-pub struct EsHits<U> {
-    pub hits: Vec<EsHit<U>>,
-}
-
-#[derive(Deserialize)]
-pub struct EsResponse<U> {
-    pub hits: EsHits<U>,
-}
-
-pub fn parse_es_multi_response(es_multi_response: &str) -> Result<Vec<&str>, String> {
-    #[derive(Deserialize)]
-    struct EsResponse<'a> {
-        #[serde(borrow)]
-        responses: Vec<&'a RawValue>,
-    }
-
-    let es_response: EsResponse = serde_json::from_str(es_multi_response)
-        .map_err(|err| format!("failed to parse ES multi response: {:?}", err))?;
-
-    Ok(es_response
-        .responses
-        .into_iter()
-        .map(RawValue::get)
-        .collect())
-}
-
 // ---
 // --- LazyEs
 // ---
@@ -51,15 +16,25 @@ pub enum LazyEs<'p, T> {
 }
 
 impl<'p, T: 'p> LazyEs<'p, T> {
-    pub fn get(self) -> Option<T> {
+    pub fn value(&self) -> Option<&T> {
         match self {
             Self::Value(x) => Some(x),
             _ => None,
         }
     }
 
-    pub fn has_value(&self) -> bool {
-        matches!(self, Self::Value(_))
+    pub fn header_and_query(&self) -> Option<(&serde_json::Value, &serde_json::Value)> {
+        match self {
+            Self::NeedEsQuery { header, query, .. } => Some((header, query)),
+            _ => None,
+        }
+    }
+
+    pub fn into_value(self) -> Option<T> {
+        match self {
+            Self::Value(x) => Some(x),
+            _ => None,
+        }
     }
 
     pub fn map<U>(self, func: impl FnOnce(T) -> U + 'p) -> LazyEs<'p, U> {
@@ -85,17 +60,15 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 pub fn batch_make_progress<'a, T: 'a>(rubber: &mut Rubber, partials: &mut [LazyEs<'a, T>]) {
     let need_progress: Vec<_> = partials
         .iter_mut()
-        .filter(|partial| !partial.has_value())
+        .filter(|partial| partial.value().is_none())
         .collect();
 
     let body: String = {
         need_progress
             .iter()
-            .filter_map(|partial| match partial {
-                LazyEs::NeedEsQuery { header, query, .. } => {
-                    Some(format!("{}\n{}\n", header.to_string(), query.to_string()))
-                }
-                _ => None,
+            .filter_map(|partial| {
+                let (header, query) = partial.header_and_query()?;
+                Some(format!("{}\n{}\n", header.to_string(), query.to_string()))
             })
             .collect()
     };
@@ -115,7 +88,7 @@ pub fn batch_make_progress<'a, T: 'a>(rubber: &mut Rubber, partials: &mut [LazyE
                 let progress = std::mem::replace(progress, Box::new(|_| unreachable!()));
                 *partial = progress(res);
             }
-            LazyEs::Value(_) => unreachable!("values expected to be filtered out"),
+            LazyEs::Value(_) => unreachable!(),
         }
     }
 }
@@ -124,12 +97,51 @@ pub fn batch_make_progress_until_value<'a, T: 'a>(
     rubber: &mut Rubber,
     mut partials: Vec<LazyEs<'a, T>>,
 ) -> Vec<T> {
-    while partials.iter().any(|x| !x.has_value()) {
+    while partials.iter().any(|x| x.value().is_none()) {
         batch_make_progress(rubber, partials.as_mut_slice());
     }
 
     partials
         .into_iter()
-        .map(|partial| partial.get().unwrap())
+        .map(|partial| partial.into_value().unwrap())
         .collect()
+}
+
+// ---
+// --- Lower level ES interractions
+// ---
+
+#[derive(Deserialize)]
+pub struct EsResponse<U> {
+    pub hits: EsHits<U>,
+}
+
+#[derive(Deserialize)]
+pub struct EsHits<U> {
+    pub hits: Vec<EsHit<U>>,
+}
+
+#[derive(Deserialize)]
+pub struct EsHit<U> {
+    #[serde(rename = "_source")]
+    pub source: U,
+    #[serde(rename = "_type")]
+    pub doc_type: String,
+}
+
+pub fn parse_es_multi_response(es_multi_response: &str) -> Result<Vec<&str>, String> {
+    #[derive(Deserialize)]
+    struct EsResponse<'a> {
+        #[serde(borrow)]
+        responses: Vec<&'a RawValue>,
+    }
+
+    let es_response: EsResponse = serde_json::from_str(es_multi_response)
+        .map_err(|err| format!("failed to parse ES multi response: {:?}", err))?;
+
+    Ok(es_response
+        .responses
+        .into_iter()
+        .map(RawValue::get)
+        .collect())
 }

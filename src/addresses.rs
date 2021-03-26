@@ -38,7 +38,7 @@ pub enum CurPoiAddress {
 /// Get current value of address associated with a POI in the ES database if
 /// any, together with current coordinates of the POI that have been used to
 /// perform a reverse
-pub fn get_current_addr<'a>(poi_index: &str, osm_id: &str) -> LazyEs<'a, CurPoiAddress> {
+pub fn get_current_addr<'a>(poi_index: &str, osm_id: &'a str) -> LazyEs<'a, CurPoiAddress> {
     #[derive(Deserialize)]
     struct FetchPoi {
         coord: mimir::Coord,
@@ -52,30 +52,41 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &str) -> LazyEs<'a, CurPoiA
             "query": {"terms": {"_id": [osm_id]}}
         }),
         progress: Box::new(move |es_response| {
-            let es_response: EsResponse<FetchPoi> =
-                serde_json::from_str(es_response).expect("failed to parse ES response");
+            LazyEs::Value(
+                serde_json::from_str(es_response)
+                    .map_err(|err| {
+                        warn!(
+                            "failed to parse ES response while reading old address for {}: {:?}",
+                            osm_id, err
+                        )
+                    })
+                    .ok()
+                    .and_then(|es_response: EsResponse<_>| {
+                        assert!(es_response.hits.hits.len() <= 1);
+                        es_response.hits.hits.into_iter().next()
+                    })
+                    .map(|hit| hit.source)
+                    .map(|poi: FetchPoi| {
+                        let coord = poi.coord;
 
-            LazyEs::Value({
-                if let Some(poi) = es_response.hits.hits.into_iter().next() {
-                    let coord = poi.source.coord;
-
-                    if let Some(address) = poi.source.address {
-                        CurPoiAddress::Some {
-                            coord,
-                            address: Box::new(address),
+                        if let Some(address) = poi.address {
+                            CurPoiAddress::Some {
+                                coord,
+                                address: Box::new(address),
+                            }
+                        } else {
+                            CurPoiAddress::None { coord }
                         }
-                    } else {
-                        CurPoiAddress::None { coord }
-                    }
-                } else {
-                    CurPoiAddress::NotFound
-                }
-            })
+                    })
+                    .unwrap_or(CurPoiAddress::NotFound),
+            )
         }),
     }
 }
 
-pub fn get_addr_from_coords<'a>(coord: &mimir::Coord) -> LazyEs<'a, Vec<mimir::Place>> {
+pub fn get_addr_from_coords<'a>(
+    coord: &mimir::Coord,
+) -> LazyEs<'a, Result<Vec<mimir::Place>, serde_json::Error>> {
     let indexes = mimir::rubber::get_indexes(false, &[], &[], &["house", "street"]);
 
     LazyEs::NeedEsQuery {
@@ -100,15 +111,17 @@ pub fn get_addr_from_coords<'a>(coord: &mimir::Coord) -> LazyEs<'a, Vec<mimir::P
             }
         }),
         progress: Box::new(|es_response| {
-            let es_response: EsResponse<serde_json::Value> =
-                serde_json::from_str(es_response).expect("failed to parse ES response");
+            let result = serde_json::from_str(es_response).map(
+                |es_response: EsResponse<serde_json::Value>| {
+                    let places = es_response.hits.hits.into_iter().filter_map(|hit| {
+                        mimir::rubber::make_place(hit.doc_type, Some(Box::new(hit.source)), None)
+                    });
 
-            let places = es_response.hits.hits.into_iter().map(|hit| {
-                mimir::rubber::make_place(hit.doc_type, Some(Box::new(hit.source)), None)
-                    .expect("could not build place for ES response")
-            });
+                    places.collect()
+                },
+            );
 
-            LazyEs::Value(places.collect())
+            LazyEs::Value(result)
         }),
     }
 }
@@ -195,7 +208,7 @@ fn build_new_addr(
 pub fn find_address<'p>(
     poi: &'p Poi,
     geofinder: &'p AdminGeoFinder,
-    poi_index: &'p str,
+    poi_index: &str,
     try_skip_reverse: bool,
 ) -> LazyEs<'p, Option<mimir::Address>> {
     if poi
@@ -230,9 +243,12 @@ pub fn find_address<'p>(
             poi,
             geofinder.get(&poi.coord),
         ))),
-        (None, Some(street_tag)) => get_addr_from_coords(&poi.coord).map(move |places| {
-            places
+        (None, Some(street_tag)) => get_addr_from_coords(&poi.coord).map(move |addrs| {
+            addrs
+                .map_err(|err| warn!("failed during reverse of address: {:?}", err))
+                .ok()
                 .into_iter()
+                .flatten()
                 .find_map(|p| {
                     let as_address = p.address();
 
@@ -251,10 +267,13 @@ pub fn find_address<'p>(
                 })
         }),
         _ => {
-            let es_address = get_addr_from_coords(&poi.coord).map(|places| {
+            let lazy_es_address = get_addr_from_coords(&poi.coord).map(|places| {
                 Some(
                     places
+                        .map_err(|err| warn!("failed during reverse of address: {:?}", err))
+                        .ok()
                         .into_iter()
+                        .flatten()
                         .next()?
                         .address()
                         .expect("`get_address_from_coords` returned a non-address object"),
@@ -279,11 +298,11 @@ pub fn find_address<'p>(
                         {
                             LazyEs::Value(Some(*address))
                         }
-                        _ => es_address,
+                        _ => lazy_es_address,
                     }
                 })
             } else {
-                es_address
+                lazy_es_address
             }
         }
     }
