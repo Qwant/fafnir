@@ -16,8 +16,8 @@ mod lazy_es;
 mod pg_poi_query;
 mod pois;
 mod utils;
-use crate::lazy_es::batch_make_progress_until_value;
 use crate::par_map::ParMap;
+use lazy_es::LazyEs;
 use pois::IndexedPoi;
 
 use itertools::process_results;
@@ -187,7 +187,7 @@ pub fn load_and_index_pois(
                         })
                         .collect();
 
-                    let pois = batch_make_progress_until_value(&mut rub, pois)
+                    let pois = LazyEs::batch_make_progress_until_value(&mut rub, pois)
                         .into_iter()
                         .filter_map(|poi| poi);
 

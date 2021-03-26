@@ -84,6 +84,7 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &'a str) -> LazyEs<'a, CurP
     }
 }
 
+/// Get addresses close to input coordinates.
 pub fn get_addr_from_coords<'a>(
     coord: &mimir::Coord,
 ) -> LazyEs<'a, Result<Vec<mimir::Place>, serde_json::Error>> {

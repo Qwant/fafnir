@@ -6,8 +6,14 @@ use serde_json::value::RawValue;
 // --- LazyEs
 // ---
 
+/// Computation result that may lazily rely on an elasticsearch "search"
+/// request.
 pub enum LazyEs<'p, T> {
+    /// The result of the computation is ready.
     Value(T),
+    /// The computation needs to make a request to elasticsearch in order to
+    /// make progress, the function `progress` takes the raw answer from
+    /// elasticsearch and returns the new state of the computation.
     NeedEsQuery {
         header: serde_json::Value,
         query: serde_json::Value,
@@ -16,6 +22,7 @@ pub enum LazyEs<'p, T> {
 }
 
 impl<'p, T: 'p> LazyEs<'p, T> {
+    /// Read computed value if it is ready.
     pub fn value(&self) -> Option<&T> {
         match self {
             Self::Value(x) => Some(x),
@@ -23,13 +30,7 @@ impl<'p, T: 'p> LazyEs<'p, T> {
         }
     }
 
-    pub fn header_and_query(&self) -> Option<(&serde_json::Value, &serde_json::Value)> {
-        match self {
-            Self::NeedEsQuery { header, query, .. } => Some((header, query)),
-            _ => None,
-        }
-    }
-
+    /// Extract computed value if it is ready.
     pub fn into_value(self) -> Option<T> {
         match self {
             Self::Value(x) => Some(x),
@@ -37,10 +38,24 @@ impl<'p, T: 'p> LazyEs<'p, T> {
         }
     }
 
+    /// Read the header and query that have to be sent to elasticsearch if it
+    /// is required.
+    pub fn header_and_query(&self) -> Option<(&serde_json::Value, &serde_json::Value)> {
+        match self {
+            Self::NeedEsQuery { header, query, .. } => Some((header, query)),
+            _ => None,
+        }
+    }
+
+    /// Chain some computation out of the value which will eventually be
+    /// computed.
     pub fn map<U>(self, func: impl FnOnce(T) -> U + 'p) -> LazyEs<'p, U> {
         self.then(move |x| LazyEs::Value(func(x)))
     }
 
+    /// Chain some lazy computation out of the value which will eventually be
+    /// computed. This means that one more elasticsearch request may be
+    /// required to compute the final result.
     pub fn then<U>(self, func: impl FnOnce(T) -> LazyEs<'p, U> + 'p) -> LazyEs<'p, U> {
         match self {
             Self::Value(x) => func(x),
@@ -55,58 +70,60 @@ impl<'p, T: 'p> LazyEs<'p, T> {
             },
         }
     }
-}
 
-pub fn batch_make_progress<'a, T: 'a>(rubber: &mut Rubber, partials: &mut [LazyEs<'a, T>]) {
-    let need_progress: Vec<_> = partials
-        .iter_mut()
-        .filter(|partial| partial.value().is_none())
-        .collect();
+    /// Send a request to elasticsearch to make progress for all computations
+    /// in `partials` that are not done yet.
+    pub fn batch_make_progress(rubber: &mut Rubber, partials: &mut [Self]) {
+        let need_progress: Vec<_> = partials
+            .iter_mut()
+            .filter(|partial| partial.value().is_none())
+            .collect();
 
-    info!("sending {} requests to ES", need_progress.len());
+        info!("sending {} requests to ES", need_progress.len());
 
-    let body: String = {
-        need_progress
-            .iter()
-            .filter_map(|partial| {
-                let (header, query) = partial.header_and_query()?;
-                Some(format!("{}\n{}\n", header.to_string(), query.to_string()))
-            })
-            .collect()
-    };
+        let body: String = {
+            need_progress
+                .iter()
+                .filter_map(|partial| {
+                    let (header, query) = partial.header_and_query()?;
+                    Some(format!("{}\n{}\n", header.to_string(), query.to_string()))
+                })
+                .collect()
+        };
 
-    let es_response = rubber
-        .post("_msearch", &body)
-        .expect("ES query failed")
-        .text()
-        .expect("failed to read ES response");
+        let es_response = rubber
+            .post("_msearch", &body)
+            .expect("ES query failed")
+            .text()
+            .expect("failed to read ES response");
 
-    let responses = parse_es_multi_response(&es_response).expect("failed to parse ES responses");
-    assert_eq!(responses.len(), need_progress.len());
+        let responses =
+            parse_es_multi_response(&es_response).expect("failed to parse ES responses");
+        assert_eq!(responses.len(), need_progress.len());
 
-    for (partial, res) in need_progress.into_iter().zip(responses) {
-        match partial {
-            LazyEs::NeedEsQuery { progress, .. } => {
-                let progress = std::mem::replace(progress, Box::new(|_| unreachable!()));
-                *partial = progress(res);
+        for (partial, res) in need_progress.into_iter().zip(responses) {
+            match partial {
+                LazyEs::NeedEsQuery { progress, .. } => {
+                    let progress = std::mem::replace(progress, Box::new(|_| unreachable!()));
+                    *partial = progress(res);
+                }
+                LazyEs::Value(_) => unreachable!(),
             }
-            LazyEs::Value(_) => unreachable!(),
         }
     }
-}
 
-pub fn batch_make_progress_until_value<'a, T: 'a>(
-    rubber: &mut Rubber,
-    mut partials: Vec<LazyEs<'a, T>>,
-) -> Vec<T> {
-    while partials.iter().any(|x| x.value().is_none()) {
-        batch_make_progress(rubber, partials.as_mut_slice());
+    /// Run all input computations until they are finished and finally output
+    /// the resulting values.
+    pub fn batch_make_progress_until_value(rubber: &mut Rubber, mut partials: Vec<Self>) -> Vec<T> {
+        while partials.iter().any(|x| x.value().is_none()) {
+            Self::batch_make_progress(rubber, partials.as_mut_slice());
+        }
+
+        partials
+            .into_iter()
+            .map(|partial| partial.into_value().unwrap())
+            .collect()
     }
-
-    partials
-        .into_iter()
-        .map(|partial| partial.into_value().unwrap())
-        .collect()
 }
 
 // ---
@@ -131,15 +148,14 @@ pub struct EsHit<U> {
     pub doc_type: String,
 }
 
-pub fn parse_es_multi_response(es_multi_response: &str) -> Result<Vec<&str>, String> {
+pub fn parse_es_multi_response(es_multi_response: &str) -> serde_json::Result<Vec<&str>> {
     #[derive(Deserialize)]
     struct EsResponse<'a> {
         #[serde(borrow)]
         responses: Vec<&'a RawValue>,
     }
 
-    let es_response: EsResponse = serde_json::from_str(es_multi_response)
-        .map_err(|err| format!("failed to parse ES multi response: {:?}", err))?;
+    let es_response: EsResponse = serde_json::from_str(es_multi_response)?;
 
     Ok(es_response
         .responses
