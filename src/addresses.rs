@@ -56,8 +56,8 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &'a str) -> LazyEs<'a, CurP
                 serde_json::from_str(es_response)
                     .map_err(|err| {
                         warn!(
-                            "failed to parse ES response while reading old address for {}: {:?}",
-                            osm_id, err
+                            "failed to parse ES response while reading old address for {} ({:?}): {}",
+                            osm_id, err, es_response
                         )
                     })
                     .ok()
@@ -272,9 +272,8 @@ pub fn find_address<'p>(
                 Some(
                     places
                         .map_err(|err| warn!("failed during reverse of address: {:?}", err))
-                        .ok()
+                        .ok()?
                         .into_iter()
-                        .flatten()
                         .next()?
                         .address()
                         .expect("`get_address_from_coords` returned a non-address object"),

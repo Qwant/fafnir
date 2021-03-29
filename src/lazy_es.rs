@@ -73,13 +73,12 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 
     /// Send a request to elasticsearch to make progress for all computations
     /// in `partials` that are not done yet.
-    pub fn batch_make_progress(rubber: &mut Rubber, partials: &mut [Self]) {
+    pub fn batch_make_progress(rubber: &mut Rubber, partials: &mut [Self], max_batch_size: usize) {
         let need_progress: Vec<_> = partials
             .iter_mut()
             .filter(|partial| partial.value().is_none())
+            .take(max_batch_size)
             .collect();
-
-        info!("sending {} requests to ES", need_progress.len());
 
         let body: String = {
             need_progress
@@ -114,9 +113,13 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 
     /// Run all input computations until they are finished and finally output
     /// the resulting values.
-    pub fn batch_make_progress_until_value(rubber: &mut Rubber, mut partials: Vec<Self>) -> Vec<T> {
+    pub fn batch_make_progress_until_value(
+        rubber: &mut Rubber,
+        mut partials: Vec<Self>,
+        max_batch_size: usize,
+    ) -> Vec<T> {
         while partials.iter().any(|x| x.value().is_none()) {
-            Self::batch_make_progress(rubber, partials.as_mut_slice());
+            Self::batch_make_progress(rubber, partials.as_mut_slice(), max_batch_size);
         }
 
         partials
