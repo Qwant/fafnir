@@ -14,6 +14,7 @@ use crate::lazy_es::{EsResponse, LazyEs};
 // Prefixes used in ids for Address objects derived from OSM tags
 const FAFNIR_ADDR_NAMESPACE: &str = "addr_poi:";
 const FAFNIR_STREET_NAMESPACE: &str = "street_poi:";
+const MAX_REVERSE_DISTANCE: &str = "1km";
 
 /// Check if a mimir address originates from OSM data.
 pub fn is_addr_derived_from_tags(addr: &mimir::Address) -> bool {
@@ -101,7 +102,7 @@ pub fn get_addr_from_coords<'a>(
                     "should": mimir::rubber::build_proximity_with_boost(coord, 1.),
                     "must": {
                         "geo_distance": {
-                            "distance": "1km",
+                            "distance": MAX_REVERSE_DISTANCE,
                             "coord": {
                                 "lat": coord.lat(),
                                 "lon": coord.lon()

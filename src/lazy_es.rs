@@ -73,12 +73,20 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 
     /// Send a request to elasticsearch to make progress for all computations
     /// in `partials` that are not done yet.
-    pub fn batch_make_progress(rubber: &mut Rubber, partials: &mut [Self], max_batch_size: usize) {
+    pub fn batch_make_progress(
+        rubber: &mut Rubber,
+        partials: &mut [Self],
+        max_batch_size: usize,
+    ) -> usize {
         let need_progress: Vec<_> = partials
             .iter_mut()
             .filter(|partial| partial.value().is_none())
             .take(max_batch_size)
             .collect();
+
+        if need_progress.is_empty() {
+            return 0;
+        }
 
         let body: String = {
             need_progress
@@ -98,7 +106,9 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 
         let responses =
             parse_es_multi_response(&es_response).expect("failed to parse ES responses");
+
         assert_eq!(responses.len(), need_progress.len());
+        let progress_count = need_progress.len();
 
         for (partial, res) in need_progress.into_iter().zip(responses) {
             match partial {
@@ -109,6 +119,8 @@ impl<'p, T: 'p> LazyEs<'p, T> {
                 LazyEs::Value(_) => unreachable!(),
             }
         }
+
+        progress_count
     }
 
     /// Run all input computations until they are finished and finally output
@@ -118,13 +130,13 @@ impl<'p, T: 'p> LazyEs<'p, T> {
         mut partials: Vec<Self>,
         max_batch_size: usize,
     ) -> Vec<T> {
-        while partials.iter().any(|x| x.value().is_none()) {
-            Self::batch_make_progress(rubber, partials.as_mut_slice(), max_batch_size);
+        while Self::batch_make_progress(rubber, partials.as_mut_slice(), max_batch_size) > 0 {
+            // Some progress has been made during the loop condition.
         }
 
         partials
             .into_iter()
-            .map(|partial| partial.into_value().unwrap())
+            .map(|partial| partial.into_value().expect("some tasks are not finished"))
             .collect()
     }
 }

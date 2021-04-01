@@ -70,9 +70,10 @@ pub struct Args {
     /// Do not skip reverse when address information can be retrieved from previous data
     #[structopt(long)]
     no_skip_reverse: bool,
-    /// Max number of tasks sent to ES simultaneously by each thread
+    /// Max number of tasks sent to ES simultaneously by each thread while searching for POI
+    /// address
     #[structopt(default_value = "100")]
-    max_batch_size: usize,
+    max_query_batch_size: usize,
 }
 
 pub fn load_and_index_pois(
@@ -83,7 +84,7 @@ pub fn load_and_index_pois(
     let es = args.es.clone();
     let langs = &args.langs;
     let rubber = &mut mimir::rubber::Rubber::new(&es);
-    let max_batch_size = args.max_batch_size;
+    let max_batch_size = args.max_query_batch_size;
 
     let poi_creation_date = get_index_creation_date(rubber, &format!("{}_poi", MIMIR_PREFIX));
     let addr_creation_date = get_index_creation_date(rubber, &format!("{}_addr", MIMIR_PREFIX));
