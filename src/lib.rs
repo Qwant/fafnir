@@ -25,6 +25,7 @@ use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Poi;
 use postgres::fallible_iterator::FallibleIterator;
 use postgres::Client;
+use reqwest::Url;
 use std::time::Duration;
 use utils::get_index_creation_date;
 
@@ -82,6 +83,7 @@ pub fn load_and_index_pois(
     args: Args,
 ) -> Result<(), mimirsbrunn::Error> {
     let es = args.es.clone();
+    let es_url = Url::parse(&es).expect("invalid ES url");
     let langs = &args.langs;
     let rubber = &mut mimir::rubber::Rubber::new(&es);
     let max_batch_size = args.max_query_batch_size;
@@ -193,7 +195,7 @@ pub fn load_and_index_pois(
                         .collect();
 
                     let pois =
-                        LazyEs::batch_make_progress_until_value(&mut rub, pois, max_batch_size)
+                        LazyEs::batch_make_progress_until_value(&es_url, pois, max_batch_size)
                             .into_iter()
                             .filter_map(|poi| poi);
 
