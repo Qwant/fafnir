@@ -9,7 +9,7 @@ use serde_json::json;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::lazy_es::{EsResponse, LazyEs};
+use crate::lazy_es::{parse_es_response, LazyEs};
 
 // Prefixes used in ids for Address objects derived from OSM tags
 const FAFNIR_ADDR_NAMESPACE: &str = "addr_poi:";
@@ -53,21 +53,16 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &'a str) -> LazyEs<'a, CurP
             "query": {"terms": {"_id": [osm_id]}}
         }),
         progress: Box::new(move |es_response| {
-            LazyEs::Value(
-                serde_json::from_str(es_response)
-                    .map_err(|err| {
-                        warn!(
-                            "failed to parse ES response while reading old address for {} ({:?}): {}",
-                            osm_id, err, es_response
-                        )
-                    })
-                    .ok()
-                    .and_then(|es_response: EsResponse<_>| {
-                        assert!(es_response.hits.hits.len() <= 1);
-                        es_response.hits.hits.into_iter().next()
-                    })
-                    .map(|hit| hit.source)
-                    .map(|poi: FetchPoi| {
+            LazyEs::Value({
+                let hits = parse_es_response(es_response)
+                    .expect("got error from ES while reading old address");
+
+                assert!(hits.len() <= 1);
+
+                hits.into_iter()
+                    .next()
+                    .map(|hit| {
+                        let poi: FetchPoi = hit.source;
                         let coord = poi.coord;
 
                         if let Some(address) = poi.address {
@@ -79,16 +74,14 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &'a str) -> LazyEs<'a, CurP
                             CurPoiAddress::None { coord }
                         }
                     })
-                    .unwrap_or(CurPoiAddress::NotFound),
-            )
+                    .unwrap_or(CurPoiAddress::NotFound)
+            })
         }),
     }
 }
 
 /// Get addresses close to input coordinates.
-pub fn get_addr_from_coords<'a>(
-    coord: &mimir::Coord,
-) -> LazyEs<'a, Result<Vec<mimir::Place>, serde_json::Error>> {
+pub fn get_addr_from_coords<'a>(coord: &mimir::Coord) -> LazyEs<'a, Vec<mimir::Place>> {
     let indexes = mimir::rubber::get_indexes(false, &[], &[], &["house", "street"]);
 
     LazyEs::NeedEsQuery {
@@ -113,17 +106,15 @@ pub fn get_addr_from_coords<'a>(
             }
         }),
         progress: Box::new(|es_response| {
-            let result = serde_json::from_str(es_response).map(
-                |es_response: EsResponse<serde_json::Value>| {
-                    let places = es_response.hits.hits.into_iter().filter_map(|hit| {
+            LazyEs::Value(
+                parse_es_response(es_response)
+                    .expect("got error from ES while performing reverse")
+                    .into_iter()
+                    .filter_map(|hit| {
                         mimir::rubber::make_place(hit.doc_type, Some(Box::new(hit.source)), None)
-                    });
-
-                    places.collect()
-                },
-            );
-
-            LazyEs::Value(result)
+                    })
+                    .collect(),
+            )
         }),
     }
 }
@@ -247,10 +238,7 @@ pub fn find_address<'p>(
         ))),
         (None, Some(street_tag)) => get_addr_from_coords(&poi.coord).map(move |addrs| {
             addrs
-                .map_err(|err| warn!("failed during reverse of address: {:?}", err))
-                .ok()
                 .into_iter()
-                .flatten()
                 .find_map(|p| {
                     let as_address = p.address();
 
@@ -272,8 +260,6 @@ pub fn find_address<'p>(
             let lazy_es_address = get_addr_from_coords(&poi.coord).map(|places| {
                 Some(
                     places
-                        .map_err(|err| warn!("failed during reverse of address: {:?}", err))
-                        .ok()?
                         .into_iter()
                         .next()?
                         .address()

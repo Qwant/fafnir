@@ -148,12 +148,14 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 }
 
 // ---
-// --- Lower level ES interractions
+// --- Elasticsearch response structure
 // ---
 
 #[derive(Deserialize)]
-pub struct EsResponse<U> {
-    pub hits: EsHits<U>,
+struct EsResponse<'a, U> {
+    hits: Option<EsHits<U>>,
+    #[serde(borrow)]
+    error: Option<&'a RawValue>,
 }
 
 #[derive(Deserialize)]
@@ -167,6 +169,17 @@ pub struct EsHit<U> {
     pub source: U,
     #[serde(rename = "_type")]
     pub doc_type: String,
+}
+
+// ---
+// --- Elasticsearch utils
+// ---
+
+#[derive(Debug)]
+pub enum EsError<'a> {
+    Es(&'a str),
+    MissingFields(&'a str),
+    Parsing(serde_json::Error),
 }
 
 pub fn parse_es_multi_response(es_multi_response: &str) -> serde_json::Result<Vec<&str>> {
@@ -183,4 +196,20 @@ pub fn parse_es_multi_response(es_multi_response: &str) -> serde_json::Result<Ve
         .into_iter()
         .map(RawValue::get)
         .collect())
+}
+
+pub fn parse_es_response<'a, U: Deserialize<'a>>(
+    es_response: &'a str,
+) -> Result<Vec<EsHit<U>>, EsError<'a>> {
+    match serde_json::from_str(es_response).map_err(EsError::Parsing)? {
+        EsResponse {
+            hits: _,
+            error: Some(err),
+        } => Err(EsError::Es(err.get())),
+        EsResponse {
+            hits: Some(hits),
+            error: _,
+        } => Ok(hits.hits),
+        _ => Err(EsError::MissingFields(es_response)),
+    }
 }
