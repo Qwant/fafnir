@@ -1,3 +1,4 @@
+use reqwest::blocking::Client;
 use reqwest::Url;
 use serde::Deserialize;
 use serde_json::value::RawValue;
@@ -73,7 +74,12 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 
     /// Send a request to elasticsearch to make progress for all computations
     /// in `partials` that are not done yet.
-    pub fn batch_make_progress(es: &Url, partials: &mut [Self], max_batch_size: usize) -> usize {
+    fn batch_make_progress(
+        es: &Url,
+        http: &Client,
+        partials: &mut [Self],
+        max_batch_size: usize,
+    ) -> usize {
         let need_progress: Vec<_> = partials
             .iter_mut()
             .filter(|partial| partial.value().is_none())
@@ -94,8 +100,7 @@ impl<'p, T: 'p> LazyEs<'p, T> {
                 .collect()
         };
 
-        let client = reqwest::blocking::Client::new();
-        let es_response = client
+        let es_response = http
             .post(es.join("_msearch").expect("failed to build msearch URL"))
             .body(body)
             .send()
@@ -129,9 +134,11 @@ impl<'p, T: 'p> LazyEs<'p, T> {
         mut partials: Vec<Self>,
         max_batch_size: usize,
     ) -> Vec<T> {
-        while Self::batch_make_progress(es, partials.as_mut_slice(), max_batch_size) > 0 {
-            // Some progress has been made during the loop condition.
-        }
+        let http_client = reqwest::blocking::Client::new();
+
+        while Self::batch_make_progress(es, &http_client, partials.as_mut_slice(), max_batch_size)
+            > 0
+        {} // Some progress has been made during the loop condition.
 
         partials
             .into_iter()
