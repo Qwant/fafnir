@@ -2,12 +2,12 @@
 //! imposm.
 
 #[derive(Default)]
-pub struct POIsQuery {
+pub struct PoisQuery {
     bbox: Option<String>,
     tables: Vec<TableQuery>,
 }
 
-impl POIsQuery {
+impl PoisQuery {
     pub fn new() -> Self {
         Self::default()
     }

@@ -1,8 +1,8 @@
 use crate::addresses::find_address;
 use crate::addresses::iter_admins;
 use crate::langs::COUNTRIES_LANGS;
+use crate::lazy_es::LazyEs;
 use mimir::objects::I18nProperties;
-use mimir::rubber::Rubber;
 use mimir::Poi;
 use mimir::Property;
 use mimir::{Coord, PoiType};
@@ -55,6 +55,7 @@ static NON_SEARCHABLE_ITEMS: Lazy<BTreeSet<(String, String)>> = Lazy::new(|| {
     .collect()
 });
 
+#[derive(Clone)]
 pub struct IndexedPoi {
     pub poi: Poi,
     pub is_searchable: bool,
@@ -94,10 +95,7 @@ impl IndexedPoi {
         }
 
         let row_properties = properties_from_row(&row).unwrap_or_else(|_| vec![]);
-
-        let names = build_names(langs, &row_properties)
-            .unwrap_or_else(|_| mimir::I18nProperties::default());
-
+        let names = build_names(langs, &row_properties);
         let properties = build_poi_properties(&row, row_properties);
 
         let is_searchable =
@@ -123,96 +121,99 @@ impl IndexedPoi {
         Some(IndexedPoi { poi, is_searchable })
     }
 
-    pub fn locate_poi(
-        mut self,
-        geofinder: &AdminGeoFinder,
-        rubber: &mut Rubber,
-        langs: &[String],
-        poi_index: &str,
-        poi_index_nosearch: &str,
+    pub fn locate_poi<'a>(
+        &'a self,
+        geofinder: &'a AdminGeoFinder,
+        langs: &'a [String],
+        poi_index: &'a str,
+        poi_index_nosearch: &'a str,
         try_skip_reverse: bool,
-    ) -> Option<IndexedPoi> {
+    ) -> LazyEs<'a, Option<IndexedPoi>> {
         let index = if self.is_searchable {
             poi_index
         } else {
             poi_index_nosearch
         };
 
-        let poi_address = find_address(&self.poi, geofinder, rubber, index, try_skip_reverse);
+        find_address(&self.poi, geofinder, index, try_skip_reverse).map(move |poi_address| {
+            let mut res = self.clone();
 
-        // if we have an address, we take the address's admin as the poi's admin
-        // else we lookup the admin by the poi's coordinates
-        let (admins, country_codes) = poi_address
-            .as_ref()
-            .map(|a| match a {
-                mimir::Address::Street(ref s) => {
-                    (s.administrative_regions.clone(), s.country_codes.clone())
-                }
-                mimir::Address::Addr(ref s) => (
-                    s.street.administrative_regions.clone(),
-                    s.country_codes.clone(),
-                ),
-            })
-            .unwrap_or_else(|| {
-                let admins = geofinder.get(&self.poi.coord);
-                let country_codes = find_country_codes(iter_admins(&admins));
-                (admins, country_codes)
-            });
-
-        if admins.is_empty() {
-            debug!("The poi {} is not on any admins", &self.poi.id);
-            return None;
-        }
-
-        let zip_codes = match poi_address {
-            Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
-            Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
-            None => vec![],
-        };
-
-        self.poi.administrative_regions = admins;
-        self.poi.address = poi_address;
-        self.poi.label = format_poi_label(
-            &self.poi.name,
-            iter_admins(&self.poi.administrative_regions),
-            &country_codes,
-        );
-        self.poi.labels = format_international_poi_label(
-            &self.poi.names,
-            &self.poi.name,
-            &self.poi.label,
-            iter_admins(&self.poi.administrative_regions),
-            &country_codes,
-            langs,
-        );
-        for country_code in country_codes.iter() {
-            if let Some(country_langs) = COUNTRIES_LANGS.get(country_code.to_uppercase().as_str()) {
-                let has_lang = |props: &I18nProperties, lang: &str| {
-                    props.0.iter().any(|prop| prop.key == lang)
-                };
-
-                for lang in country_langs {
-                    if langs.contains(&lang.to_string()) && !has_lang(&self.poi.labels, lang) {
-                        self.poi.labels.0.push(Property {
-                            key: lang.to_string(),
-                            value: self.poi.label.clone(),
-                        });
+            // if we have an address, we take the address's admin as the poi's admin
+            // else we lookup the admin by the poi's coordinates
+            let (admins, country_codes) = poi_address
+                .as_ref()
+                .map(|a| match a {
+                    mimir::Address::Street(ref s) => {
+                        (s.administrative_regions.clone(), s.country_codes.clone())
                     }
-                }
+                    mimir::Address::Addr(ref s) => (
+                        s.street.administrative_regions.clone(),
+                        s.country_codes.clone(),
+                    ),
+                })
+                .unwrap_or_else(|| {
+                    let admins = geofinder.get(&res.poi.coord);
+                    let country_codes = find_country_codes(iter_admins(&admins));
+                    (admins, country_codes)
+                });
 
-                for lang in country_langs {
-                    if langs.contains(&lang.to_string()) && !has_lang(&self.poi.names, lang) {
-                        self.poi.names.0.push(Property {
-                            key: lang.to_string(),
-                            value: self.poi.name.clone(),
-                        })
+            if admins.is_empty() {
+                debug!("The poi {} is not on any admins", &res.poi.id);
+                return None;
+            }
+
+            let zip_codes = match poi_address {
+                Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
+                Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
+                None => vec![],
+            };
+
+            res.poi.administrative_regions = admins;
+            res.poi.address = poi_address;
+            res.poi.label = format_poi_label(
+                &res.poi.name,
+                iter_admins(&res.poi.administrative_regions),
+                &country_codes,
+            );
+            res.poi.labels = format_international_poi_label(
+                &res.poi.names,
+                &res.poi.name,
+                &res.poi.label,
+                iter_admins(&res.poi.administrative_regions),
+                &country_codes,
+                langs,
+            );
+            for country_code in country_codes.iter() {
+                if let Some(country_langs) =
+                    COUNTRIES_LANGS.get(country_code.to_uppercase().as_str())
+                {
+                    let has_lang = |props: &I18nProperties, lang: &str| {
+                        props.0.iter().any(|prop| prop.key == lang)
+                    };
+
+                    for lang in country_langs {
+                        if langs.contains(&lang.to_string()) && !has_lang(&res.poi.labels, lang) {
+                            res.poi.labels.0.push(Property {
+                                key: lang.to_string(),
+                                value: res.poi.label.clone(),
+                            });
+                        }
+                    }
+
+                    for lang in country_langs {
+                        if langs.contains(&lang.to_string()) && !has_lang(&res.poi.names, lang) {
+                            res.poi.names.0.push(Property {
+                                key: lang.to_string(),
+                                value: res.poi.name.clone(),
+                            })
+                        }
                     }
                 }
             }
-        }
-        self.poi.zip_codes = zip_codes;
-        self.poi.country_codes = country_codes;
-        Some(self)
+            res.poi.zip_codes = zip_codes;
+            res.poi.country_codes = country_codes;
+            Some(res)
+        })
     }
 }
 
@@ -251,7 +252,7 @@ fn build_poi_properties(row: &Row, mut properties: Vec<Property>) -> Vec<Propert
     properties
 }
 
-fn build_names(langs: &[String], properties: &[Property]) -> Result<mimir::I18nProperties, String> {
+fn build_names(langs: &[String], properties: &[Property]) -> mimir::I18nProperties {
     const NAME_TAG_PREFIX: &str = "name:";
 
     let properties = properties
@@ -270,5 +271,5 @@ fn build_names(langs: &[String], properties: &[Property]) -> Result<mimir::I18nP
         })
         .collect();
 
-    Ok(mimir::I18nProperties(properties))
+    mimir::I18nProperties(properties)
 }

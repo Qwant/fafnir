@@ -12,10 +12,12 @@ extern crate serde_json;
 
 mod addresses;
 mod langs;
+mod lazy_es;
 mod pg_poi_query;
 mod pois;
 mod utils;
 use crate::par_map::ParMap;
+use lazy_es::LazyEs;
 use pois::IndexedPoi;
 
 use itertools::process_results;
@@ -23,6 +25,7 @@ use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Poi;
 use postgres::fallible_iterator::FallibleIterator;
 use postgres::Client;
+use reqwest::Url;
 use std::time::Duration;
 use utils::get_index_creation_date;
 
@@ -68,6 +71,10 @@ pub struct Args {
     /// Do not skip reverse when address information can be retrieved from previous data
     #[structopt(long)]
     no_skip_reverse: bool,
+    /// Max number of tasks sent to ES simultaneously by each thread while searching for POI
+    /// address
+    #[structopt(default_value = "100")]
+    max_query_batch_size: usize,
 }
 
 pub fn load_and_index_pois(
@@ -76,8 +83,10 @@ pub fn load_and_index_pois(
     args: Args,
 ) -> Result<(), mimirsbrunn::Error> {
     let es = args.es.clone();
+    let es_url = Url::parse(&es).expect("invalid ES url");
     let langs = &args.langs;
     let rubber = &mut mimir::rubber::Rubber::new(&es);
+    let max_batch_size = args.max_query_batch_size;
 
     let poi_creation_date = get_index_creation_date(rubber, &format!("{}_poi", MIMIR_PREFIX));
     let addr_creation_date = get_index_creation_date(rubber, &format!("{}_addr", MIMIR_PREFIX));
@@ -97,9 +106,9 @@ pub fn load_and_index_pois(
     })?;
     let admins_geofinder = admins.into_iter().collect();
 
-    use pg_poi_query::{POIsQuery, TableQuery};
+    use pg_poi_query::{PoisQuery, TableQuery};
 
-    let mut query = POIsQuery::new()
+    let mut query = PoisQuery::new()
         .with_table(TableQuery::new("all_pois(14)").id_column("global_id"))
         .with_table(
             TableQuery::new("osm_aerodrome_label_point")
@@ -171,16 +180,25 @@ pub fn load_and_index_pois(
                 let langs = langs.clone();
                 move |p| {
                     let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
-                    let pois = p.into_iter().filter_map(|indexed_poi| {
-                        indexed_poi.locate_poi(
-                            &admins_geofinder,
-                            &mut rub,
-                            &langs,
-                            &poi_index_name,
-                            &poi_index_nosearch_name,
-                            try_skip_reverse,
-                        )
-                    });
+
+                    let pois: Vec<_> = p
+                        .iter()
+                        .map(|indexed_poi| {
+                            indexed_poi.locate_poi(
+                                &admins_geofinder,
+                                &langs,
+                                &poi_index_name,
+                                &poi_index_nosearch_name,
+                                try_skip_reverse,
+                            )
+                        })
+                        .collect();
+
+                    let pois =
+                        LazyEs::batch_make_progress_until_value(&es_url, pois, max_batch_size)
+                            .into_iter()
+                            .filter_map(|poi| poi);
+
                     let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
                         pois.partition(|p| p.is_searchable);
                     let mut nb_indexed_pois = 0;
