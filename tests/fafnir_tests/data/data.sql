@@ -23,7 +23,8 @@ INSERT INTO osm_poi_point (
             "name:ru" => "студия океана",
             "name:it" => "Oceano Studioso",
             "name_int" => "Ocean Studio",
-            "name:latin" => "Ocean Studio"
+            "name:latin" => "Ocean Studio",
+            "cuisine" => "japanese;coffee_shop"
         '
     ),
     -- POI located at lon=2, lat=2

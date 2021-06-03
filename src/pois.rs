@@ -2,6 +2,7 @@ use crate::addresses::find_address;
 use crate::addresses::iter_admins;
 use crate::langs::COUNTRIES_LANGS;
 use crate::lazy_es::LazyEs;
+use itertools::Itertools;
 use mimir::objects::I18nProperties;
 use mimir::Poi;
 use mimir::Property;
@@ -15,6 +16,8 @@ use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
+
+const TAGS_TO_INDEX_AS_POI_TYPE_NAME: &[&str] = &["cuisine"];
 
 static NON_SEARCHABLE_ITEMS: Lazy<BTreeSet<(String, String)>> = Lazy::new(|| {
     [
@@ -69,9 +72,9 @@ impl IndexedPoi {
         let mapping_key: String = row.get("mapping_key");
         let class: String = row.get("class");
         let subclass = row.get::<_, Option<String>>("subclass").unwrap_or_default();
-
-        let poi_type_id: String = format!("class_{}:subclass_{}", class, subclass);
-        let poi_type_name: String = format!("class_{} subclass_{}", class, subclass);
+        let tags = row
+            .get::<_, Option<HashMap<_, _>>>("tags")
+            .unwrap_or_default();
 
         let weight = row.get::<_, Option<f64>>("weight").unwrap_or(0.);
 
@@ -94,7 +97,9 @@ impl IndexedPoi {
             return None;
         }
 
-        let row_properties = properties_from_row(&row).unwrap_or_else(|_| vec![]);
+        let poi_type_id = format!("class_{}:subclass_{}", class, subclass);
+        let poi_type_text = build_poi_type_text(&class, &subclass, &tags);
+        let row_properties = properties_from_tags(tags);
         let names = build_names(langs, &row_properties);
         let properties = build_poi_properties(&row, row_properties);
 
@@ -107,7 +112,7 @@ impl IndexedPoi {
             approx_coord: Some(poi_coord.into()),
             poi_type: PoiType {
                 id: poi_type_id,
-                name: poi_type_name,
+                name: poi_type_text,
             },
             label: "".into(),
             properties,
@@ -217,23 +222,51 @@ impl IndexedPoi {
     }
 }
 
-fn properties_from_row(row: &Row) -> Result<Vec<Property>, String> {
-    let properties = row
-        .try_get::<_, Option<HashMap<_, _>>>("tags")
-        .map_err(|err| {
-            let id: String = row.get("id");
-            warn!("Unable to get tags from row '{}': {:?}", id, err);
-            err.to_string()
-        })?
-        .unwrap_or_else(HashMap::new)
-        .into_iter()
+fn properties_from_tags(tags: HashMap<String, Option<String>>) -> Vec<Property> {
+    tags.into_iter()
         .map(|(k, v)| Property {
             key: k,
             value: v.unwrap_or_else(|| "".to_string()),
         })
-        .collect::<Vec<Property>>();
+        .collect()
+}
 
-    Ok(properties)
+fn build_poi_type_text(
+    class: &str,
+    subclass: &str,
+    tags: &HashMap<String, Option<String>>,
+) -> String {
+    /*
+        To index certain tags (in addition to class and subclass), we use
+        the field "poi_type.name" in a convoluted way.
+        In the POI mapping configuration defined in mimirsbrunn, this field in indexed
+        using a "word" analyzer.
+
+        So each key/value must be defined as a word in this field, using the following format:
+            * "class_<class_name>"
+            * "subclass_<subclass_name>"
+            * "<tag_key>:<tag_value>" (e.g "cuisine:japanese")
+
+        When the tag contains multiple values (separated by ";"), these values are split
+        and indexed as distinct tag values.
+    */
+    std::array::IntoIter::new([format!("class_{}", class), format!("subclass_{}", subclass)])
+        .chain(
+            TAGS_TO_INDEX_AS_POI_TYPE_NAME
+                .iter()
+                .map(|tag| {
+                    let values = tags.get(*tag).unwrap_or(&None).clone().unwrap_or_default();
+                    if values.is_empty() {
+                        return vec![];
+                    }
+                    values
+                        .split(';')
+                        .map(|v| format!("{}:{}", tag, v))
+                        .collect::<Vec<_>>()
+                })
+                .flatten(),
+        )
+        .join(" ")
 }
 
 fn build_poi_properties(row: &Row, mut properties: Vec<Property>) -> Vec<Property> {
