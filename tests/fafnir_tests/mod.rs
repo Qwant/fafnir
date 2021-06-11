@@ -185,7 +185,10 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert_eq!(label_ocean_poi, &"Ocean Studio (bob's town)");
     // Test poi_type
     let poi_type_ocean_poi = &ocean_poi.poi_type.name;
-    assert_eq!(poi_type_ocean_poi, &"class_cafe subclass_cafe");
+    assert_eq!(
+        poi_type_ocean_poi,
+        &"class_cafe subclass_cafe cuisine:japanese cuisine:coffee_shop"
+    );
 
     // Test Properties: the amenity property for this POI should be "cafe"
     let properties_ocean_poi = &ocean_poi.properties;
@@ -348,8 +351,13 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // Test existance of water POIs
     let res = es_wrapper.search_and_filter("name:(Fontaine-Lavoir Saint-Guimond)", |_| true);
     assert_eq!(res.count(), 1);
-
     let res = es_wrapper.search_and_filter("name:(Baie du Mont Saint-Michel)", |_| true);
+    assert_eq!(res.count(), 1);
+
+    // Filter by poi_type.name
+    let res = es_wrapper.search_and_filter("poi_type.name:(subclass_cafe)", |_| true);
+    assert_eq!(res.count(), 2);
+    let res = es_wrapper.search_and_filter("poi_type.name:(cuisine\\:coffee_shop)", |_| true);
     assert_eq!(res.count(), 1);
 }
 
