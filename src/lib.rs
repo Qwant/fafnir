@@ -171,7 +171,7 @@ pub fn load_and_index_pois(
     // "process_results" will early return on first error
     // from the postgres iterator
     process_results(rows_iterator, |rows| {
-        rows.filter_map(|row| IndexedPoi::from_row(row, &langs))
+        rows.filter_map(|row| IndexedPoi::from_row(row, langs))
             .pack(1500)
             .with_nb_threads(nb_threads)
             .par_map({

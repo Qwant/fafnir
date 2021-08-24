@@ -24,7 +24,7 @@ use serde_json::value::Value;
 use std::process::Command;
 
 // Dataset name used for tests.
-static DATASET: &'static str = "test";
+static DATASET: &str = "test";
 
 pub struct PostgresWrapper<'a> {
     docker_wrapper: &'a PostgresDocker,
@@ -56,10 +56,7 @@ impl<'a> PostgresWrapper<'a> {
     }
 
     pub fn new(docker_wrapper: &PostgresDocker) -> PostgresWrapper {
-        let pg_wrapper = PostgresWrapper {
-            docker_wrapper: docker_wrapper,
-        };
-        pg_wrapper
+        PostgresWrapper { docker_wrapper }
     }
 }
 
@@ -103,7 +100,7 @@ impl<'a> ElasticSearchWrapper<'a> {
     }
 
     pub fn get_pois(&mut self) -> Vec<mimir::Poi> {
-        self.rubber.get_all_objects_from_index(&"test").unwrap()
+        self.rubber.get_all_objects_from_index("test").unwrap()
     }
 
     pub fn host(&self) -> String {
@@ -126,7 +123,7 @@ impl<'a> ElasticSearchWrapper<'a> {
 
     pub fn new(docker_wrapper: &ElasticsearchDocker) -> ElasticSearchWrapper {
         let mut es_wrapper = ElasticSearchWrapper {
-            docker_wrapper: docker_wrapper,
+            docker_wrapper,
             rubber: mimir::rubber::Rubber::new(&docker_wrapper.host()),
         };
         es_wrapper.init();
@@ -265,27 +262,27 @@ fn launch_and_assert(
 fn main_test() {
     let _guard = mimir::logger_init();
 
-    let mut el_docker = ElasticsearchDocker::new().unwrap();
+    let el_docker = ElasticsearchDocker::new().unwrap();
     let pg_docker = PostgresDocker::new().unwrap();
 
     fafnir_tests::main_test(
-        ElasticSearchWrapper::new(&mut el_docker),
+        ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
     );
     fafnir_tests::bbox_test(
-        ElasticSearchWrapper::new(&mut el_docker),
+        ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
     );
     fafnir_tests::test_with_langs(
-        ElasticSearchWrapper::new(&mut el_docker),
+        ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
     );
     fafnir_tests::test_address_format(
-        ElasticSearchWrapper::new(&mut el_docker),
+        ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
     );
     fafnir_tests::test_current_country_label(
-        ElasticSearchWrapper::new(&mut el_docker),
+        ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
     );
 }

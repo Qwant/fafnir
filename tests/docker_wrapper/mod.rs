@@ -23,7 +23,7 @@ impl PostgresDocker {
     }
 
     pub fn host(&self) -> String {
-        format!("{}", self.ip)
+        self.ip.to_string()
     }
 
     pub fn setup(&mut self) -> Result<(), Box<dyn Error>> {
@@ -61,19 +61,14 @@ impl PostgresDocker {
 
         info!("Waiting for Postgres in docker to be up and running...");
 
-        let retry = retry::retry(Fixed::from_millis(1000).take(60), || {
+        retry::retry(Fixed::from_millis(1000).take(60), || {
             Client::connect(
                 &format!("postgres://test@{}/test", &self.host()),
                 tls::NoTls,
             )
-        });
-        match retry {
-            Ok(_) => {
-                info!("{} docker is up and running", name);
-                return Ok(());
-            }
-            Err(_) => return Err("Postgres is down".into()),
-        }
+        })
+        .map(|_| info!("{} docker is up and running", name))
+        .map_err(|_| "Postgres is down".into())
     }
 }
 
@@ -82,7 +77,7 @@ impl ElasticsearchDocker {
         let mut el_docker = ElasticsearchDocker { ip: "".to_string() };
         el_docker.setup()?;
         let rubber = Rubber::new(&el_docker.host());
-        &rubber
+        rubber
             .initialize_templates()
             .expect("failed to initialize ES templates");
         Ok(el_docker)
@@ -114,19 +109,15 @@ impl ElasticsearchDocker {
         self.ip = container_ip.to_string();
 
         info!("Waiting for ES in docker to be up and running...");
-        let retry = retry::retry(Fixed::from_millis(1000).take(30), || {
+
+        retry::retry(Fixed::from_millis(1000).take(30), || {
             hyper::client::Client::new()
                 .get(&self.host())
                 .send()
                 .map(|res| res.status == hyper::Ok)
-        });
-        match retry {
-            Ok(_) => {
-                info!("{} docker is up and running", name);
-                return Ok(());
-            }
-            Err(_) => return Err("ElasticSearch is down".into()),
-        };
+        })
+        .map(|_| info!("{} docker is up and running", name))
+        .map_err(|_| "ElasticSearch is down".into())
     }
 }
 
