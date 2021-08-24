@@ -1,31 +1,19 @@
-extern crate mimir;
-extern crate mimirsbrunn;
-extern crate postgres;
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-extern crate itertools;
-extern crate num_cpus;
-extern crate par_map;
-extern crate serde;
-extern crate serde_json;
-
 mod addresses;
 mod langs;
 mod lazy_es;
 mod pg_poi_query;
 mod pois;
-mod utils;
-use crate::par_map::ParMap;
+pub mod utils;
 use lazy_es::LazyEs;
 use pois::IndexedPoi;
 
-use itertools::process_results;
+use futures::stream::{StreamExt, TryStreamExt};
+use log::{error, info};
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Poi;
-use postgres::fallible_iterator::FallibleIterator;
-use postgres::Client;
 use reqwest::Url;
+use std::sync::atomic;
+use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 use utils::get_index_creation_date;
 
@@ -77,13 +65,13 @@ pub struct Args {
     max_query_batch_size: usize,
 }
 
-pub fn load_and_index_pois(
-    mut client: Client,
+pub async fn load_and_index_pois(
+    client: tokio_postgres::Client,
     nb_threads: usize,
     args: Args,
 ) -> Result<(), mimirsbrunn::Error> {
     let es = args.es.clone();
-    let es_url = Url::parse(&es).expect("invalid ES url");
+    let es_url = &Url::parse(&es).expect("invalid ES url");
     let langs = &args.langs;
     let rubber = &mut mimir::rubber::Rubber::new(&es);
     let max_batch_size = args.max_query_batch_size;
@@ -104,7 +92,7 @@ pub fn load_and_index_pois(
         error!("Administratives regions not found in es db");
         err
     })?;
-    let admins_geofinder = admins.into_iter().collect();
+    let admins_geofinder = &admins.into_iter().collect();
 
     use pg_poi_query::{PoisQuery, TableQuery};
 
@@ -154,85 +142,91 @@ pub fn load_and_index_pois(
         .make_index(&args.dataset_nosearch, &index_settings)
         .expect("failed to make index");
 
-    let mut total_nb_pois = 0;
+    let total_nb_pois = &AtomicUsize::new(0);
+
     let stmt = client
         .prepare(&query.build())
+        .await
         .expect("failed to prepare query");
-    let rows_iterator = client
-        .query_raw(&stmt, vec![])?
-        .fuse() // Avoids consuming exhausted stream when using par_map
-        .iterator();
 
     info!("Processing query results...");
 
-    let poi_index_name = format!("{}_poi_{}", MIMIR_PREFIX, args.dataset);
-    let poi_index_nosearch_name = format!("{}_poi_{}", MIMIR_PREFIX, args.dataset_nosearch);
+    let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset);
+    let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset_nosearch);
 
-    // "process_results" will early return on first error
-    // from the postgres iterator
-    process_results(rows_iterator, |rows| {
-        rows.filter_map(|row| IndexedPoi::from_row(row, langs))
-            .pack(1500)
-            .with_nb_threads(nb_threads)
-            .par_map({
-                let index = poi_index.clone();
-                let index_nosearch = poi_index_nosearch.clone();
-                let langs = langs.clone();
-                move |p| {
-                    let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
+    client
+        .query_raw::<_, i32, _>(&stmt, [])
+        .await?
+        .try_filter_map(|row| async { Ok(IndexedPoi::from_row(row, langs)) })
+        .chunks(1500)
+        .enumerate()
+        .map(Ok)
+        .try_for_each_concurrent(nb_threads, |(chunk_idx, rows)| {
+            let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
+            let index = &poi_index;
+            let index_nosearch = &poi_index_nosearch;
 
-                    let pois: Vec<_> = p
-                        .iter()
-                        .map(|indexed_poi| {
-                            indexed_poi.locate_poi(
-                                &admins_geofinder,
-                                &langs,
-                                &poi_index_name,
-                                &poi_index_nosearch_name,
+            async move {
+                // Build POIs from postgres
+                let pois: Vec<_> = rows
+                    .iter()
+                    .map(|indexed_poi| {
+                        Ok(indexed_poi
+                            .as_ref()
+                            .map_err(|err| format!("failed to fetch indexed POI: {}", err))?
+                            .locate_poi(
+                                admins_geofinder,
+                                langs,
+                                poi_index_name,
+                                poi_index_nosearch_name,
                                 try_skip_reverse,
-                            )
-                        })
-                        .collect();
+                            ))
+                    })
+                    .collect::<Result<_, String>>()?;
 
-                    let pois =
-                        LazyEs::batch_make_progress_until_value(&es_url, pois, max_batch_size)
-                            .into_iter()
-                            .flatten();
+                // Run ES queries until all POIs are fully built
+                let pois = LazyEs::batch_make_progress_until_value(es_url, pois, max_batch_size)
+                    .into_iter()
+                    .flatten();
 
-                    let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
-                        pois.partition(|p| p.is_searchable);
-                    let mut nb_indexed_pois = 0;
-                    match rub.bulk_index(
-                        &index,
-                        search.into_iter().map(|indexed_poi| indexed_poi.poi),
-                    ) {
-                        Err(e) => panic!("Failed to bulk insert pois because: {}", e),
-                        Ok(nb) => nb_indexed_pois += nb,
-                    };
-                    match rub.bulk_index(
-                        &index_nosearch,
+                // Split searchable and non-searchable POIs
+                let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
+                    pois.partition(|p| p.is_searchable);
+
+                // Bulk index new POIs
+                let nb_search_poi = rub
+                    .bulk_index(index, search.into_iter().map(|indexed_poi| indexed_poi.poi))
+                    .unwrap_or_else(|err| panic!("Failed to bulk insert pois because: {}", err));
+
+                let nb_nosearch_poi = rub
+                    .bulk_index(
+                        index_nosearch,
                         no_search.into_iter().map(|indexed_poi| indexed_poi.poi),
-                    ) {
-                        Err(e) => panic!("Failed to bulk insert pois because: {}", e),
-                        Ok(nb) => nb_indexed_pois += nb,
-                    };
-                    nb_indexed_pois
-                }
-            })
-            .enumerate()
-            .for_each(|(i, n)| {
-                total_nb_pois += n;
-                let chunk_idx = i + 1;
-                if chunk_idx % 100 == 0 {
+                    )
+                    .unwrap_or_else(|err| panic!("Failed to bulk insert pois because: {}", err));
+
+                // Log advancement
+                total_nb_pois.fetch_add(nb_search_poi + nb_nosearch_poi, atomic::Ordering::Relaxed);
+
+                if (chunk_idx + 1) % 100 == 0 {
                     info!(
                         "Nb of indexed pois after {} chunks: {}",
-                        chunk_idx, total_nb_pois
+                        chunk_idx,
+                        total_nb_pois.load(atomic::Ordering::Relaxed)
                     );
                 }
-            })
-    })?;
 
-    info!("Total number of indexed pois: {}", total_nb_pois);
+                Ok::<_, String>(())
+            }
+        })
+        .await
+        .expect("failed to index POIs");
+
+    info!(
+        "Total number of indexed pois: {}",
+        total_nb_pois.load(atomic::Ordering::Relaxed)
+    );
+
     rubber
         .publish_index(&args.dataset, poi_index, IndexVisibility::Public)
         .expect("failed to publish public index");

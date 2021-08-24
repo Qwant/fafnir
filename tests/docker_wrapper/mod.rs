@@ -1,11 +1,10 @@
-extern crate retry;
-
-use super::hyper;
+use fafnir::utils::start_postgres_session;
+use log::{info, warn};
 use mimir::rubber::Rubber;
-use postgres::{tls, Client};
 use retry::delay::Fixed;
 use std::error::Error;
 use std::process::Command;
+use std::time::Duration;
 
 pub struct ElasticsearchDocker {
     ip: String,
@@ -16,9 +15,9 @@ pub struct PostgresDocker {
 }
 
 impl PostgresDocker {
-    pub fn new() -> Result<PostgresDocker, Box<dyn Error>> {
+    pub async fn new() -> Result<PostgresDocker, Box<dyn Error>> {
         let mut pg_docker = PostgresDocker { ip: "".to_string() };
-        pg_docker.setup()?;
+        pg_docker.setup().await?;
         Ok(pg_docker)
     }
 
@@ -26,7 +25,7 @@ impl PostgresDocker {
         self.ip.to_string()
     }
 
-    pub fn setup(&mut self) -> Result<(), Box<dyn Error>> {
+    pub async fn setup(&mut self) -> Result<(), Box<dyn Error>> {
         info!("Launching the PostgresWrapper docker");
         let (name, img) = ("postgres_fafnir_tests", "openmaptiles/postgis");
 
@@ -58,17 +57,25 @@ impl PostgresDocker {
 
         info!("container ip = {:?}", container_ip);
         self.ip = container_ip.to_string();
-
         info!("Waiting for Postgres in docker to be up and running...");
 
-        retry::retry(Fixed::from_millis(1000).take(60), || {
-            Client::connect(
-                &format!("postgres://test@{}/test", &self.host()),
-                tls::NoTls,
-            )
-        })
-        .map(|_| info!("{} docker is up and running", name))
-        .map_err(|_| "Postgres is down".into())
+        let mut retries = 0;
+
+        while start_postgres_session(&format!("postgres://test@{}/test", &self.host()))
+            .await
+            .is_err()
+        {
+            retries += 1;
+
+            if retries > 60 {
+                return Err("Postgres is down".into());
+            }
+
+            tokio::time::sleep(Duration::from_millis(1000)).await;
+        }
+
+        info!("{} docker is up and running", name);
+        Ok(())
     }
 }
 

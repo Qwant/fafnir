@@ -1,27 +1,14 @@
-extern crate bragi;
-extern crate fafnir;
-extern crate hyper;
-extern crate mimir;
-extern crate mimirsbrunn;
-extern crate postgres;
-extern crate rs_es;
-extern crate serde_json;
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-#[macro_use]
-extern crate approx;
-
 pub mod docker_wrapper;
 pub mod fafnir_tests;
 
-use crate::docker_wrapper::*;
+use fafnir::utils::start_postgres_session;
 use hyper::client::response::Response;
+use log::{info, warn};
 use mimir::rubber::{IndexSettings, IndexVisibility};
-use postgres::row;
-use postgres::{tls, Client};
 use serde_json::value::Value;
 use std::process::Command;
+
+use crate::docker_wrapper::*;
 
 // Dataset name used for tests.
 static DATASET: &str = "test";
@@ -35,23 +22,17 @@ impl<'a> PostgresWrapper<'a> {
         self.docker_wrapper.host()
     }
 
-    pub fn get_conn(&self) -> Client {
-        Client::connect(
-            &format!("postgres://test@{}/test", &self.host()),
-            tls::NoTls,
-        )
-        .unwrap_or_else(|err| {
-            panic!(
-                "Unable to connect to postgres: {} with ip: {}",
-                err,
-                &self.host()
-            );
-        })
+    pub async fn get_conn(&self) -> tokio_postgres::Client {
+        start_postgres_session(&format!("postgres://test@{}/test", &self.host()))
+            .await
+            .unwrap_or_else(|err| panic!("Unable to connect to postgres: {}", err))
     }
 
-    pub fn get_rows(&self, table: &str) -> Vec<row::Row> {
-        let mut conn = self.get_conn();
-        conn.query(&*format!("SELECT * FROM {}", table), &[])
+    pub async fn get_rows(&self, table: &str) -> Vec<tokio_postgres::row::Row> {
+        self.get_conn()
+            .await
+            .query(&*format!("SELECT * FROM {}", table), &[])
+            .await
             .unwrap()
     }
 
@@ -258,31 +239,40 @@ fn launch_and_assert(
     es_wrapper.refresh();
 }
 
-#[test]
-fn main_test() {
+#[tokio::test]
+async fn main_test() {
     let _guard = mimir::logger_init();
 
     let el_docker = ElasticsearchDocker::new().unwrap();
-    let pg_docker = PostgresDocker::new().unwrap();
+    let pg_docker = PostgresDocker::new().await.unwrap();
 
     fafnir_tests::main_test(
         ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
-    );
+    )
+    .await;
+
     fafnir_tests::bbox_test(
         ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
-    );
+    )
+    .await;
+
     fafnir_tests::test_with_langs(
         ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
-    );
+    )
+    .await;
+
     fafnir_tests::test_address_format(
         ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
-    );
+    )
+    .await;
+
     fafnir_tests::test_current_country_label(
         ElasticSearchWrapper::new(&el_docker),
         PostgresWrapper::new(&pg_docker),
-    );
+    )
+    .await;
 }

@@ -3,6 +3,7 @@ use crate::addresses::iter_admins;
 use crate::langs::COUNTRIES_LANGS;
 use crate::lazy_es::LazyEs;
 use itertools::Itertools;
+use log::{debug, warn};
 use mimir::objects::I18nProperties;
 use mimir::Poi;
 use mimir::Property;
@@ -11,7 +12,6 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::labels::format_international_poi_label;
 use mimirsbrunn::labels::format_poi_label;
 use mimirsbrunn::utils::find_country_codes;
-use postgres::Row;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
@@ -65,7 +65,7 @@ pub struct IndexedPoi {
 }
 
 impl IndexedPoi {
-    pub fn from_row(row: Row, langs: &[String]) -> Option<IndexedPoi> {
+    pub fn from_row(row: tokio_postgres::Row, langs: &[String]) -> Option<IndexedPoi> {
         let id: String = row.get("id");
         let name = row.get::<_, Option<String>>("name").unwrap_or_default();
 
@@ -269,19 +269,21 @@ fn build_poi_type_text(
         .join(" ")
 }
 
-fn build_poi_properties(row: &Row, mut properties: Vec<Property>) -> Vec<Property> {
+fn build_poi_properties(row: &tokio_postgres::Row, mut properties: Vec<Property>) -> Vec<Property> {
     if let Ok(poi_subclass) = row.try_get("subclass") {
         properties.push(Property {
             key: "poi_subclass".to_string(),
             value: poi_subclass,
         });
     };
+
     if let Ok(poi_class) = row.try_get("class") {
         properties.push(Property {
             key: "poi_class".to_string(),
             value: poi_class,
         });
     };
+
     properties
 }
 

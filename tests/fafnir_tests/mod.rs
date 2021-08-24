@@ -1,27 +1,30 @@
-use super::mimir;
 use super::DATASET;
 use super::{ElasticSearchWrapper, PostgresWrapper};
+use approx::*;
 use geo_types as geo;
 use mimirsbrunn::utils;
 use std;
-use std::f64;
 use std::sync::Arc;
 
 // Init the Postgres Wrapper
-fn init_tests(
-    es_wrapper: &mut ElasticSearchWrapper,
-    pg_wrapper: &PostgresWrapper,
+
+async fn init_tests(
+    es_wrapper: &mut ElasticSearchWrapper<'_>,
+    pg_wrapper: &PostgresWrapper<'_>,
     country_code: &str,
 ) {
-    let mut conn = pg_wrapper.get_conn();
+    let conn = pg_wrapper.get_conn().await;
 
     conn.batch_execute(include_str!("data/tables.sql"))
+        .await
         .expect("failed to initialize tables");
 
     conn.batch_execute(include_str!("data/data.sql"))
+        .await
         .expect("failed to populate tables");
 
     conn.batch_execute(include_str!("data/functions.sql"))
+        .await
         .expect("failed to define SQL functions");
 
     load_es_data(es_wrapper, country_code);
@@ -103,41 +106,41 @@ fn make_test_address(city: mimir::Admin) -> mimir::Addr {
 
 fn get_label(address: &mimir::Address) -> &str {
     match address {
-        &mimir::Address::Street(ref s) => &s.label,
-        &mimir::Address::Addr(ref a) => &a.label,
+        mimir::Address::Street(ref s) => &s.label,
+        mimir::Address::Addr(ref a) => &a.label,
     }
 }
 
 fn get_name(address: &mimir::Address) -> &str {
     match address {
-        &mimir::Address::Street(ref s) => &s.name,
-        &mimir::Address::Addr(ref a) => &a.name,
+        mimir::Address::Street(ref s) => &s.name,
+        mimir::Address::Addr(ref a) => &a.name,
     }
 }
 
 fn get_house_number(address: &mimir::Address) -> &str {
     match address {
-        &mimir::Address::Street(_) => &"",
-        &mimir::Address::Addr(ref a) => &a.house_number,
+        mimir::Address::Street(_) => "",
+        mimir::Address::Addr(ref a) => &a.house_number,
     }
 }
 
 fn get_coord(address: &mimir::Address) -> &mimir::Coord {
     match address {
-        &mimir::Address::Street(ref s) => &s.coord,
-        &mimir::Address::Addr(ref a) => &a.coord,
+        mimir::Address::Street(ref s) => &s.coord,
+        mimir::Address::Addr(ref a) => &a.coord,
     }
 }
 
 fn get_zip_codes(address: &mimir::Address) -> Vec<String> {
     match address {
-        &mimir::Address::Street(ref s) => s.zip_codes.clone(),
-        &mimir::Address::Addr(ref a) => a.zip_codes.clone(),
+        mimir::Address::Street(ref s) => s.zip_codes.clone(),
+        mimir::Address::Addr(ref a) => a.zip_codes.clone(),
     }
 }
 
-pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
-    init_tests(&mut es_wrapper, &pg_wrapper, "FR");
+pub async fn main_test(mut es_wrapper: ElasticSearchWrapper<'_>, pg_wrapper: PostgresWrapper<'_>) {
+    init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
@@ -149,16 +152,15 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
         &es_wrapper,
     );
 
-    let rows = &pg_wrapper.get_rows(&"osm_poi_point");
+    let rows = &pg_wrapper.get_rows("osm_poi_point").await;
     assert_eq!(rows.len(), 7);
-    let rows = &pg_wrapper.get_rows(&"osm_poi_polygon");
+    let rows = &pg_wrapper.get_rows("osm_poi_polygon").await;
     assert_eq!(rows.len(), 3);
 
     assert_eq!(
         es_wrapper
             .search_and_filter("name:*", |p| p.is_poi())
-            .collect::<Vec<_>>()
-            .len(),
+            .count(),
         9 // 5 valid points + 2 valid polygons + 1 airport + 1 hamlet
     );
 
@@ -193,7 +195,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // Test Properties: the amenity property for this POI should be "cafe"
     let properties_ocean_poi = &ocean_poi.properties;
     let amenity_tag = properties_ocean_poi
-        .into_iter()
+        .iter()
         .find(|&p| p.key == "amenity")
         .unwrap();
     assert_eq!(amenity_tag.value, "cafe".to_string());
@@ -203,14 +205,14 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // To guarantee the rubber found an address we have put a fake address close to the location of
     // the POI in the init() method.
     let address_ocean_poi = ocean_poi.address.as_ref().unwrap();
-    let address_label = get_label(&address_ocean_poi);
+    let address_label = get_label(address_ocean_poi);
     assert_eq!(address_label, &"1234 test (bob's town)".to_string());
-    let address_house_number = get_house_number(&address_ocean_poi);
+    let address_house_number = get_house_number(address_ocean_poi);
     assert_eq!(address_house_number, "1234".to_string());
-    let address_coord = get_coord(&address_ocean_poi);
-    assert_eq!(address_coord.lat(), 1.);
-    assert_eq!(address_coord.lon(), 1.);
-    let zip_code = get_zip_codes(&address_ocean_poi);
+    let address_coord = get_coord(address_ocean_poi);
+    assert_relative_eq!(address_coord.lat(), 1., epsilon = f64::EPSILON);
+    assert_relative_eq!(address_coord.lon(), 1., epsilon = f64::EPSILON);
+    let zip_code = get_zip_codes(address_ocean_poi);
     assert_eq!(zip_code, vec!["12345".to_string()]);
 
     let le_nomade_query: Vec<mimir::Place> = es_wrapper
@@ -247,12 +249,12 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     // Test the airport poi_class and poi_subclass
     let properties_airport = &airport.properties;
     let poi_class = properties_airport
-        .into_iter()
+        .iter()
         .find(|&p| p.key == "poi_class")
         .unwrap();
     assert_eq!(poi_class.value, "aerodrome".to_string());
     let poi_subclass = properties_airport
-        .into_iter()
+        .iter()
         .find(|&p| p.key == "poi_subclass")
         .unwrap();
     assert_eq!(poi_subclass.value, "airport".to_string());
@@ -295,7 +297,7 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert_eq!(&eiffels.len(), &2);
 
     // Test they are both POI
-    assert!(&eiffels.iter().all(|ref p| p.is_poi()));
+    assert!(&eiffels.iter().all(|p| p.is_poi()));
 
     // Test their weight are not both equal to 0.0
     assert!(!&eiffels
@@ -311,12 +313,12 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     let hamlet_somewhere = &hamlet_somewhere[0].poi().unwrap();
     let properties_hamlet_somewhere = &hamlet_somewhere.properties;
     let poi_class = properties_hamlet_somewhere
-        .into_iter()
+        .iter()
         .find(|&p| p.key == "poi_class")
         .unwrap();
     assert_eq!(poi_class.value, "locality".to_string());
     let poi_subclass = properties_hamlet_somewhere
-        .into_iter()
+        .iter()
         .find(|&p| p.key == "poi_subclass")
         .unwrap();
     assert_eq!(poi_subclass.value, "hamlet".to_string());
@@ -361,8 +363,8 @@ pub fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
     assert_eq!(res.count(), 1);
 }
 
-pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
-    init_tests(&mut es_wrapper, &pg_wrapper, "FR");
+pub async fn bbox_test(mut es_wrapper: ElasticSearchWrapper<'_>, pg_wrapper: PostgresWrapper<'_>) {
+    init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
@@ -370,27 +372,29 @@ pub fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapp
             format!("--dataset={}", DATASET),
             format!("--es={}", &es_wrapper.host()),
             format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
-            format!("--bounding-box=0, 0, 3.5, 3.5"),
+            "--bounding-box=0, 0, 3.5, 3.5".into(),
         ],
         &es_wrapper,
     );
 
     // We filtered the import by a bounding box, we still have 6 rows in PG
-    let rows = &pg_wrapper.get_rows(&"osm_poi_point");
+    let rows = &pg_wrapper.get_rows("osm_poi_point").await;
     assert_eq!(rows.len(), 7);
     // but there is only 3 elements in the ES now, 'Le nomade' and 'Isla Cristina Agricultural Airstrip'
     // have been filtered
     assert_eq!(
         es_wrapper
             .search_and_filter("name:*", |p| p.is_poi())
-            .collect::<Vec<_>>()
-            .len(),
+            .count(),
         5
     );
 }
 
-pub fn test_with_langs(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
-    init_tests(&mut es_wrapper, &pg_wrapper, "FR");
+pub async fn test_with_langs(
+    mut es_wrapper: ElasticSearchWrapper<'_>,
+    pg_wrapper: PostgresWrapper<'_>,
+) {
+    init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
@@ -435,9 +439,12 @@ pub fn test_with_langs(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
         .any(|p| p.key == "it" && p.value == "Oceano Studioso (bob\'s town)"));
 }
 
-pub fn test_address_format(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
+pub async fn test_address_format(
+    mut es_wrapper: ElasticSearchWrapper<'_>,
+    pg_wrapper: PostgresWrapper<'_>,
+) {
     // Import data with DE as country code in admins
-    init_tests(&mut es_wrapper, &pg_wrapper, "DE");
+    init_tests(&mut es_wrapper, &pg_wrapper, "DE").await;
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
@@ -463,11 +470,11 @@ pub fn test_address_format(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Pos
     assert_eq!(get_house_number(spagnolo_addr), &"12".to_string());
 }
 
-pub fn test_current_country_label(
-    mut es_wrapper: ElasticSearchWrapper,
-    pg_wrapper: PostgresWrapper,
+pub async fn test_current_country_label(
+    mut es_wrapper: ElasticSearchWrapper<'_>,
+    pg_wrapper: PostgresWrapper<'_>,
 ) {
-    init_tests(&mut es_wrapper, &pg_wrapper, "FR");
+    init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     let fafnir = concat!(env!("OUT_DIR"), "/../../../fafnir");
     super::launch_and_assert(
         fafnir,
