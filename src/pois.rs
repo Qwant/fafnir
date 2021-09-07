@@ -4,14 +4,15 @@ use crate::langs::COUNTRIES_LANGS;
 use crate::lazy_es::LazyEs;
 use itertools::Itertools;
 use log::{debug, warn};
-use mimir::objects::I18nProperties;
-use mimir::Poi;
-use mimir::Property;
-use mimir::{Coord, PoiType};
-use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::labels::format_international_poi_label;
-use mimirsbrunn::labels::format_poi_label;
-use mimirsbrunn::utils::find_country_codes;
+use mimirsbrunn2::admin_geofinder::AdminGeoFinder;
+use mimirsbrunn2::labels::{format_international_poi_label, format_poi_label};
+use mimirsbrunn2::utils::find_country_codes;
+use places::{
+    coord::Coord,
+    i18n_properties::I18nProperties,
+    poi::{Poi, PoiType},
+    Address, Property,
+};
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
@@ -54,7 +55,7 @@ static NON_SEARCHABLE_ITEMS: Lazy<BTreeSet<(String, String)>> = Lazy::new(|| {
         ("barrier", "stile"),
     ]
     .iter()
-    .map(|(a, b)| ((*a).to_string(), (*b).to_string()))
+    .map(|(a, b)| (a.to_string(), b.to_string()))
     .collect()
 });
 
@@ -119,7 +120,7 @@ impl IndexedPoi {
             name,
             weight,
             names,
-            labels: mimir::I18nProperties::default(),
+            labels: I18nProperties::default(),
             ..Default::default()
         };
 
@@ -148,10 +149,10 @@ impl IndexedPoi {
             let (admins, country_codes) = poi_address
                 .as_ref()
                 .map(|a| match a {
-                    mimir::Address::Street(ref s) => {
+                    Address::Street(ref s) => {
                         (s.administrative_regions.clone(), s.country_codes.clone())
                     }
-                    mimir::Address::Addr(ref s) => (
+                    Address::Addr(ref s) => (
                         s.street.administrative_regions.clone(),
                         s.country_codes.clone(),
                     ),
@@ -168,13 +169,17 @@ impl IndexedPoi {
             }
 
             let zip_codes = match poi_address {
-                Some(mimir::Address::Street(ref s)) => s.zip_codes.clone(),
-                Some(mimir::Address::Addr(ref a)) => a.zip_codes.clone(),
+                Some(Address::Street(ref s)) => s.zip_codes.clone(),
+                Some(Address::Addr(ref a)) => a.zip_codes.clone(),
                 None => vec![],
             };
 
             res.poi.administrative_regions = admins;
-            res.poi.address = poi_address;
+            // TODO: maybe we could simply return Addr type
+            res.poi.address = poi_address.and_then(|addr| match addr {
+                Address::Addr(x) => Some(x),
+                _ => None,
+            });
             res.poi.label = format_poi_label(
                 &res.poi.name,
                 iter_admins(&res.poi.administrative_regions),
@@ -287,7 +292,7 @@ fn build_poi_properties(row: &tokio_postgres::Row, mut properties: Vec<Property>
     properties
 }
 
-fn build_names(langs: &[String], properties: &[Property]) -> mimir::I18nProperties {
+fn build_names(langs: &[String], properties: &[Property]) -> I18nProperties {
     const NAME_TAG_PREFIX: &str = "name:";
 
     let properties = properties
@@ -296,7 +301,7 @@ fn build_names(langs: &[String], properties: &[Property]) -> mimir::I18nProperti
             if property.key.starts_with(&NAME_TAG_PREFIX) {
                 let lang = property.key[NAME_TAG_PREFIX.len()..].to_string();
                 if langs.contains(&lang) {
-                    return Some(mimir::Property {
+                    return Some(Property {
                         key: lang,
                         value: property.value.to_string(),
                     });
@@ -306,5 +311,5 @@ fn build_names(langs: &[String], properties: &[Property]) -> mimir::I18nProperti
         })
         .collect();
 
-    mimir::I18nProperties(properties)
+    I18nProperties(properties)
 }

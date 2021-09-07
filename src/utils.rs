@@ -1,5 +1,6 @@
+use elasticsearch::cat::CatIndicesParts;
+use elasticsearch::Elasticsearch;
 use log::warn;
-use mimir::rubber::Rubber;
 
 pub async fn start_postgres_session(
     config: &str,
@@ -18,22 +19,28 @@ pub async fn start_postgres_session(
 }
 
 /// Get creation date of an index as a timestamp.
-pub fn get_index_creation_date(rubber: &mut Rubber, index: &str) -> Option<u64> {
-    let query = format!("/_cat/indices/{}?h=creation.date", index);
+pub async fn get_index_creation_date(es: &Elasticsearch, index: impl AsRef<str>) -> Option<u64> {
+    let res = es
+        .cat()
+        .indices(CatIndicesParts::Index(&[index.as_ref()]))
+        .h(&["creation.date"])
+        .send()
+        .await
+        .map_err(|err| warn!("failed to query ES for creation date: {:?}", err))
+        .ok()?;
 
-    rubber
-        .get(&query)
-        .map_err(|err| warn!("could not query ES: {:?}", err))
+    let raw = res
+        .text()
+        .await
+        .map_err(|err| warn!("failed to load ES response for creation date: {:?}", err))
+        .ok()?;
+
+    if raw.is_empty() {
+        return None;
+    }
+
+    raw.trim()
+        .parse()
+        .map_err(|err| warn!("invalid index creation timestamp: {:?}", err))
         .ok()
-        .and_then(|res| {
-            res.text()
-                .map_err(|err| warn!("could not load ES response: {:?}", err))
-                .ok()
-        })
-        .and_then(|text| {
-            text.trim()
-                .parse()
-                .map_err(|err| warn!("invalid index creation timestamp: {:?}", err))
-                .ok()
-        })
 }

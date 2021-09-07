@@ -4,26 +4,41 @@ mod lazy_es;
 mod pg_poi_query;
 mod pois;
 pub mod utils;
-use lazy_es::LazyEs;
-use pois::IndexedPoi;
 
+use elasticsearch::http::transport::Transport;
+use elasticsearch::Elasticsearch;
+use futures::join;
 use futures::stream::{StreamExt, TryStreamExt};
-use log::{error, info};
-use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
-use mimir::Poi;
-use reqwest::Url;
+use lazy_es::LazyEs;
+use log::info;
+use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
+use mimir2::common::document::ContainerDocument;
+use mimir2::domain::model::configuration::IndexConfiguration;
+use mimir2::domain::model::index::IndexVisibility;
+use mimir2::domain::ports::primary::{
+    generate_index::GenerateIndex, list_documents::ListDocuments,
+};
+use mimir2::domain::ports::secondary::remote::Remote;
+use pg_poi_query::{PoisQuery, TableQuery};
+use places::poi::Poi;
+use pois::IndexedPoi;
+use serde_json::json;
+use std::convert::TryInto;
 use std::sync::atomic;
 use std::sync::atomic::AtomicUsize;
-use std::time::Duration;
+use std::sync::Arc;
+use tokio::sync::mpsc::channel;
+use tokio_stream::wrappers::ReceiverStream;
 use utils::get_index_creation_date;
 
 #[macro_use]
 extern crate structopt;
 
-const ES_TIMEOUT: std::time::Duration = Duration::from_secs(30);
-
 // Prefix to ES index names for mimirsbrunn
 const MIMIR_PREFIX: &str = "munin";
+
+// Size of the buffers of POIs that have to be indexed.
+const CHANNEL_SIZE: usize = 10_000;
 
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
@@ -69,33 +84,59 @@ pub async fn load_and_index_pois(
     client: tokio_postgres::Client,
     nb_threads: usize,
     args: Args,
-) -> Result<(), mimirsbrunn::Error> {
-    let es = args.es.clone();
-    let es_url = &Url::parse(&es).expect("invalid ES url");
+) -> Result<(), mimirsbrunn2::Error> {
     let langs = &args.langs;
-    let rubber = &mut mimir::rubber::Rubber::new(&es);
     let max_batch_size = args.max_query_batch_size;
 
-    let poi_creation_date = get_index_creation_date(rubber, &format!("{}_poi", MIMIR_PREFIX));
-    let addr_creation_date = get_index_creation_date(rubber, &format!("{}_addr", MIMIR_PREFIX));
+    // Local Elasticsearch client
+    let es = &Elasticsearch::new(
+        Transport::single_node(args.es.as_str())
+            .expect("failed to initialize Elasticsearch transport"),
+    );
+
+    let mimir_es = Arc::new(
+        connection_pool_url(&args.es)
+            .await
+            .expect("failed to open connection pool to Elasticsearch")
+            .conn()
+            .await
+            .expect("failed to open Elasticsearch connection"),
+    );
+
+    // Check if addresses have been updated more recently than last update
+    let (poi_creation_date, addr_creation_date) = join!(
+        get_index_creation_date(es, format!("{}_poi", MIMIR_PREFIX)),
+        get_index_creation_date(es, format!("{}_addr", MIMIR_PREFIX))
+    );
 
     let addr_updated = match (poi_creation_date, addr_creation_date) {
         (Some(poi_ts), Some(addr_ts)) => addr_ts > poi_ts,
         _ => true,
     };
+
+    // If addresses have not changed since last update of POIs, it is not
+    // necessary to perform a reverse again for POIs that don't have an address.
     let try_skip_reverse = !args.no_skip_reverse && !addr_updated;
+
     if try_skip_reverse {
-        info!("addresses have not been updated since last update, reverse on old POIs won't be performed");
+        info!(
+            "addresses have not been updated since last update, reverse on old POIs won't be {}",
+            "performed",
+        );
     }
 
-    let admins = rubber.get_all_admins().map_err(|err| {
-        error!("Administratives regions not found in es db");
-        err
-    })?;
-    let admins_geofinder = &admins.into_iter().collect();
+    // Fetch administrative regions
+    let admins_geofinder = &mimir_es
+        .list_documents()
+        .expect("administratives regions not found in es db")
+        .map(|admin| admin.expect("could not parse admin"))
+        .collect()
+        .await;
 
-    use pg_poi_query::{PoisQuery, TableQuery};
+    eprintln!("Admins loaded");
 
+    // Build Postgres query
+    // TODO: This should probably be put in a function for more readability?
     let mut query = PoisQuery::new()
         .with_table(TableQuery::new("all_pois(14)").id_column("global_id"))
         .with_table(
@@ -129,42 +170,62 @@ pub async fn load_and_index_pois(
         query = query.bbox(bbox);
     }
 
-    let index_settings = IndexSettings {
-        nb_shards: args.nb_shards,
-        nb_replicas: args.nb_replicas,
-    };
-
-    rubber.initialize_templates()?;
-    let poi_index: mimir::rubber::TypedIndex<Poi> = rubber
-        .make_index(&args.dataset, &index_settings)
-        .expect("failed to make index");
-    let poi_index_nosearch: mimir::rubber::TypedIndex<Poi> = rubber
-        .make_index(&args.dataset_nosearch, &index_settings)
-        .expect("failed to make index");
-
-    let total_nb_pois = &AtomicUsize::new(0);
-
     let stmt = client
         .prepare(&query.build())
         .await
         .expect("failed to prepare query");
 
     info!("Processing query results...");
+    let total_nb_pois = &AtomicUsize::new(0);
 
+    // Spawn tasks that will build indexes. These tasks will provide a single
+    // stream to mimirsbrunn which is built from data sent into async channels.
     let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset);
     let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset_nosearch);
 
-    client
+    let spawn_index_task = |index_name| {
+        let mimir_es = mimir_es.clone();
+        let (send, recv) = channel::<Poi>(CHANNEL_SIZE);
+
+        let config = IndexConfiguration {
+            name: index_name,
+            parameters: json!({
+                "timeout": "10s",
+                "wait_for_active_shards": "1"
+            }),
+            settings: json!({ "value": serde_json::from_str::<serde_json::Value>(Poi::default_es_settings()).unwrap() }),
+            mappings: json!({ "value": serde_json::from_str::<serde_json::Value>(Poi::default_es_mappings()).unwrap() }),
+        };
+
+        let task = async move {
+            mimir_es
+                .generate_index(
+                    config.try_into().unwrap(),
+                    ReceiverStream::new(recv),
+                    IndexVisibility::Public,
+                )
+                .await
+                .map_err(|err| eprintln!("MIMIR ERR: {:?}", err))
+            // .expect("failed to generate index")
+        };
+
+        (send, task)
+    };
+
+    let (poi_channel_search, index_search_task) = spawn_index_task("poi_default".to_string());
+    let (poi_channel_nosearch, index_nosearch_task) = spawn_index_task("poi_nosearch".to_string());
+
+    // Build POIs and send them to indexing tasks
+    let fetch_pois_task = client
         .query_raw::<_, i32, _>(&stmt, [])
         .await?
         .try_filter_map(|row| async { Ok(IndexedPoi::from_row(row, langs)) })
         .chunks(1500)
         .enumerate()
         .map(Ok)
-        .try_for_each_concurrent(nb_threads, |(chunk_idx, rows)| {
-            let mut rub = Rubber::new_with_timeout(&es, ES_TIMEOUT);
-            let index = &poi_index;
-            let index_nosearch = &poi_index_nosearch;
+        .try_for_each_concurrent(nb_threads, move |(chunk_idx, rows)| {
+            let poi_channel_search = poi_channel_search.clone();
+            let poi_channel_nosearch = poi_channel_nosearch.clone();
 
             async move {
                 // Build POIs from postgres
@@ -185,28 +246,34 @@ pub async fn load_and_index_pois(
                     .collect::<Result<_, String>>()?;
 
                 // Run ES queries until all POIs are fully built
-                let pois = LazyEs::batch_make_progress_until_value(es_url, pois, max_batch_size)
+                let pois = LazyEs::batch_make_progress_until_value(es, pois, max_batch_size)
+                    .await
                     .into_iter()
                     .flatten();
 
                 // Split searchable and non-searchable POIs
-                let (search, no_search): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
+                let (search, nosearch): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
                     pois.partition(|p| p.is_searchable);
 
-                // Bulk index new POIs
-                let nb_search_poi = rub
-                    .bulk_index(index, search.into_iter().map(|indexed_poi| indexed_poi.poi))
-                    .unwrap_or_else(|err| panic!("Failed to bulk insert pois because: {}", err));
+                let nb_new_poi = search.len() + nosearch.len();
 
-                let nb_nosearch_poi = rub
-                    .bulk_index(
-                        index_nosearch,
-                        no_search.into_iter().map(|indexed_poi| indexed_poi.poi),
-                    )
-                    .unwrap_or_else(|err| panic!("Failed to bulk insert pois because: {}", err));
+                // Send POIs to the indexing tasks
+                for IndexedPoi { poi, .. } in search {
+                    poi_channel_search
+                        .send(poi)
+                        .await
+                        .expect("failed to send search POI into channel");
+                }
+
+                for IndexedPoi { poi, .. } in nosearch {
+                    poi_channel_nosearch
+                        .send(poi)
+                        .await
+                        .expect("failed to send nosearch POI into channel");
+                }
 
                 // Log advancement
-                total_nb_pois.fetch_add(nb_search_poi + nb_nosearch_poi, atomic::Ordering::Relaxed);
+                total_nb_pois.fetch_add(nb_new_poi, atomic::Ordering::Relaxed);
 
                 if (chunk_idx + 1) % 100 == 0 {
                     info!(
@@ -218,24 +285,34 @@ pub async fn load_and_index_pois(
 
                 Ok::<_, String>(())
             }
-        })
-        .await
-        .expect("failed to index POIs");
+        });
 
+    // Wait for the indexing tasks to complete
+
+    let (index_search, index_nosearch, fetch_res) =
+        join!(index_search_task, index_nosearch_task, fetch_pois_task);
+
+    fetch_res.expect("failed to index POIs");
+
+    info!("Created index {:?} for searchable POIs", index_search);
+    info!("Created index {:?} for non-searchable POIs", index_nosearch);
     info!(
         "Total number of indexed pois: {}",
         total_nb_pois.load(atomic::Ordering::Relaxed)
     );
 
-    rubber
-        .publish_index(&args.dataset, poi_index, IndexVisibility::Public)
-        .expect("failed to publish public index");
-    rubber
-        .publish_index(
-            &args.dataset_nosearch,
-            poi_index_nosearch,
-            IndexVisibility::Private,
-        )
-        .expect("failed to publish private index");
+    // TODO
+    // rubber
+    //     .publish_index(&args.dataset, poi_index, IndexVisibility::Public)
+    //     .expect("failed to publish public index");
+    //
+    // rubber
+    //     .publish_index(
+    //         &args.dataset_nosearch,
+    //         poi_index_nosearch,
+    //         IndexVisibility::Private,
+    //     )
+    //     .expect("failed to publish private index");
+
     Ok(())
 }
