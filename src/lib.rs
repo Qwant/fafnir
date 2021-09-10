@@ -7,13 +7,12 @@ pub mod utils;
 
 use elasticsearch::http::transport::Transport;
 use elasticsearch::Elasticsearch;
-use futures::join;
 use futures::stream::{StreamExt, TryStreamExt};
+use futures::{join, try_join};
 use lazy_es::LazyEs;
 use log::info;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
-use mimir2::common::document::ContainerDocument;
-use mimir2::domain::model::configuration::IndexConfiguration;
+use mimir2::domain::model::configuration::ContainerConfiguration;
 use mimir2::domain::model::index::IndexVisibility;
 use mimir2::domain::ports::primary::{
     generate_index::GenerateIndex, list_documents::ListDocuments,
@@ -22,8 +21,6 @@ use mimir2::domain::ports::secondary::remote::Remote;
 use pg_poi_query::{PoisQuery, TableQuery};
 use places::poi::Poi;
 use pois::IndexedPoi;
-use serde_json::json;
-use std::convert::TryInto;
 use std::sync::atomic;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
@@ -39,6 +36,8 @@ const MIMIR_PREFIX: &str = "munin";
 
 // Size of the buffers of POIs that have to be indexed.
 const CHANNEL_SIZE: usize = 10_000;
+
+type Error = Box<dyn std::error::Error>;
 
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
@@ -176,44 +175,34 @@ pub async fn load_and_index_pois(
         .expect("failed to prepare query");
 
     info!("Processing query results...");
-    let total_nb_pois = &AtomicUsize::new(0);
+    let total_nb_pois = AtomicUsize::new(0);
 
     // Spawn tasks that will build indexes. These tasks will provide a single
     // stream to mimirsbrunn which is built from data sent into async channels.
     let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset);
     let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset_nosearch);
 
-    let spawn_index_task = |index_name| {
+    let spawn_index_task = |dataset_name: String| {
         let mimir_es = mimir_es.clone();
         let (send, recv) = channel::<Poi>(CHANNEL_SIZE);
-
-        let config = IndexConfiguration {
-            name: index_name,
-            parameters: json!({
-                "timeout": "10s",
-                "wait_for_active_shards": "1"
-            }),
-            settings: json!({ "value": serde_json::from_str::<serde_json::Value>(Poi::default_es_settings()).unwrap() }),
-            mappings: json!({ "value": serde_json::from_str::<serde_json::Value>(Poi::default_es_mappings()).unwrap() }),
-        };
 
         let task = async move {
             mimir_es
                 .generate_index(
-                    config.try_into().unwrap(),
+                    ContainerConfiguration::new(dataset_name.to_string()),
                     ReceiverStream::new(recv),
                     IndexVisibility::Public,
                 )
                 .await
-                .map_err(|err| eprintln!("MIMIR ERR: {:?}", err))
-            // .expect("failed to generate index")
+                .map_err(Error::from)
         };
 
         (send, task)
     };
 
-    let (poi_channel_search, index_search_task) = spawn_index_task("poi_default".to_string());
-    let (poi_channel_nosearch, index_nosearch_task) = spawn_index_task("poi_nosearch".to_string());
+    let (poi_channel_search, index_search_task) = spawn_index_task(args.dataset.to_string());
+    let (poi_channel_nosearch, index_nosearch_task) =
+        spawn_index_task(args.dataset_nosearch.to_string());
 
     // Build POIs and send them to indexing tasks
     let fetch_pois_task = client
@@ -223,96 +212,81 @@ pub async fn load_and_index_pois(
         .chunks(1500)
         .enumerate()
         .map(Ok)
-        .try_for_each_concurrent(nb_threads, move |(chunk_idx, rows)| {
-            let poi_channel_search = poi_channel_search.clone();
-            let poi_channel_nosearch = poi_channel_nosearch.clone();
+        .try_for_each_concurrent(nb_threads, {
+            let total_nb_pois = &total_nb_pois;
 
-            async move {
-                // Build POIs from postgres
-                let pois: Vec<_> = rows
-                    .iter()
-                    .map(|indexed_poi| {
-                        Ok(indexed_poi
-                            .as_ref()
-                            .map_err(|err| format!("failed to fetch indexed POI: {}", err))?
-                            .locate_poi(
-                                admins_geofinder,
-                                langs,
-                                poi_index_name,
-                                poi_index_nosearch_name,
-                                try_skip_reverse,
-                            ))
-                    })
-                    .collect::<Result<_, String>>()?;
+            move |(chunk_idx, rows)| {
+                let poi_channel_search = poi_channel_search.clone();
+                let poi_channel_nosearch = poi_channel_nosearch.clone();
 
-                // Run ES queries until all POIs are fully built
-                let pois = LazyEs::batch_make_progress_until_value(es, pois, max_batch_size)
-                    .await
-                    .into_iter()
-                    .flatten();
+                async move {
+                    // Build POIs from postgres
+                    let pois: Vec<_> = rows
+                        .iter()
+                        .map(|indexed_poi| {
+                            Ok(indexed_poi
+                                .as_ref()
+                                .map_err(|err| format!("failed to fetch indexed POI: {}", err))?
+                                .locate_poi(
+                                    admins_geofinder,
+                                    langs,
+                                    poi_index_name,
+                                    poi_index_nosearch_name,
+                                    try_skip_reverse,
+                                ))
+                        })
+                        .collect::<Result<_, Error>>()?;
 
-                // Split searchable and non-searchable POIs
-                let (search, nosearch): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
-                    pois.partition(|p| p.is_searchable);
-
-                let nb_new_poi = search.len() + nosearch.len();
-
-                // Send POIs to the indexing tasks
-                for IndexedPoi { poi, .. } in search {
-                    poi_channel_search
-                        .send(poi)
+                    // Run ES queries until all POIs are fully built
+                    let pois = LazyEs::batch_make_progress_until_value(es, pois, max_batch_size)
                         .await
-                        .expect("failed to send search POI into channel");
+                        .into_iter()
+                        .flatten();
+
+                    // Split searchable and non-searchable POIs
+                    let (search, nosearch): (Vec<IndexedPoi>, Vec<IndexedPoi>) =
+                        pois.partition(|p| p.is_searchable);
+
+                    let nb_new_poi = search.len() + nosearch.len();
+
+                    // Send POIs to the indexing tasks
+                    for IndexedPoi { poi, .. } in search {
+                        poi_channel_search
+                            .send(poi)
+                            .await
+                            .expect("failed to send search POI into channel");
+                    }
+
+                    for IndexedPoi { poi, .. } in nosearch {
+                        poi_channel_nosearch
+                            .send(poi)
+                            .await
+                            .expect("failed to send nosearch POI into channel");
+                    }
+
+                    // Log advancement
+                    let curr_total_nb_pois =
+                        total_nb_pois.fetch_add(nb_new_poi, atomic::Ordering::Relaxed) + nb_new_poi;
+
+                    if (chunk_idx + 1) % 100 == 0 {
+                        info!(
+                            "Nb of indexed pois after {} chunks: {}",
+                            chunk_idx, curr_total_nb_pois,
+                        );
+                    }
+
+                    Ok::<_, Error>(())
                 }
-
-                for IndexedPoi { poi, .. } in nosearch {
-                    poi_channel_nosearch
-                        .send(poi)
-                        .await
-                        .expect("failed to send nosearch POI into channel");
-                }
-
-                // Log advancement
-                total_nb_pois.fetch_add(nb_new_poi, atomic::Ordering::Relaxed);
-
-                if (chunk_idx + 1) % 100 == 0 {
-                    info!(
-                        "Nb of indexed pois after {} chunks: {}",
-                        chunk_idx,
-                        total_nb_pois.load(atomic::Ordering::Relaxed)
-                    );
-                }
-
-                Ok::<_, String>(())
             }
         });
 
     // Wait for the indexing tasks to complete
-
-    let (index_search, index_nosearch, fetch_res) =
-        join!(index_search_task, index_nosearch_task, fetch_pois_task);
-
-    fetch_res.expect("failed to index POIs");
+    let (index_search, index_nosearch, _) =
+        try_join!(index_search_task, index_nosearch_task, fetch_pois_task)
+            .expect("failed to index POIs");
 
     info!("Created index {:?} for searchable POIs", index_search);
     info!("Created index {:?} for non-searchable POIs", index_nosearch);
-    info!(
-        "Total number of indexed pois: {}",
-        total_nb_pois.load(atomic::Ordering::Relaxed)
-    );
-
-    // TODO
-    // rubber
-    //     .publish_index(&args.dataset, poi_index, IndexVisibility::Public)
-    //     .expect("failed to publish public index");
-    //
-    // rubber
-    //     .publish_index(
-    //         &args.dataset_nosearch,
-    //         poi_index_nosearch,
-    //         IndexVisibility::Private,
-    //     )
-    //     .expect("failed to publish private index");
-
+    info!("Total number of pois: {}", total_nb_pois.into_inner());
     Ok(())
 }
