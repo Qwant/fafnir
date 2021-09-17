@@ -30,7 +30,6 @@ git = "https://github.com/mehcode/config-rs.git"
 branch = "master"
 default_features = false
 
-
 [dev-dependencies]
 retry = "*"
 hyper = "0.10"

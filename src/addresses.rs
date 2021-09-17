@@ -114,13 +114,7 @@ pub fn get_addr_from_coords<'a>(coord: &Coord) -> LazyEs<'a, Vec<Place>> {
                 parse_es_response(es_response)
                     .expect("got error from ES while performing reverse")
                     .into_iter()
-                    .map(|hit| {
-                        // TODO
-                        // mimir::rubber::make_place(hit.doc_type, Some(Box::new(hit.source)), None)
-                        // let _: crate::lazy_es::EsHit<serde_json::Value> = hit;
-                        assert_eq!(hit.doc_type, "addr");
-                        Place::Addr(serde_json::from_value(hit.source).unwrap())
-                    })
+                    .map(|hit| Place::Addr(serde_json::from_value(hit.source).unwrap()))
                     .collect(),
             )
         }),

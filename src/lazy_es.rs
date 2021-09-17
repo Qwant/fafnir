@@ -171,8 +171,6 @@ pub struct EsHits<U> {
 pub struct EsHit<U> {
     #[serde(rename = "_source")]
     pub source: U,
-    #[serde(rename = "_type")]
-    pub doc_type: String,
 }
 
 // ---
@@ -187,9 +185,6 @@ pub enum EsError<'a> {
 }
 
 pub fn parse_es_multi_response(es_multi_response: &str) -> serde_json::Result<Vec<&str>> {
-    // let value: serde_json::Value = serde_json::from_str(es_multi_response).unwrap();
-    // eprintln!("{}", serde_json::to_string_pretty(&value).unwrap());
-
     #[derive(Deserialize)]
     struct EsResponse<'a> {
         #[serde(borrow)]
