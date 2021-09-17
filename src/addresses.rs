@@ -78,9 +78,6 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &'a str) -> LazyEs<'a, CurP
 
 /// Get addresses close to input coordinates.
 pub fn get_addr_from_coords<'a>(coord: &Coord) -> LazyEs<'a, Vec<Place>> {
-    // TODO: use address index
-    // let indexes = mimir::rubber::get_indexes(false, &[], &[], &["house", "street"]);
-
     LazyEs::NeedEsQuery {
         header: json!({
             "index": ["munin_addr"],
@@ -89,7 +86,6 @@ pub fn get_addr_from_coords<'a>(coord: &Coord) -> LazyEs<'a, Vec<Place>> {
         query: json!({
             "query": {
                 "bool": {
-                    // "should": "TODO", // mimir::rubber::build_proximity_with_boost(coord, 1.),
                     "must": {
                         "geo_distance": {
                             "distance": MAX_REVERSE_DISTANCE,
@@ -100,18 +96,30 @@ pub fn get_addr_from_coords<'a>(coord: &Coord) -> LazyEs<'a, Vec<Place>> {
                         }
                     }
                 }
-            }
+            },
+            "sort": [
+                {
+                    "_geo_distance": {
+                        "pin.location": { "lat": coord.lat(), "lon": coord.lon() },
+                        "order": "asc",
+                        "unit": "m",
+                        "distance_type": "arc",
+                        "ignore_unmapped": true
+                    }
+                }
+            ]
         }),
         progress: Box::new(|es_response| {
             LazyEs::Value(
                 parse_es_response(es_response)
                     .expect("got error from ES while performing reverse")
                     .into_iter()
-                    .filter_map(|hit| {
+                    .map(|hit| {
                         // TODO
                         // mimir::rubber::make_place(hit.doc_type, Some(Box::new(hit.source)), None)
-                        let _: crate::lazy_es::EsHit<serde_json::Value> = hit;
-                        todo!()
+                        // let _: crate::lazy_es::EsHit<serde_json::Value> = hit;
+                        assert_eq!(hit.doc_type, "addr");
+                        Place::Addr(serde_json::from_value(hit.source).unwrap())
                     })
                     .collect(),
             )

@@ -175,16 +175,19 @@ impl IndexedPoi {
             };
 
             res.poi.administrative_regions = admins;
+
             // TODO: maybe we could simply return Addr type
             res.poi.address = poi_address.and_then(|addr| match addr {
                 Address::Addr(x) => Some(x),
                 _ => None,
             });
+
             res.poi.label = format_poi_label(
                 &res.poi.name,
                 iter_admins(&res.poi.administrative_regions),
                 &country_codes,
             );
+
             res.poi.labels = format_international_poi_label(
                 &res.poi.names,
                 &res.poi.name,
@@ -193,6 +196,7 @@ impl IndexedPoi {
                 &country_codes,
                 langs,
             );
+
             for country_code in country_codes.iter() {
                 if let Some(country_langs) =
                     COUNTRIES_LANGS.get(country_code.to_uppercase().as_str())

@@ -25,6 +25,12 @@ tokio = { version = "1.10", default_features = false, features = ["macros", "rt-
 tokio-stream = "0.1"
 tracing = { version = "0.1", features = ["release_max_level_info"] }
 
+[dependencies.config]
+git = "https://github.com/mehcode/config-rs.git"
+branch = "master"
+default_features = false
+
+
 [dev-dependencies]
 retry = "*"
 hyper = "0.10"
@@ -35,4 +41,4 @@ failure = "0.1"
 approx = "0.2.0"
 
 [patch.crates-io]
-cosmogony = { git = "https://github.com/osm-without-borders/cosmogony", branch = "read-send-sync"}
+cosmogony = { git = "https://github.com/osm-without-borders/cosmogony", branch = "master"}

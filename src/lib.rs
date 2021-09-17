@@ -5,6 +5,7 @@ mod pg_poi_query;
 mod pois;
 pub mod utils;
 
+use config::Config;
 use elasticsearch::http::transport::Transport;
 use elasticsearch::Elasticsearch;
 use futures::stream::{StreamExt, TryStreamExt};
@@ -12,7 +13,7 @@ use futures::{join, try_join};
 use lazy_es::LazyEs;
 use log::info;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
-use mimir2::domain::model::configuration::ContainerConfiguration;
+use mimir2::common::document::ContainerDocument;
 use mimir2::domain::model::index::IndexVisibility;
 use mimir2::domain::ports::primary::{
     generate_index::GenerateIndex, list_documents::ListDocuments,
@@ -127,6 +128,7 @@ pub async fn load_and_index_pois(
     // Fetch administrative regions
     let admins_geofinder = &mimir_es
         .list_documents()
+        .await
         .expect("administratives regions not found in es db")
         .map(|admin| admin.expect("could not parse admin"))
         .collect()
@@ -177,22 +179,33 @@ pub async fn load_and_index_pois(
     info!("Processing query results...");
     let total_nb_pois = AtomicUsize::new(0);
 
-    // Spawn tasks that will build indexes. These tasks will provide a single
-    // stream to mimirsbrunn which is built from data sent into async channels.
     let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset);
     let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset_nosearch);
 
-    let spawn_index_task = |dataset_name: String| {
+    // Spawn tasks that will build indexes. These tasks will provide a single
+    // stream to mimirsbrunn which is built from data sent into async channels.
+
+    let poi_index_config = Config::builder()
+        .add_source(Poi::default_es_container_config())
+        .set_override("container.dataset", args.dataset)
+        .expect("failed to create config key container.dataset")
+        .build()
+        .expect("failed to build mimir config");
+
+    let poi_index_nosearch_config = Config::builder()
+        .add_source(Poi::default_es_container_config())
+        .set_override("container.dataset", args.dataset_nosearch)
+        .expect("failed to create config key container.dataset")
+        .build()
+        .expect("failed to build mimir config");
+
+    let spawn_index_task = |config| {
         let mimir_es = mimir_es.clone();
         let (send, recv) = channel::<Poi>(CHANNEL_SIZE);
 
         let task = async move {
             mimir_es
-                .generate_index(
-                    ContainerConfiguration::new(dataset_name.to_string()),
-                    ReceiverStream::new(recv),
-                    IndexVisibility::Public,
-                )
+                .generate_index(config, ReceiverStream::new(recv), IndexVisibility::Public)
                 .await
                 .map_err(Error::from)
         };
@@ -200,9 +213,8 @@ pub async fn load_and_index_pois(
         (send, task)
     };
 
-    let (poi_channel_search, index_search_task) = spawn_index_task(args.dataset.to_string());
-    let (poi_channel_nosearch, index_nosearch_task) =
-        spawn_index_task(args.dataset_nosearch.to_string());
+    let (poi_channel_search, index_search_task) = spawn_index_task(poi_index_config);
+    let (poi_channel_nosearch, index_nosearch_task) = spawn_index_task(poi_index_nosearch_config);
 
     // Build POIs and send them to indexing tasks
     let fetch_pois_task = client
