@@ -1,4 +1,0 @@
-mode = "docker"
-
-[logging]
-  path = "/dev/stdout"

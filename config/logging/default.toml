@@ -1,2 +1,2 @@
 [logging]
-  path = "./logs"
+  path = "/dev/stdout"

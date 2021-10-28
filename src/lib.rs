@@ -11,7 +11,6 @@ use elasticsearch::Elasticsearch;
 use futures::stream::{StreamExt, TryStreamExt};
 use futures::{join, try_join};
 use lazy_es::LazyEs;
-use log::info;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir2::common::config::config_from;
@@ -21,6 +20,7 @@ use mimir2::domain::ports::primary::{
     generate_index::GenerateIndex, list_documents::ListDocuments,
 };
 use mimir2::domain::ports::secondary::remote::Remote;
+use mimirsbrunn2::utils::logger::logger_init;
 use pg_poi_query::{PoisQuery, TableQuery};
 use places::poi::Poi;
 use pois::IndexedPoi;
@@ -29,6 +29,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::{atomic, Arc};
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
+use tracing::info;
 use utils::get_index_creation_date;
 
 #[macro_use]
@@ -124,13 +125,30 @@ pub async fn load_and_index_pois(
         .get("container-nosearch.dataset")
         .expect("could not fetch nosearch container dataset");
 
+    // Init global logger
+    let _guard = logger_init(
+        config
+            .get::<PathBuf>("logging.path")
+            .expect("could not fetch logging path"),
+    )
+    .expect("could not init logger");
+
+    info!(
+        "Full configuration:\n{}",
+        serde_json::to_string_pretty(
+            &config
+                .clone()
+                .try_into::<serde_json::Value>()
+                .expect("could not convert config to json"),
+        )
+        .expect("could not serialize config"),
+    );
+
     // Local Elasticsearch client
     let es = &Elasticsearch::new(
         Transport::single_node(es_config.url.as_str())
             .expect("failed to initialize Elasticsearch transport"),
     );
-
-    println!("config: {:?}", config);
 
     let mimir_es = Arc::new(
         connection_pool_url(&es_config.url)
@@ -169,8 +187,6 @@ pub async fn load_and_index_pois(
         .map(|admin| admin.expect("could not parse admin"))
         .collect()
         .await;
-
-    eprintln!("Admins loaded");
 
     // Build Postgres query
     // TODO: This should probably be put in a function for more readability?
@@ -212,12 +228,6 @@ pub async fn load_and_index_pois(
         .await
         .expect("failed to prepare query");
 
-    info!("Processing query results...");
-    let total_nb_pois = AtomicUsize::new(0);
-
-    let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_search);
-    let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_nosearch);
-
     // Spawn tasks that will build indexes. These tasks will provide a single
     // stream to mimirsbrunn which is built from data sent into async channels.
     let spawn_index_task = |config| {
@@ -237,7 +247,7 @@ pub async fn load_and_index_pois(
     let poi_index_config = Config::builder()
         .add_source(Poi::default_es_container_config())
         .add_source(config.clone())
-        .set_override("container.dataset", dataset_search)
+        .set_override("container.dataset", dataset_search.clone())
         .expect("failed to create config key container.dataset")
         .build()
         .expect("could not build search config");
@@ -245,7 +255,7 @@ pub async fn load_and_index_pois(
     let poi_index_nosearch_config = Config::builder()
         .add_source(Poi::default_es_container_config())
         .add_source(config.clone())
-        .set_override("container.dataset", dataset_nosearch)
+        .set_override("container.dataset", dataset_nosearch.clone())
         .expect("failed to create config key container.dataset")
         .build()
         .expect("could not build nosearch config");
@@ -254,6 +264,10 @@ pub async fn load_and_index_pois(
     let (poi_channel_nosearch, index_nosearch_task) = spawn_index_task(poi_index_nosearch_config);
 
     // Build POIs and send them to indexing tasks
+    let total_nb_pois = AtomicUsize::new(0);
+    let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_search);
+    let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_nosearch);
+
     let fetch_pois_task = client
         .query_raw::<_, i32, _>(&stmt, [])
         .await?
@@ -334,8 +348,9 @@ pub async fn load_and_index_pois(
         try_join!(index_search_task, index_nosearch_task, fetch_pois_task)
             .expect("failed to index POIs");
 
+    let total_nb_pois = total_nb_pois.into_inner();
     info!("Created index {:?} for searchable POIs", index_search);
     info!("Created index {:?} for non-searchable POIs", index_nosearch);
-    info!("Total number of pois: {}", total_nb_pois.into_inner());
+    info!("Total number of pois: {}", total_nb_pois);
     Ok(())
 }
