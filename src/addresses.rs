@@ -1,8 +1,11 @@
 use itertools::Itertools;
 use mimirsbrunn2::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn2::labels::{format_addr_name_and_label, format_street_label};
-use mimirsbrunn2::utils::find_country_codes;
-use places::{addr::Addr, admin::Admin, coord::Coord, poi::Poi, street::Street, Address, Place};
+// use mimirsbrunn2::utils::find_country_codes;
+use places::{
+    addr::Addr, admin::find_country_codes, admin::Admin, coord::Coord, poi::Poi, street::Street,
+    Address, Place,
+};
 use serde::Deserialize;
 use serde_json::json;
 use std::ops::Deref;
@@ -130,7 +133,7 @@ fn build_new_addr(
     let postcodes = poi
         .properties
         .iter()
-        .find(|p| ["addr:postcode", "contact:postcode"].contains(&p.key.as_str()))
+        .find(|(key, _)| ["addr:postcode", "contact:postcode"].contains(&key.as_str()))
         .map_or_else(
             || {
                 admins
@@ -141,7 +144,7 @@ fn build_new_addr(
                     .next()
                     .unwrap_or_else(Vec::new)
             },
-            |p| vec![p.value.to_owned()],
+            |(_, val)| vec![val.to_owned()],
         );
     let country_codes = find_country_codes(iter_admins(&admins));
     let street_label = format_street_label(street_tag, iter_admins(&admins), &country_codes);
@@ -210,7 +213,7 @@ pub fn find_address<'p>(
     if poi
         .properties
         .iter()
-        .any(|p| p.key == "poi_class" && p.value == "locality")
+        .any(|(key, val)| key == "poi_class" && val == "locality")
     {
         // We don't want to add address on hamlets.
         return LazyEs::Value(None);
@@ -221,15 +224,15 @@ pub fn find_address<'p>(
         .find_map(|k| {
             poi.properties
                 .iter()
-                .find(|p| &p.key == k)
-                .map(|p| &p.value)
+                .find(|(key, _)| key == k)
+                .map(|(_, val)| val)
         });
 
     let osm_street_tag = ["addr:street", "contact:street"].iter().find_map(|k| {
         poi.properties
             .iter()
-            .find(|p| &p.key == k)
-            .map(|p| &p.value)
+            .find(|(key, _)| key == k)
+            .map(|(_, val)| val)
     });
 
     match (osm_addr_tag, osm_street_tag) {

@@ -13,6 +13,8 @@ use futures::{join, try_join};
 use lazy_es::LazyEs;
 use log::info;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir2::common::config::config_from;
 use mimir2::common::document::ContainerDocument;
 use mimir2::domain::model::index::IndexVisibility;
 use mimir2::domain::ports::primary::{
@@ -22,9 +24,9 @@ use mimir2::domain::ports::secondary::remote::Remote;
 use pg_poi_query::{PoisQuery, TableQuery};
 use places::poi::Poi;
 use pois::IndexedPoi;
-use std::sync::atomic;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicUsize;
-use std::sync::Arc;
+use std::sync::{atomic, Arc};
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
 use utils::get_index_creation_date;
@@ -46,38 +48,50 @@ pub struct Args {
     /// Postgresql parameters
     #[structopt(long = "pg")]
     pub pg: String,
-    /// Elasticsearch parameters.
-    #[structopt(long = "es", default_value = "http://localhost:9200/")]
-    es: String,
-    /// Dataset to store searchable POIs
-    #[structopt(short = "d", long = "dataset")]
-    dataset: String,
-    /// Dataset to store non-searchable POIs
-    #[structopt(long = "dataset-nosearch", default_value = "nosearch")]
-    dataset_nosearch: String,
+
     /// Number of threads used. The default is to use the number of cpus
     #[structopt(short = "n", long = "nb-threads")]
     pub nb_threads: Option<usize>,
+
     /// Bounding box to filter the imported pois
     /// The format is "lat1, lon1, lat2, lon2"
     #[structopt(short = "b", long = "bounding-box")]
     bounding_box: Option<String>,
+
     /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
+    #[structopt(long = "nb-shards", default_value = "1")]
     nb_shards: usize,
+
     /// Number of replicas for the es index
     #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
     nb_replicas: usize,
+
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
+
     /// Do not skip reverse when address information can be retrieved from previous data
     #[structopt(long)]
     no_skip_reverse: bool,
+
     /// Max number of tasks sent to ES simultaneously by each thread while searching for POI
     /// address
     #[structopt(default_value = "100")]
     max_query_batch_size: usize,
+
+    /// Defines the run mode in {testing, dev, prod, ...}
+    ///
+    /// If no run mode is provided, a default behavior will be used.
+    #[structopt(short = "m", long = "run-mode")]
+    pub run_mode: Option<String>,
+
+    /// Defines the config directories
+    #[structopt(parse(from_os_str), short = "c", long = "config-dir")]
+    pub config_dir: PathBuf,
+
+    /// Override settings values using key=value
+    #[structopt(short = "s", long = "setting")]
+    pub settings: Vec<String>,
 }
 
 pub async fn load_and_index_pois(
@@ -88,17 +102,39 @@ pub async fn load_and_index_pois(
     let langs = &args.langs;
     let max_batch_size = args.max_query_batch_size;
 
+    // Read config values
+    let config = config_from(
+        &args.config_dir,
+        &["elasticsearch", "fafnir", "logging"],
+        args.run_mode.as_deref(),
+        "MIMIR",
+        args.settings,
+    )
+    .expect("could not build fafnir config");
+
+    let es_config: ElasticsearchStorageConfig = config
+        .get("elasticsearch")
+        .expect("invalid elasticsearch config");
+
+    let dataset_search: String = config
+        .get("container-search.dataset")
+        .expect("could not fetch search container dataset");
+
+    let dataset_nosearch: String = config
+        .get("container-nosearch.dataset")
+        .expect("could not fetch nosearch container dataset");
+
     // Local Elasticsearch client
     let es = &Elasticsearch::new(
-        Transport::single_node(args.es.as_str())
+        Transport::single_node(es_config.url.as_str())
             .expect("failed to initialize Elasticsearch transport"),
     );
 
+    println!("config: {:?}", config);
+
     let mimir_es = Arc::new(
-        connection_pool_url(&args.es)
-            .await
-            .expect("failed to open connection pool to Elasticsearch")
-            .conn()
+        connection_pool_url(&es_config.url)
+            .conn(es_config)
             .await
             .expect("failed to open Elasticsearch connection"),
     );
@@ -179,26 +215,11 @@ pub async fn load_and_index_pois(
     info!("Processing query results...");
     let total_nb_pois = AtomicUsize::new(0);
 
-    let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset);
-    let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, args.dataset_nosearch);
+    let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_search);
+    let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_nosearch);
 
     // Spawn tasks that will build indexes. These tasks will provide a single
     // stream to mimirsbrunn which is built from data sent into async channels.
-
-    let poi_index_config = Config::builder()
-        .add_source(Poi::default_es_container_config())
-        .set_override("container.dataset", args.dataset)
-        .expect("failed to create config key container.dataset")
-        .build()
-        .expect("failed to build mimir config");
-
-    let poi_index_nosearch_config = Config::builder()
-        .add_source(Poi::default_es_container_config())
-        .set_override("container.dataset", args.dataset_nosearch)
-        .expect("failed to create config key container.dataset")
-        .build()
-        .expect("failed to build mimir config");
-
     let spawn_index_task = |config| {
         let mimir_es = mimir_es.clone();
         let (send, recv) = channel::<Poi>(CHANNEL_SIZE);
@@ -212,6 +233,22 @@ pub async fn load_and_index_pois(
 
         (send, task)
     };
+
+    let poi_index_config = Config::builder()
+        .add_source(Poi::default_es_container_config())
+        .add_source(config.clone())
+        .set_override("container.dataset", dataset_search)
+        .expect("failed to create config key container.dataset")
+        .build()
+        .expect("could not build search config");
+
+    let poi_index_nosearch_config = Config::builder()
+        .add_source(Poi::default_es_container_config())
+        .add_source(config.clone())
+        .set_override("container.dataset", dataset_nosearch)
+        .expect("failed to create config key container.dataset")
+        .build()
+        .expect("could not build nosearch config");
 
     let (poi_channel_search, index_search_task) = spawn_index_task(poi_index_config);
     let (poi_channel_nosearch, index_nosearch_task) = spawn_index_task(poi_index_nosearch_config);

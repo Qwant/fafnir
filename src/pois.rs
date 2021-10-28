@@ -6,13 +6,14 @@ use itertools::Itertools;
 use log::{debug, warn};
 use mimirsbrunn2::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn2::labels::{format_international_poi_label, format_poi_label};
-use mimirsbrunn2::utils::find_country_codes;
 use places::{
+    admin::find_country_codes,
     coord::Coord,
     i18n_properties::I18nProperties,
     poi::{Poi, PoiType},
     Address, Property,
 };
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
@@ -176,12 +177,6 @@ impl IndexedPoi {
 
             res.poi.administrative_regions = admins;
 
-            // TODO: maybe we could simply return Addr type
-            res.poi.address = poi_address.and_then(|addr| match addr {
-                Address::Addr(x) => Some(x),
-                _ => None,
-            });
-
             res.poi.label = format_poi_label(
                 &res.poi.name,
                 iter_admins(&res.poi.administrative_regions),
@@ -231,12 +226,9 @@ impl IndexedPoi {
     }
 }
 
-fn properties_from_tags(tags: HashMap<String, Option<String>>) -> Vec<Property> {
+fn properties_from_tags(tags: HashMap<String, Option<String>>) -> BTreeMap<String, String> {
     tags.into_iter()
-        .map(|(k, v)| Property {
-            key: k,
-            value: v.unwrap_or_else(|| "".to_string()),
-        })
+        .map(|(k, v)| (k, v.unwrap_or_default()))
         .collect()
 }
 
@@ -278,36 +270,33 @@ fn build_poi_type_text(
         .join(" ")
 }
 
-fn build_poi_properties(row: &tokio_postgres::Row, mut properties: Vec<Property>) -> Vec<Property> {
+fn build_poi_properties(
+    row: &tokio_postgres::Row,
+    mut properties: BTreeMap<String, String>,
+) -> BTreeMap<String, String> {
     if let Ok(poi_subclass) = row.try_get("subclass") {
-        properties.push(Property {
-            key: "poi_subclass".to_string(),
-            value: poi_subclass,
-        });
+        properties.insert("poi_subclass".to_string(), poi_subclass);
     };
 
     if let Ok(poi_class) = row.try_get("class") {
-        properties.push(Property {
-            key: "poi_class".to_string(),
-            value: poi_class,
-        });
+        properties.insert("poi_class".to_string(), poi_class);
     };
 
     properties
 }
 
-fn build_names(langs: &[String], properties: &[Property]) -> I18nProperties {
+fn build_names(langs: &[String], properties: &BTreeMap<String, String>) -> I18nProperties {
     const NAME_TAG_PREFIX: &str = "name:";
 
     let properties = properties
         .iter()
-        .filter_map(|property| {
-            if property.key.starts_with(&NAME_TAG_PREFIX) {
-                let lang = property.key[NAME_TAG_PREFIX.len()..].to_string();
+        .filter_map(|(key, val)| {
+            if key.starts_with(&NAME_TAG_PREFIX) {
+                let lang = key[NAME_TAG_PREFIX.len()..].to_string();
                 if langs.contains(&lang) {
                     return Some(Property {
                         key: lang,
-                        value: property.value.to_string(),
+                        value: val.to_string(),
                     });
                 }
             }

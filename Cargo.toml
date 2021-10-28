@@ -10,20 +10,23 @@ futures = "0.3.16"
 geo-types = "0.7"
 itertools = "0.9"
 log = { version = "0.4", features = ["release_max_level_info"] }
-mimir2 = { path = "/home/remi/code/mimirsbrunn/libs/mimir2" }
-mimirsbrunn2 = { path = "/home/remi/code/mimirsbrunn", package = "mimirsbrunn" }
 num_cpus = "1.13"
 once_cell = "1.4"
-places = { path = "/home/remi/code/mimirsbrunn/libs/places" }
 serde_json = { version = "1", features = ["raw_value"] }
 serde = { version = "1", features = ["rc"] }
 slog-scope = "4.3"
 slog = { version = "2.5", features = ["max_level_trace", "release_max_level_info"]}
 structopt = "0.3"
 tokio-postgres = "0.7"
-tokio = { version = "1.10", default_features = false, features = ["macros", "rt-multi-thread", "time", "sync"] }
 tokio-stream = "0.1"
+tokio = { version = "1.10", default_features = false, features = ["macros", "rt-multi-thread", "time", "sync"] }
 tracing = { version = "0.1", features = ["release_max_level_info"] }
+url = { version = "2", features = ["serde"] }
+
+# Mimirsbrunn dependancies
+mimirsbrunn2 = { git = "https://github.com/CanalTP/mimirsbrunn.git", package = "mimirsbrunn" }
+mimir2 = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
+places = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
 
 [dependencies.config]
 git = "https://github.com/mehcode/config-rs.git"
@@ -32,7 +35,7 @@ default_features = false
 
 [dev-dependencies]
 retry = "*"
-hyper = "0.10"
+# hyper = "0.10"
 cosmogony = "0.10.3"
 rs-es = {git = "https://github.com/canaltp/rs-es", default-features = false, rev = "ce83c8bb"}
 serde_derive = "1"
