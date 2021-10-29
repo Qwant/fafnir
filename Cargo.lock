@@ -939,7 +939,6 @@ dependencies = [
  "futures 0.3.16",
  "geo-types 0.7.2",
  "itertools 0.9.0",
- "log",
  "mimir2",
  "mimirsbrunn",
  "num_cpus",

@@ -1,6 +1,6 @@
 use elasticsearch::cat::CatIndicesParts;
 use elasticsearch::Elasticsearch;
-use log::warn;
+use tracing::warn;
 
 pub async fn start_postgres_session(
     config: &str,

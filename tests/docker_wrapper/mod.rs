@@ -1,8 +1,8 @@
 use fafnir::utils::start_postgres_session;
-use log::{info, warn};
 use std::error::Error;
 use std::process::Command;
 use std::time::Duration;
+use tracing::{info, warn};
 
 pub struct PostgresDocker {
     ip: String,

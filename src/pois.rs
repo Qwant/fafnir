@@ -3,7 +3,6 @@ use crate::addresses::iter_admins;
 use crate::langs::COUNTRIES_LANGS;
 use crate::lazy_es::LazyEs;
 use itertools::Itertools;
-use log::{debug, warn};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::labels::{format_international_poi_label, format_poi_label};
 use places::{
@@ -13,15 +12,14 @@ use places::{
     poi::{Poi, PoiType},
     Address, Property,
 };
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use tracing::{debug, warn};
 
 use once_cell::sync::Lazy;
 
 const TAGS_TO_INDEX_AS_POI_TYPE_NAME: &[&str] = &["cuisine"];
 
-static NON_SEARCHABLE_ITEMS: Lazy<BTreeSet<(String, String)>> = Lazy::new(|| {
+static NON_SEARCHABLE_ITEMS: Lazy<HashSet<(String, String)>> = Lazy::new(|| {
     [
         /*
             List of (mapping_key, subclass)

@@ -1,11 +1,9 @@
-use log::LevelFilter;
 use structopt::StructOpt;
 
 use fafnir::utils::start_postgres_session;
 use fafnir::Args;
 
 async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
-    log::set_max_level(LevelFilter::Info);
     let client = start_postgres_session(&args.pg)
         .await
         .unwrap_or_else(|err| panic!("Unable to connect to postgres: {}", err));
