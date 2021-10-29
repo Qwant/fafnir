@@ -22,9 +22,9 @@ url = { version = "2", features = ["serde"] }
 
 # Mimirsbrunn dependancies
 # requires higher `size` in search_documents
-mimirsbrunn = { path = "/home/remi/code/mimirsbrunn" } 
-mimir2 = { path = "/home/remi/code/mimirsbrunn/libs/mimir2" }
-places = { path = "/home/remi/code/mimirsbrunn/libs/places" }
+mimirsbrunn = { git = "https://github.com/remi-dupre/mimirsbrunn.git", branch = "querystring-limit" }
+mimir2 = { git = "https://github.com/remi-dupre/mimirsbrunn.git", branch = "querystring-limit" }
+places = { git = "https://github.com/remi-dupre/mimirsbrunn.git", branch = "querystring-limit" }
 
 [dependencies.config]
 git = "https://github.com/mehcode/config-rs.git"
