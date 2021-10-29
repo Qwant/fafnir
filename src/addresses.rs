@@ -1,6 +1,6 @@
 use itertools::Itertools;
-use mimirsbrunn2::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn2::labels::{format_addr_name_and_label, format_street_label};
+use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use mimirsbrunn::labels::{format_addr_name_and_label, format_street_label};
 // use mimirsbrunn2::utils::find_country_codes;
 use places::{
     addr::Addr, admin::find_country_codes, admin::Admin, coord::Coord, poi::Poi, street::Street,

@@ -20,7 +20,7 @@ use mimir2::domain::ports::primary::{
     generate_index::GenerateIndex, list_documents::ListDocuments,
 };
 use mimir2::domain::ports::secondary::remote::Remote;
-use mimirsbrunn2::utils::logger::logger_init;
+use mimirsbrunn::utils::logger::logger_init;
 use pg_poi_query::{PoisQuery, TableQuery};
 use places::poi::Poi;
 use pois::IndexedPoi;
@@ -99,7 +99,7 @@ pub async fn load_and_index_pois(
     client: tokio_postgres::Client,
     nb_threads: usize,
     args: Args,
-) -> Result<(), mimirsbrunn2::Error> {
+) -> Result<(), mimirsbrunn::Error> {
     let langs = &args.langs;
     let max_batch_size = args.max_query_batch_size;
 

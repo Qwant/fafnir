@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 elasticsearch = "7.14.0-alpha.1"
-futures = "0.3.16"
+futures = { version = "0.3.16", default_features = false }
 geo-types = "0.7"
 itertools = "0.9"
 log = { version = "0.4", features = ["release_max_level_info"] }
@@ -14,18 +14,16 @@ num_cpus = "1.13"
 once_cell = "1.4"
 serde_json = { version = "1", features = ["raw_value"] }
 serde = { version = "1", default_features = false }
-slog-scope = "4.3"
-slog = { version = "2.5", features = ["max_level_trace", "release_max_level_info"]}
 structopt = "0.3"
 tokio-postgres = "0.7"
-tokio-stream = "0.1"
-tokio = { version = "1.10", default_features = false, features = ["macros", "rt-multi-thread", "time", "sync"] }
-tracing = { version = "0.1", features = ["release_max_level_info"] }
+tokio-stream = { version = "0.1", default_features = false }
+tokio = { version = "1.10", features = ["macros", "rt-multi-thread", "time", "sync"] }
+tracing = { version = "0.1", default_features = false, features = ["release_max_level_info"] }
 url = { version = "2", features = ["serde"] }
 
 # Mimirsbrunn dependancies
 # requires higher `size` in search_documents
-mimirsbrunn2 = { path = "/home/remi/code/mimirsbrunn", package = "mimirsbrunn" } 
+mimirsbrunn = { path = "/home/remi/code/mimirsbrunn" } 
 mimir2 = { path = "/home/remi/code/mimirsbrunn/libs/mimir2" }
 places = { path = "/home/remi/code/mimirsbrunn/libs/places" }
 

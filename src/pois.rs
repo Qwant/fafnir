@@ -4,8 +4,8 @@ use crate::langs::COUNTRIES_LANGS;
 use crate::lazy_es::LazyEs;
 use itertools::Itertools;
 use log::{debug, warn};
-use mimirsbrunn2::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn2::labels::{format_international_poi_label, format_poi_label};
+use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use mimirsbrunn::labels::{format_international_poi_label, format_poi_label};
 use places::{
     admin::find_country_codes,
     coord::Coord,
