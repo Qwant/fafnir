@@ -150,8 +150,7 @@ impl ElasticSearchWrapper {
         F: FnMut(&places::Place) -> bool,
     {
         let indices = ["admin", "addr", "poi"]
-            .iter()
-            .copied()
+            .into_iter()
             .map(String::from)
             .collect();
 

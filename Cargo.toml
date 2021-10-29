@@ -2,7 +2,7 @@
 name = "fafnir"
 version = "0.3.12"
 authors = ["Adrien Matissart <a.matissart@qwantresearch.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 elasticsearch = "7.14.0-alpha.1"
