@@ -113,10 +113,8 @@ impl<'p, T: 'p> LazyEs<'p, T> {
             .await
             .expect("failed to read ES response");
 
-        // eprintln!("{:?}", es_response);
-
-        let responses =
-            parse_es_multi_response(&es_response).expect("failed to parse ES responses");
+        let responses = parse_es_multi_response(&es_response)
+            .unwrap_or_else(|err| panic!("failed to parse ES responses: {}\n{}", err, es_response));
 
         assert_eq!(responses.len(), need_progress.len());
         let progress_count = need_progress.len();

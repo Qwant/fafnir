@@ -89,13 +89,11 @@ pub fn get_addr_from_coords<'a>(coord: &Coord) -> LazyEs<'a, Vec<Place>> {
         query: json!({
             "query": {
                 "bool": {
-                    "must": {
+                    "must": { "match_all": {} },
+                    "filter": {
                         "geo_distance": {
                             "distance": MAX_REVERSE_DISTANCE,
-                            "coord": {
-                                "lat": coord.lat(),
-                                "lon": coord.lon()
-                            }
+                            "coord": { "lat": coord.lat(), "lon": coord.lon() }
                         }
                     }
                 }
@@ -103,7 +101,7 @@ pub fn get_addr_from_coords<'a>(coord: &Coord) -> LazyEs<'a, Vec<Place>> {
             "sort": [
                 {
                     "_geo_distance": {
-                        "pin.location": { "lat": coord.lat(), "lon": coord.lon() },
+                        "coord": { "lat": coord.lat(), "lon": coord.lon() },
                         "order": "asc",
                         "unit": "m",
                         "distance_type": "arc",

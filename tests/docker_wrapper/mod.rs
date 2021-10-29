@@ -1,13 +1,8 @@
 use fafnir::utils::start_postgres_session;
 use log::{info, warn};
-use retry::delay::Fixed;
 use std::error::Error;
 use std::process::Command;
 use std::time::Duration;
-
-pub struct ElasticsearchDocker {
-    ip: String,
-}
 
 pub struct PostgresDocker {
     ip: String,
@@ -78,55 +73,6 @@ impl PostgresDocker {
     }
 }
 
-// impl ElasticsearchDocker {
-//     pub fn new() -> Result<ElasticsearchDocker, Box<dyn Error>> {
-//         let mut el_docker = ElasticsearchDocker { ip: "".to_string() };
-//         el_docker.setup()?;
-//         let rubber = Rubber::new(&el_docker.host());
-//         rubber
-//             .initialize_templates()
-//             .expect("failed to initialize ES templates");
-//         Ok(el_docker)
-//     }
-//
-//     pub fn host(&self) -> String {
-//         format!("http://{}:9200", self.ip)
-//     }
-//
-//     pub fn setup(&mut self) -> Result<(), Box<dyn Error>> {
-//         info!("Launching docker");
-//         let (name, img) = ("mimirsbrunn_fafnir_tests", "elasticsearch:2");
-//
-//         let status = Command::new("docker")
-//             .args(&["run", "-d", &format!("--name={}", name), img])
-//             .status()?;
-//         if !status.success() {
-//             return Err(format!("`docker run` failed {}", &status).into());
-//         }
-//
-//         // we need to get the ip of the container if the container has been run on another machine
-//         let container_ip_cmd = Command::new("docker")
-//             .args(&["inspect", "--format={{.NetworkSettings.IPAddress}}", name])
-//             .output()?;
-//
-//         let container_ip = ::std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.trim();
-//
-//         info!("container ip = {:?}", container_ip);
-//         self.ip = container_ip.to_string();
-//
-//         info!("Waiting for ES in docker to be up and running...");
-//
-//         retry::retry(Fixed::from_millis(1000).take(30), || {
-//             hyper::client::Client::new()
-//                 .get(&self.host())
-//                 .send()
-//                 .map(|res| res.status == hyper::Ok)
-//         })
-//         .map(|_| info!("{} docker is up and running", name))
-//         .map_err(|_| "ElasticSearch is down".into())
-//     }
-// }
-
 fn docker_command(args: &[&'static str]) {
     info!("Running docker {:?}", args);
     let status = Command::new("docker").args(args).status();
@@ -148,16 +94,5 @@ impl Drop for PostgresDocker {
         }
         docker_command(&["stop", "postgres_fafnir_tests"]);
         docker_command(&["rm", "postgres_fafnir_tests"]);
-    }
-}
-
-impl Drop for ElasticsearchDocker {
-    fn drop(&mut self) {
-        if ::std::env::var("DONT_KILL_THE_WHALE") == Ok("1".to_string()) {
-            warn!("the elasticsearch docker won't be stoped at the end, you can debug it.");
-            return;
-        }
-        docker_command(&["stop", "mimirsbrunn_fafnir_tests"]);
-        docker_command(&["rm", "mimirsbrunn_fafnir_tests"]);
     }
 }

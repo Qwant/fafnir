@@ -5,17 +5,20 @@ use config::Config;
 use docker_wrapper::PostgresDocker;
 use fafnir::utils::start_postgres_session;
 use futures::stream::TryStreamExt;
-use hyper::client::response::Response;
-use log::{info, warn};
-use mimir2::adapters::secondary::elasticsearch::{remote, ElasticsearchStorage};
-use mimir2::common::document::ContainerDocument;
+use mimir2::adapters::secondary::elasticsearch::{
+    remote, ElasticsearchStorage, ElasticsearchStorageConfig,
+};
+use mimir2::common::document::{ContainerDocument, Document};
 use mimir2::domain::model::index::IndexVisibility;
+use mimir2::domain::model::query::Query;
 use mimir2::domain::ports::primary::generate_index::GenerateIndex;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
+use mimir2::domain::ports::primary::search_documents::SearchDocuments;
 use mimir2::domain::ports::secondary::remote::Remote;
+use mimir2::domain::ports::secondary::storage::Storage;
 use mimir2::utils::docker;
-use serde_json::value::Value;
-use std::sync::MutexGuard;
+use places::poi::Poi;
+use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
 // Dataset name used for tests.
@@ -49,47 +52,26 @@ impl<'a> PostgresWrapper<'a> {
     }
 }
 
-/// Code below comes from https://github.com/CanalTP/mimirsbrunn/tree/master/tests
-trait ToJson {
-    fn to_json(self) -> Value;
-}
-
-impl ToJson for Response {
-    fn to_json(self) -> Value {
-        match serde_json::from_reader(self) {
-            Ok(v) => v,
-            Err(e) => {
-                panic!("could not get json value from response: {:?}", e);
-            }
-        }
-    }
-}
-
 pub struct ElasticSearchWrapper {
-    _docker: MutexGuard<'static, ()>,
     host: String,
     es: ElasticsearchStorage,
 }
 
 impl ElasticSearchWrapper {
     pub async fn new() -> ElasticSearchWrapper {
-        let host = "http://localhost:9201".to_string();
-        std::env::set_var("ELASTICSEARCH_TEST_URL", &host);
+        let host = "http://localhost:9201".into();
+        std::env::set_var("MIMIR_TEST_ELASTICSEARCH_URL", &host);
 
         let _docker = docker::initialize()
             .await
             .expect("could not initialize ElasticSearch docker");
 
-        let pool = remote::connection_pool_url(&host)
-            .await
-            .expect("could not create ElasticSearch connection pool");
-
-        let es = pool
-            .conn()
+        let es = remote::connection_test_pool()
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("could not connect ElasticSearch pool");
 
-        let mut res = Self { _docker, host, es };
+        let mut res = Self { host, es };
         res.init().await;
         res
     }
@@ -120,149 +102,70 @@ impl ElasticSearchWrapper {
             .expect("could not create index");
     }
 
-    pub async fn get_pois(&mut self) -> Vec<places::poi::Poi> {
+    pub async fn init(&mut self) {
+        self.es
+            .delete_container("_all".to_string())
+            .await
+            .expect("could not swipe indices")
+    }
+
+    pub async fn get_all_nosearch_pois(&mut self) -> impl Iterator<Item = Poi> {
+        #[derive(Deserialize, Serialize)]
+        #[serde(transparent)]
+        pub struct PoiNoSearch(Poi);
+
+        impl Document for PoiNoSearch {
+            fn id(&self) -> std::string::String {
+                self.0.id()
+            }
+        }
+
+        impl ContainerDocument for PoiNoSearch {
+            fn static_doc_type() -> &'static str {
+                "poi_nosearch"
+            }
+
+            fn default_es_container_config() -> Config {
+                Poi::default_es_container_config()
+            }
+        }
+
         self.es
             .list_documents()
             .await
             .expect("could not query a list of POIs from ES")
-            .try_collect()
+            .try_collect::<Vec<_>>()
             .await
             .expect("could not fetch a POI from ES")
+            .into_iter()
+            .map(|PoiNoSearch(poi)| poi)
     }
 
-    pub async fn init(&mut self) {
-        // TODO
-        // self.rubber.delete_index(&"_all".to_string()).unwrap();
-    }
-
-    pub async fn refresh(&self) {
-        // TODO: is this necessary?
-        // info!("Refreshing ES indexes");
-        //
-        // let res = hyper::client::Client::new()
-        //     .get(&format!("{}/_refresh", self.host()))
-        //     .send()
-        //     .unwrap();
-        // assert!(res.status == hyper::Ok, "Error ES refresh: {:?}", res);
-    }
-
-    /// simple search on an index
-    /// assert that the result is OK and transform it to a json Value
-    pub fn search(&self, word: &str) -> serde_json::Value {
-        //         let res = self
-        //             .rubber
-        //             .get(&format!("munin/_search?q={}&size=100", word))
-        //             .unwrap();
-        //         assert!(res.status().is_success());
-        //         res.json().expect("failed to parse json")
-        todo!()
-    }
-
-    pub fn search_on_global_stop_index(&self, word: &str) -> serde_json::Value {
-        //         let res = self
-        //             .rubber
-        //             .get(&format!("munin_global_stops/_search?q={}", word))
-        //             .unwrap();
-        //         assert!(res.status().is_success());
-        //         res.json().expect("failed to parse json")
-        todo!()
-    }
-
-    pub fn search_and_filter<'b, F>(
+    pub async fn search_and_filter<F>(
         &self,
         word: &str,
         predicate: F,
-    ) -> Box<dyn Iterator<Item = places::Place> + 'b>
+    ) -> impl Iterator<Item = places::Place>
     where
-        F: 'b + FnMut(&places::Place) -> bool,
+        F: FnMut(&places::Place) -> bool,
     {
-        //         self.search_and_filter_on_index(word, predicate, false)
-        todo!()
-    }
+        let indices = ["admin", "addr", "poi"]
+            .iter()
+            .copied()
+            .map(String::from)
+            .collect();
 
-    fn search_and_filter_on_index<'b, F>(
-        &self,
-        word: &str,
-        predicate: F,
-        search_on_global_stops: bool,
-    ) -> Box<dyn Iterator<Item = places::Place> + 'b>
-    where
-        F: 'b + FnMut(&places::Place) -> bool,
-    {
-        //         use serde_json::map::{Entry, Map};
-        //         fn into_object(json: Value) -> Option<Map<String, Value>> {
-        //             match json {
-        //                 Value::Object(o) => Some(o),
-        //                 _ => None,
-        //             }
-        //         }
-        //         fn get(json: Value, key: &str) -> Option<Value> {
-        //             into_object(json).and_then(|mut json| match json.entry(key.to_string()) {
-        //                 Entry::Occupied(o) => Some(o.remove()),
-        //                 _ => None,
-        //             })
-        //         }
-        //         let json = if search_on_global_stops {
-        //             self.search_on_global_stop_index(word)
-        //         } else {
-        //             self.search(word)
-        //         };
-        //         get(json, "hits")
-        //             .and_then(|json| get(json, "hits"))
-        //             .and_then(|hits| {
-        //                 match hits {
-        //                     Value::Array(v) => {
-        //                         Some(Box::new(v
-        //                             .into_iter()
-        //                             .filter_map(into_object)
-        //                             .filter_map(|obj| obj
-        //                                 .get("_type")
-        //                                 .and_then(|doc_type| doc_type.as_str())
-        //                                 .map(|doc_type| doc_type.into())
-        //                                 .and_then(|doc_type: String| {
-        //                                     // The real object is contained in the _source section.
-        //                                     obj.get("_source").and_then(|src| {
-        //                                         let v = src.clone();
-        //                                         match doc_type.as_ref() {
-        //                                             "addr" => convert(v, mimir::Place::Addr),
-        //                                             "street" => convert(v, mimir::Place::Street),
-        //                                             "admin" => convert(v, mimir::Place::Admin),
-        //                                             "poi" => convert(v, mimir::Place::Poi),
-        //                                             "stop" => convert(v, mimir::Place::Stop),
-        //                                             _ => {
-        //                                                 panic!("unknown ES return value, _type field = {}", doc_type);
-        //                                             }
-        //                                         }
-        //                                     })
-        //                                 })
-        //                             )
-        //                             .filter(predicate),
-        //                         ) as Box<dyn Iterator<Item = mimir::Place>>)
-        //                     }
-        //                     _ => None,
-        //                 }
-        //             })
-        //             .unwrap_or(Box::new(None.into_iter()) as Box<dyn Iterator<Item = mimir::Place>>)
-        todo!()
+        self.es
+            .search_documents(indices, Query::QueryString(word.to_string()))
+            .await
+            .unwrap_or_else(|err| panic!("could not search for {}: {}", word, err))
+            .into_iter()
+            .map(|val| serde_json::from_value(val).unwrap())
+            .filter(predicate)
     }
 }
 
-fn convert<T>(v: serde_json::Value, f: fn(T) -> places::Place) -> Option<places::Place>
-where
-    for<'de> T: serde::Deserialize<'de>,
-{
-    //     serde_json::from_value::<T>(v)
-    //         .map_err(|err| warn!("Impossible to load ES result: {}", err))
-    //         .ok()
-    //         .map(f)
-    todo!()
-}
-
-async fn launch_and_assert(
-    cmd: &'static str,
-    args: Vec<std::string::String>,
-    es_wrapper: &ElasticSearchWrapper,
-) {
+async fn launch_and_assert(cmd: &'static str, args: Vec<std::string::String>) {
     let mut command = Command::new(cmd);
     command.args(&args).env("RUST_BACKTRACE", "1");
     let output = command.output().await.unwrap();
@@ -275,8 +178,6 @@ async fn launch_and_assert(
         eprintln!("===");
         panic!("`{}` failed {}", cmd, output.status);
     }
-
-    es_wrapper.refresh().await;
 }
 
 #[tokio::test]

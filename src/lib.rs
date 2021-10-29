@@ -230,13 +230,13 @@ pub async fn load_and_index_pois(
 
     // Spawn tasks that will build indexes. These tasks will provide a single
     // stream to mimirsbrunn which is built from data sent into async channels.
-    let spawn_index_task = |config| {
+    let spawn_index_task = |config, visibility| {
         let mimir_es = mimir_es.clone();
         let (send, recv) = channel::<Poi>(CHANNEL_SIZE);
 
         let task = async move {
             mimir_es
-                .generate_index(config, ReceiverStream::new(recv), IndexVisibility::Public)
+                .generate_index(config, ReceiverStream::new(recv), visibility)
                 .await
                 .map_err(Error::from)
         };
@@ -260,8 +260,11 @@ pub async fn load_and_index_pois(
         .build()
         .expect("could not build nosearch config");
 
-    let (poi_channel_search, index_search_task) = spawn_index_task(poi_index_config);
-    let (poi_channel_nosearch, index_nosearch_task) = spawn_index_task(poi_index_nosearch_config);
+    let (poi_channel_search, index_search_task) =
+        spawn_index_task(poi_index_config, IndexVisibility::Public);
+
+    let (poi_channel_nosearch, index_nosearch_task) =
+        spawn_index_task(poi_index_nosearch_config, IndexVisibility::Private);
 
     // Build POIs and send them to indexing tasks
     let total_nb_pois = AtomicUsize::new(0);

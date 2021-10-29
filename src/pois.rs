@@ -176,6 +176,7 @@ impl IndexedPoi {
             };
 
             res.poi.administrative_regions = admins;
+            res.poi.address = poi_address;
 
             res.poi.label = format_poi_label(
                 &res.poi.name,
