@@ -6,11 +6,11 @@ use futures::stream::{Stream, StreamExt};
 use poi_query::{PoisQuery, TableQuery};
 
 /// Iter over all POIs from postgres.
-pub async fn fetch_all_pois(
+pub async fn fetch_all_pois<'a>(
     pg: &tokio_postgres::Client,
     bbox: Option<&str>,
-    langs: Vec<String>,
-) -> impl Stream<Item = IndexedPoi> {
+    langs: &'a [String],
+) -> impl Stream<Item = IndexedPoi> + 'a {
     let query = fetch_all_pois_query(bbox);
 
     let stmt = pg

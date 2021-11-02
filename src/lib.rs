@@ -58,14 +58,6 @@ pub struct Args {
     #[structopt(short = "b", long = "bounding-box")]
     bounding_box: Option<String>,
 
-    /// Number of shards for the es index
-    #[structopt(long = "nb-shards", default_value = "1")]
-    nb_shards: usize,
-
-    /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
-    nb_replicas: usize,
-
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
@@ -231,7 +223,7 @@ pub async fn load_and_index_pois(
     let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_nosearch);
 
     let fetch_pois_task =
-        postgres::fetch_all_pois(&client, args.bounding_box.as_deref(), args.langs.clone())
+        postgres::fetch_all_pois(&client, args.bounding_box.as_deref(), &args.langs)
             .await
             .chunks(1500)
             .enumerate()
