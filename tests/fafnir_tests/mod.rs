@@ -135,10 +135,14 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),
             "-s".to_string(),
-            format!(r#"container.dataset="{}""#, DATASET),
+            format!(r#"container-search.dataset="{}""#, DATASET),
             "-s".to_string(),
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
-            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
+            "-s".to_string(),
+            format!(
+                r#"fafnir.postgres="postgres://test@{}/test""#,
+                &pg_wrapper.host()
+            ),
         ],
     )
     .await;
@@ -369,11 +373,16 @@ pub async fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),
             "-s".to_string(),
-            format!(r#"container.dataset="{}""#, DATASET),
+            format!(r#"container-search.dataset="{}""#, DATASET),
             "-s".to_string(),
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
-            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
-            "--bounding-box=0, 0, 3.5, 3.5".into(),
+            "-s".to_string(),
+            format!(
+                r#"fafnir.postgres="postgres://test@{}/test""#,
+                &pg_wrapper.host()
+            ),
+            "-s".to_string(),
+            "fafnir.bounding_box=[0,0,3.5,3.5]".to_string(),
         ],
     )
     .await;
@@ -402,13 +411,17 @@ pub async fn test_with_langs(
         vec![
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),
-            "--lang=ru".into(),
-            "--lang=it".into(),
             "-s".to_string(),
-            format!(r#"container.dataset="{}""#, DATASET),
+            r#"fafnir.langs=["ru","it"]"#.to_string(),
+            "-s".to_string(),
+            format!(r#"container-search.dataset="{}""#, DATASET),
             "-s".to_string(),
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
-            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
+            "-s".to_string(),
+            format!(
+                r#"fafnir.postgres="postgres://test@{}/test""#,
+                &pg_wrapper.host()
+            ),
         ],
     )
     .await;
@@ -457,10 +470,14 @@ pub async fn test_address_format(
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),
             "-s".to_string(),
-            format!(r#"container.dataset="{}""#, DATASET),
+            format!(r#"container-search.dataset="{}""#, DATASET),
             "-s".to_string(),
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
-            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
+            "-s".to_string(),
+            format!(
+                r#"fafnir.postgres="postgres://test@{}/test""#,
+                &pg_wrapper.host()
+            ),
         ],
     )
     .await;
@@ -494,8 +511,13 @@ pub async fn test_current_country_label(
             format!(r#"container.dataset="{}""#, DATASET),
             "-s".to_string(),
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
-            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
-            "--lang=en".into(),
+            "-s".to_string(),
+            format!(
+                r#"fafnir.postgres="postgres://test@{}/test""#,
+                &pg_wrapper.host()
+            ),
+            "-s".to_string(),
+            r#"fafnir.langs=["en"]"#.to_string(),
         ],
     )
     .await;
@@ -520,9 +542,13 @@ pub async fn test_current_country_label(
             format!(r#"container.dataset="{}""#, DATASET),
             "-s".to_string(),
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
-            format!("--pg=postgres://test@{}/test", &pg_wrapper.host()),
-            "--lang=fr".into(),
-            "--lang=en".into(),
+            "-s".to_string(),
+            format!(
+                r#"fafnir.postgres="postgres://test@{}/test""#,
+                &pg_wrapper.host()
+            ),
+            "-s".to_string(),
+            r#"fafnir.langs=["fr","en"]"#.to_string(),
         ],
     )
     .await;
