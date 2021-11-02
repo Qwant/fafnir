@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - 'master'
-      - 'es7'
     tags:
       - 'v*'
 
@@ -29,8 +28,6 @@ jobs:
           VERSION=${GITHUB_REF#refs/*/}
           if [ "$VERSION" == "master" ]; then
             IMAGE_TAG=latest
-          elif [ "$VERSION" == "es7" ]; then
-            IMAGE_TAG=latest-es7
           else
             IMAGE_TAG=$VERSION
           fi
