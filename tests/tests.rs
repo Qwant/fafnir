@@ -155,13 +155,7 @@ impl ElasticSearchWrapper {
             .collect();
 
         self.es
-            .search_documents(
-                indices,
-                Query::QueryString {
-                    q: word.to_string(),
-                    limit: 100,
-                },
-            )
+            .search_documents(indices, Query::QueryString(word.to_string()), 100)
             .await
             .unwrap_or_else(|err| panic!("could not search for {}: {}", word, err))
             .into_iter()

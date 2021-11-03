@@ -540,7 +540,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=querystring-limit#ce0ffe8c2227da6f1f96e6f51aef8b957faad0ee"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git#e512e92b6d58e65a9e37654249a6f7cd3638be0c"
 dependencies = [
  "config",
  "serde",
@@ -1795,7 +1795,7 @@ dependencies = [
 [[package]]
 name = "mimir2"
 version = "0.1.0"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=querystring-limit#ce0ffe8c2227da6f1f96e6f51aef8b957faad0ee"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git#e512e92b6d58e65a9e37654249a6f7cd3638be0c"
 dependencies = [
  "async-graphql",
  "async-graphql-warp",
@@ -1833,7 +1833,7 @@ dependencies = [
 [[package]]
 name = "mimirsbrunn"
 version = "1.24.0-alpha"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=querystring-limit#ce0ffe8c2227da6f1f96e6f51aef8b957faad0ee"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git#e512e92b6d58e65a9e37654249a6f7cd3638be0c"
 dependencies = [
  "address-formatter",
  "bincode",
@@ -2346,7 +2346,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "places"
 version = "0.1.0"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=querystring-limit#ce0ffe8c2227da6f1f96e6f51aef8b957faad0ee"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git#e512e92b6d58e65a9e37654249a6f7cd3638be0c"
 dependencies = [
  "chrono-tz",
  "common",
