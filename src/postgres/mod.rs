@@ -8,7 +8,7 @@ use poi_query::{PoisQuery, TableQuery};
 /// Iter over all POIs from postgres.
 pub async fn fetch_all_pois<'a>(
     pg: &tokio_postgres::Client,
-    bbox: Option<&str>,
+    bbox: Option<[f64; 4]>,
     langs: &'a [String],
 ) -> impl Stream<Item = IndexedPoi> + 'a {
     let query = fetch_all_pois_query(bbox);
@@ -30,7 +30,7 @@ pub async fn fetch_all_pois<'a>(
         })
 }
 
-fn fetch_all_pois_query(bbox: Option<&str>) -> PoisQuery {
+fn fetch_all_pois_query(bbox: Option<[f64; 4]>) -> PoisQuery {
     let mut query = PoisQuery::new()
         .with_table(TableQuery::new("all_pois(14)").id_column("global_id"))
         .with_table(

@@ -5,15 +5,17 @@ mod pois;
 mod postgres;
 pub mod utils;
 
+use std::path::PathBuf;
+use std::sync::atomic::AtomicUsize;
+use std::sync::{atomic, Arc};
+
 use config::Config;
 use elasticsearch::http::transport::Transport;
 use elasticsearch::Elasticsearch;
 use futures::stream::{StreamExt, TryStreamExt};
 use futures::{join, try_join};
-use lazy_es::LazyEs;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use mimir2::common::config::config_from;
 use mimir2::common::document::ContainerDocument;
 use mimir2::domain::model::index::IndexVisibility;
 use mimir2::domain::ports::primary::{
@@ -22,17 +24,14 @@ use mimir2::domain::ports::primary::{
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::utils::logger::logger_init;
 use places::poi::Poi;
-use pois::IndexedPoi;
-use std::path::PathBuf;
-use std::sync::atomic::AtomicUsize;
-use std::sync::{atomic, Arc};
+use serde::Deserialize;
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::info;
-use utils::get_index_creation_date;
 
-#[macro_use]
-extern crate structopt;
+use lazy_es::LazyEs;
+use pois::IndexedPoi;
+use utils::{get_index_creation_date, start_postgres_session};
 
 // Prefix to ES index names for mimirsbrunn
 const MIMIR_PREFIX: &str = "munin";
@@ -42,67 +41,25 @@ const CHANNEL_SIZE: usize = 10_000;
 
 type Error = Box<dyn std::error::Error>;
 
-#[derive(StructOpt, Debug)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-pub struct Args {
-    /// Postgresql parameters
-    #[structopt(long = "pg")]
-    pub pg: String,
-
-    /// Number of threads used. The default is to use the number of cpus
-    #[structopt(short = "n", long = "nb-threads")]
-    pub nb_threads: Option<usize>,
-
-    /// Bounding box to filter the imported pois
-    /// The format is "lat1, lon1, lat2, lon2"
-    #[structopt(short = "b", long = "bounding-box")]
-    bounding_box: Option<String>,
-
-    /// Languages codes, used to build i18n names and labels
-    #[structopt(name = "lang", short, long)]
+#[derive(Deserialize)]
+struct Settings {
+    bounding_box: Option<[f64; 4]>,
     langs: Vec<String>,
-
-    /// Do not skip reverse when address information can be retrieved from previous data
-    #[structopt(long)]
-    no_skip_reverse: bool,
-
-    /// Max number of tasks sent to ES simultaneously by each thread while searching for POI
-    /// address
-    #[structopt(default_value = "100")]
+    skip_reverse: bool,
+    #[serde(default = "num_cpus::get")]
+    concurrent_blocks: usize,
     max_query_batch_size: usize,
-
-    /// Defines the run mode in {testing, dev, prod, ...}
-    ///
-    /// If no run mode is provided, a default behavior will be used.
-    #[structopt(short = "m", long = "run-mode")]
-    pub run_mode: Option<String>,
-
-    /// Defines the config directories
-    #[structopt(parse(from_os_str), short = "c", long = "config-dir")]
-    pub config_dir: PathBuf,
-
-    /// Override settings values using key=value
-    #[structopt(short = "s", long = "setting")]
-    pub settings: Vec<String>,
 }
 
-pub async fn load_and_index_pois(
-    client: tokio_postgres::Client,
-    nb_threads: usize,
-    args: Args,
-) -> Result<(), mimirsbrunn::Error> {
-    let langs = &args.langs;
-    let max_batch_size = args.max_query_batch_size;
+#[derive(Deserialize)]
+struct PgSettings {
+    url: String,
+}
 
-    // Read config values
-    let config = config_from(
-        &args.config_dir,
-        &["elasticsearch", "fafnir", "logging"],
-        args.run_mode.as_deref(),
-        "MIMIR",
-        args.settings,
-    )
-    .expect("could not build fafnir config");
+pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Error> {
+    // Read fafnir settings
+    let settings: Settings = config.get("fafnir").expect("invalid fafnir config");
+    let pg_settings: PgSettings = config.get("postgres").expect("invalid postgres config");
 
     let es_config: ElasticsearchStorageConfig = config
         .get("elasticsearch")
@@ -161,7 +118,7 @@ pub async fn load_and_index_pois(
 
     // If addresses have not changed since last update of POIs, it is not
     // necessary to perform a reverse again for POIs that don't have an address.
-    let try_skip_reverse = !args.no_skip_reverse && !addr_updated;
+    let try_skip_reverse = settings.skip_reverse && !addr_updated;
 
     if try_skip_reverse {
         info!(
@@ -222,14 +179,19 @@ pub async fn load_and_index_pois(
     let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_search);
     let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_nosearch);
 
+    let pg_client = start_postgres_session(&pg_settings.url)
+        .await
+        .expect("Unable to connect to postgres");
+
     let fetch_pois_task =
-        postgres::fetch_all_pois(&client, args.bounding_box.as_deref(), &args.langs)
+        postgres::fetch_all_pois(&pg_client, settings.bounding_box, &settings.langs)
             .await
             .chunks(1500)
             .enumerate()
             .map(Ok)
-            .try_for_each_concurrent(nb_threads, {
+            .try_for_each_concurrent(settings.concurrent_blocks, {
                 let total_nb_pois = &total_nb_pois;
+                let langs = &settings.langs;
 
                 move |(chunk_idx, rows)| {
                     let poi_channel_search = poi_channel_search.clone();
@@ -251,11 +213,14 @@ pub async fn load_and_index_pois(
                             .collect::<Result<_, Error>>()?;
 
                         // Run ES queries until all POIs are fully built
-                        let pois =
-                            LazyEs::batch_make_progress_until_value(es, pois, max_batch_size)
-                                .await
-                                .into_iter()
-                                .flatten();
+                        let pois = LazyEs::batch_make_progress_until_value(
+                            es,
+                            pois,
+                            settings.max_query_batch_size,
+                        )
+                        .await
+                        .into_iter()
+                        .flatten();
 
                         // Split searchable and non-searchable POIs
                         let (search, nosearch): (Vec<IndexedPoi>, Vec<IndexedPoi>) =

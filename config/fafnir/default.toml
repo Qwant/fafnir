@@ -1,5 +1,33 @@
+[postgres]
+  # Connection string to the postgreSQL containing POI data.
+  url = "postgresql://gis:gis@localhost"
+
+[fafnir]
+  # If defined, only POIs inside of the bouding box will be imported.
+  # Format: [lat1, lon1, lat2, lon2]
+  # bounding_box = [-5.07, 42.53, 8.56, 51.00]
+
+  # Languages codes, used to build i18n names and labels.
+  langs = []
+
+  # Skip reverse when address information can be retrieved from previous data.
+  skip_reverse = true
+
+  # Each task can concurrently perform reverse queries, this will only affect
+  # concurrency over how POIs are built, if you wish to change how many
+  # insertions are performed at the same time, see
+  # elasticsearch.insertion_concurrent_requests.
+  # This will default to the number of available CPUs.
+  # concurrent_blocks = 8
+
+  # Max number of searches performed per request through the multi-search API
+  # of elasticsearch.
+  max_query_batch_size = 100
+
+# Container configuration for searchable POIs.
 [container-search]
   dataset = "default"
 
+# Container configuration for non-searchable POIs.
 [container-nosearch]
   dataset = "nosearch"
