@@ -1,7 +1,8 @@
-[fafnir]
+[postgres]
   # Connection string to the postgreSQL containing POI data.
-  postgres = "postgresql://gis:gis@localhost"
+  url = "postgresql://gis:gis@localhost"
 
+[fafnir]
   # If defined, only POIs inside of the bouding box will be imported.
   # Format: [lat1, lon1, lat2, lon2]
   # bounding_box = [-5.07, 42.53, 8.56, 51.00]

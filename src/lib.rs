@@ -43,7 +43,6 @@ type Error = Box<dyn std::error::Error>;
 
 #[derive(Deserialize)]
 struct Settings {
-    postgres: String,
     bounding_box: Option<[f64; 4]>,
     langs: Vec<String>,
     skip_reverse: bool,
@@ -52,11 +51,15 @@ struct Settings {
     max_query_batch_size: usize,
 }
 
+#[derive(Deserialize)]
+struct PgSettings {
+    url: String,
+}
+
 pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Error> {
     // Read fafnir settings
-    let settings: Settings = config
-        .get("fafnir")
-        .expect("could not fetch fafnir settings");
+    let settings: Settings = config.get("fafnir").expect("invalid fafnir config");
+    let pg_settings: PgSettings = config.get("postgres").expect("invalid postgres config");
 
     let es_config: ElasticsearchStorageConfig = config
         .get("elasticsearch")
@@ -176,7 +179,7 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
     let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_search);
     let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_nosearch);
 
-    let pg_client = start_postgres_session(&settings.postgres)
+    let pg_client = start_postgres_session(&pg_settings.url)
         .await
         .expect("Unable to connect to postgres");
 

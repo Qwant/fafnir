@@ -140,7 +140,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
             "-s".to_string(),
             format!(
-                r#"fafnir.postgres="postgres://test@{}/test""#,
+                r#"postgres.url="postgres://test@{}/test""#,
                 &pg_wrapper.host()
             ),
         ],
@@ -378,7 +378,7 @@ pub async fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
             "-s".to_string(),
             format!(
-                r#"fafnir.postgres="postgres://test@{}/test""#,
+                r#"postgres.url="postgres://test@{}/test""#,
                 &pg_wrapper.host()
             ),
             "-s".to_string(),
@@ -419,7 +419,7 @@ pub async fn test_with_langs(
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
             "-s".to_string(),
             format!(
-                r#"fafnir.postgres="postgres://test@{}/test""#,
+                r#"postgres.url="postgres://test@{}/test""#,
                 &pg_wrapper.host()
             ),
         ],
@@ -475,7 +475,7 @@ pub async fn test_address_format(
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
             "-s".to_string(),
             format!(
-                r#"fafnir.postgres="postgres://test@{}/test""#,
+                r#"postgres.url="postgres://test@{}/test""#,
                 &pg_wrapper.host()
             ),
         ],
@@ -513,7 +513,7 @@ pub async fn test_current_country_label(
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
             "-s".to_string(),
             format!(
-                r#"fafnir.postgres="postgres://test@{}/test""#,
+                r#"postgres.url="postgres://test@{}/test""#,
                 &pg_wrapper.host()
             ),
             "-s".to_string(),
@@ -544,7 +544,7 @@ pub async fn test_current_country_label(
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
             "-s".to_string(),
             format!(
-                r#"fafnir.postgres="postgres://test@{}/test""#,
+                r#"postgres.url="postgres://test@{}/test""#,
                 &pg_wrapper.host()
             ),
             "-s".to_string(),
