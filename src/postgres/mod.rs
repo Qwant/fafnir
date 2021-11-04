@@ -25,7 +25,7 @@ pub async fn fetch_all_pois<'a>(
             row.unwrap_or_else(|err| panic!("error while fetching row from postgres: {}", err))
         })
         .filter_map(move |row| {
-            let poi = IndexedPoi::from_row(row, &langs);
+            let poi = IndexedPoi::from_row(row, langs);
             future::ready(poi)
         })
 }
