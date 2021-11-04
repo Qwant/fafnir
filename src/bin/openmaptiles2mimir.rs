@@ -4,7 +4,7 @@ use mimir2::common::config::config_from;
 use structopt::StructOpt;
 use tracing::error;
 
-use fafnir::load_and_index_pois;
+use fafnir::openmaptiles2mimir::load_and_index_pois;
 
 #[derive(StructOpt, Debug)]
 #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]

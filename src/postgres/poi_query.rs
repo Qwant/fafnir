@@ -1,6 +1,43 @@
 //! Helpers to query the list of searchable POIs from a postgres database previously populated with
 //! imposm.
 
+pub fn fetch_all_pois_query(bbox: Option<[f64; 4]>) -> PoisQuery {
+    let mut query = PoisQuery::new()
+        .with_table(TableQuery::new("all_pois(14)").id_column("global_id"))
+        .with_table(
+            TableQuery::new("osm_aerodrome_label_point")
+                .override_class("'aerodrome'")
+                .override_subclass("'airport'"),
+        )
+        .with_table(
+            TableQuery::new("osm_city_point")
+                .override_class("'locality'")
+                .override_subclass("'hamlet'")
+                .filter("name <> '' AND place='hamlet'"),
+        )
+        .with_table(
+            TableQuery::new("osm_water_lakeline")
+                .override_class("'water'")
+                .override_subclass("'lake'"),
+        )
+        .with_table(
+            TableQuery::new("osm_water_point")
+                .override_class("'water'")
+                .override_subclass("'water'"),
+        )
+        .with_table(
+            TableQuery::new("osm_marine_point")
+                .override_class("'water'")
+                .override_subclass("place"),
+        );
+
+    if let Some(bbox) = bbox {
+        query = query.bbox(bbox);
+    }
+
+    query
+}
+
 #[derive(Default)]
 pub struct PoisQuery {
     bbox: Option<[f64; 4]>,
@@ -13,7 +50,7 @@ impl PoisQuery {
     }
 
     pub fn bbox(mut self, bbox: [f64; 4]) -> Self {
-        self.bbox = Some(bbox.into());
+        self.bbox = Some(bbox);
         self
     }
 

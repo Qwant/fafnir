@@ -3,9 +3,12 @@ mod poi_query;
 use crate::pois::IndexedPoi;
 use futures::future;
 use futures::stream::{Stream, StreamExt};
-use poi_query::{PoisQuery, TableQuery};
+use poi_query::fetch_all_pois_query;
 
 /// Iter over all POIs from postgres.
+// Clippy most probably gives a false positive here:
+// https://github.com/rust-lang/rust-clippy/issues/7271
+#[allow(clippy::needless_lifetimes)]
 pub async fn fetch_all_pois<'a>(
     pg: &tokio_postgres::Client,
     bbox: Option<[f64; 4]>,
@@ -28,41 +31,4 @@ pub async fn fetch_all_pois<'a>(
             let poi = IndexedPoi::from_row(row, langs);
             future::ready(poi)
         })
-}
-
-fn fetch_all_pois_query(bbox: Option<[f64; 4]>) -> PoisQuery {
-    let mut query = PoisQuery::new()
-        .with_table(TableQuery::new("all_pois(14)").id_column("global_id"))
-        .with_table(
-            TableQuery::new("osm_aerodrome_label_point")
-                .override_class("'aerodrome'")
-                .override_subclass("'airport'"),
-        )
-        .with_table(
-            TableQuery::new("osm_city_point")
-                .override_class("'locality'")
-                .override_subclass("'hamlet'")
-                .filter("name <> '' AND place='hamlet'"),
-        )
-        .with_table(
-            TableQuery::new("osm_water_lakeline")
-                .override_class("'water'")
-                .override_subclass("'lake'"),
-        )
-        .with_table(
-            TableQuery::new("osm_water_point")
-                .override_class("'water'")
-                .override_subclass("'water'"),
-        )
-        .with_table(
-            TableQuery::new("osm_marine_point")
-                .override_class("'water'")
-                .override_subclass("place"),
-        );
-
-    if let Some(bbox) = bbox {
-        query = query.bbox(bbox);
-    }
-
-    query
 }
