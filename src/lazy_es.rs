@@ -1,5 +1,5 @@
-use reqwest::blocking::Client;
-use reqwest::Url;
+use elasticsearch::http::request::JsonBody;
+use elasticsearch::{Elasticsearch, MsearchParts};
 use serde::Deserialize;
 use serde_json::value::RawValue;
 
@@ -16,6 +16,7 @@ pub enum LazyEs<'p, T> {
     /// make progress, the function `progress` takes the raw answer from
     /// elasticsearch and returns the new state of the computation.
     NeedEsQuery {
+        // TODO: Isn't RawValue enough ?
         header: serde_json::Value,
         query: serde_json::Value,
         progress: Box<dyn FnOnce(&str) -> LazyEs<'p, T> + 'p>,
@@ -74,9 +75,8 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 
     /// Send a request to elasticsearch to make progress for all computations
     /// in `partials` that are not done yet.
-    fn batch_make_progress(
-        es: &Url,
-        http: &Client,
+    async fn batch_make_progress(
+        es: &Elasticsearch,
         partials: &mut [Self],
         max_batch_size: usize,
     ) -> usize {
@@ -90,26 +90,31 @@ impl<'p, T: 'p> LazyEs<'p, T> {
             return 0;
         }
 
-        let body: String = {
+        let body: Vec<_> = {
             need_progress
                 .iter()
-                .filter_map(|partial| {
-                    let (header, query) = partial.header_and_query()?;
-                    Some(format!("{}\n{}\n", header.to_string(), query.to_string()))
+                .flat_map(|partial| {
+                    partial
+                        .header_and_query()
+                        .map(|(header, query)| [header, query])
                 })
+                .flatten()
+                .map(JsonBody::new)
                 .collect()
         };
 
-        let es_response = http
-            .post(es.join("_msearch").expect("failed to build msearch URL"))
+        let es_response = es
+            .msearch(MsearchParts::None)
             .body(body)
             .send()
+            .await
             .expect("ES query failed")
             .text()
+            .await
             .expect("failed to read ES response");
 
-        let responses =
-            parse_es_multi_response(&es_response).expect("failed to parse ES responses");
+        let responses = parse_es_multi_response(&es_response)
+            .unwrap_or_else(|err| panic!("failed to parse ES responses: {}\n{}", err, es_response));
 
         assert_eq!(responses.len(), need_progress.len());
         let progress_count = need_progress.len();
@@ -129,16 +134,13 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 
     /// Run all input computations until they are finished and finally output
     /// the resulting values.
-    pub fn batch_make_progress_until_value(
-        es: &Url,
+    pub async fn batch_make_progress_until_value(
+        es: &Elasticsearch,
         mut partials: Vec<Self>,
         max_batch_size: usize,
     ) -> Vec<T> {
-        let http_client = reqwest::blocking::Client::new();
-
-        while Self::batch_make_progress(es, &http_client, partials.as_mut_slice(), max_batch_size)
-            > 0
-        {} // Some progress has been made during the loop condition.
+        // Don't stop while some progress has been made during the loop condition.
+        while Self::batch_make_progress(es, &mut partials, max_batch_size).await > 0 {}
 
         partials
             .into_iter()
@@ -167,8 +169,6 @@ pub struct EsHits<U> {
 pub struct EsHit<U> {
     #[serde(rename = "_source")]
     pub source: U,
-    #[serde(rename = "_type")]
-    pub doc_type: String,
 }
 
 // ---

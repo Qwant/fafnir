@@ -9,6 +9,7 @@ on:
 
 env:
   DOCKER_IMAGE_BASENAME: qwantresearch/fafnir
+  DOCKER_BUILDKIT: 1
 
 jobs:
   build_docker:

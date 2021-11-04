@@ -1,32 +1,25 @@
-extern crate retry;
-
-use super::hyper;
-use mimir::rubber::Rubber;
-use postgres::{tls, Client};
-use retry::delay::Fixed;
+use fafnir::utils::start_postgres_session;
 use std::error::Error;
 use std::process::Command;
-
-pub struct ElasticsearchDocker {
-    ip: String,
-}
+use std::time::Duration;
+use tracing::{info, warn};
 
 pub struct PostgresDocker {
     ip: String,
 }
 
 impl PostgresDocker {
-    pub fn new() -> Result<PostgresDocker, Box<dyn Error>> {
+    pub async fn new() -> Result<PostgresDocker, Box<dyn Error>> {
         let mut pg_docker = PostgresDocker { ip: "".to_string() };
-        pg_docker.setup()?;
+        pg_docker.setup().await?;
         Ok(pg_docker)
     }
 
     pub fn host(&self) -> String {
-        format!("{}", self.ip)
+        self.ip.to_string()
     }
 
-    pub fn setup(&mut self) -> Result<(), Box<dyn Error>> {
+    pub async fn setup(&mut self) -> Result<(), Box<dyn Error>> {
         info!("Launching the PostgresWrapper docker");
         let (name, img) = ("postgres_fafnir_tests", "openmaptiles/postgis");
 
@@ -58,75 +51,25 @@ impl PostgresDocker {
 
         info!("container ip = {:?}", container_ip);
         self.ip = container_ip.to_string();
-
         info!("Waiting for Postgres in docker to be up and running...");
 
-        let retry = retry::retry(Fixed::from_millis(1000).take(60), || {
-            Client::connect(
-                &format!("postgres://test@{}/test", &self.host()),
-                tls::NoTls,
-            )
-        });
-        match retry {
-            Ok(_) => {
-                info!("{} docker is up and running", name);
-                return Ok(());
+        let mut retries = 0;
+
+        while start_postgres_session(&format!("postgres://test@{}/test", &self.host()))
+            .await
+            .is_err()
+        {
+            retries += 1;
+
+            if retries > 60 {
+                return Err("Postgres is down".into());
             }
-            Err(_) => return Err("Postgres is down".into()),
-        }
-    }
-}
 
-impl ElasticsearchDocker {
-    pub fn new() -> Result<ElasticsearchDocker, Box<dyn Error>> {
-        let mut el_docker = ElasticsearchDocker { ip: "".to_string() };
-        el_docker.setup()?;
-        let rubber = Rubber::new(&el_docker.host());
-        &rubber
-            .initialize_templates()
-            .expect("failed to initialize ES templates");
-        Ok(el_docker)
-    }
-
-    pub fn host(&self) -> String {
-        format!("http://{}:9200", self.ip)
-    }
-
-    pub fn setup(&mut self) -> Result<(), Box<dyn Error>> {
-        info!("Launching docker");
-        let (name, img) = ("mimirsbrunn_fafnir_tests", "elasticsearch:2");
-
-        let status = Command::new("docker")
-            .args(&["run", "-d", &format!("--name={}", name), img])
-            .status()?;
-        if !status.success() {
-            return Err(format!("`docker run` failed {}", &status).into());
+            tokio::time::sleep(Duration::from_millis(1000)).await;
         }
 
-        // we need to get the ip of the container if the container has been run on another machine
-        let container_ip_cmd = Command::new("docker")
-            .args(&["inspect", "--format={{.NetworkSettings.IPAddress}}", name])
-            .output()?;
-
-        let container_ip = ::std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.trim();
-
-        info!("container ip = {:?}", container_ip);
-        self.ip = container_ip.to_string();
-
-        info!("Waiting for ES in docker to be up and running...");
-        let retry = retry::retry(Fixed::from_millis(1000).take(30), || {
-            hyper::client::Client::new()
-                .get(&self.host())
-                .send()
-                .map(|res| res.status == hyper::Ok)
-        });
-        match retry {
-            Ok(_) => {
-                info!("{} docker is up and running", name);
-                return Ok(());
-            }
-            Err(_) => return Err("ElasticSearch is down".into()),
-        };
+        info!("{} docker is up and running", name);
+        Ok(())
     }
 }
 
@@ -151,16 +94,5 @@ impl Drop for PostgresDocker {
         }
         docker_command(&["stop", "postgres_fafnir_tests"]);
         docker_command(&["rm", "postgres_fafnir_tests"]);
-    }
-}
-
-impl Drop for ElasticsearchDocker {
-    fn drop(&mut self) {
-        if ::std::env::var("DONT_KILL_THE_WHALE") == Ok("1".to_string()) {
-            warn!("the elasticsearch docker won't be stoped at the end, you can debug it.");
-            return;
-        }
-        docker_command(&["stop", "mimirsbrunn_fafnir_tests"]);
-        docker_command(&["rm", "mimirsbrunn_fafnir_tests"]);
     }
 }

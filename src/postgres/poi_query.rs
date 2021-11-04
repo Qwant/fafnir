@@ -3,7 +3,7 @@
 
 #[derive(Default)]
 pub struct PoisQuery {
-    bbox: Option<String>,
+    bbox: Option<[f64; 4]>,
     tables: Vec<TableQuery>,
 }
 
@@ -12,7 +12,7 @@ impl PoisQuery {
         Self::default()
     }
 
-    pub fn bbox<S: Into<String>>(mut self, bbox: S) -> Self {
+    pub fn bbox(mut self, bbox: [f64; 4]) -> Self {
         self.bbox = Some(bbox.into());
         self
     }
@@ -45,10 +45,10 @@ impl PoisQuery {
                 .join(" UNION ALL ")
         );
 
-        if let Some(ref bbox) = self.bbox {
+        if let Some([lat1, lon1, lat2, lon2]) = self.bbox {
             result.push_str(&format!(
-                "WHERE ST_MakeEnvelope({}, 4326) && st_transform(geometry, 4326)",
-                bbox
+                "WHERE ST_MakeEnvelope({}, {}, {}, {}, 4326) && st_transform(geometry, 4326)",
+                lat1, lon1, lat2, lon2
             ));
         }
 

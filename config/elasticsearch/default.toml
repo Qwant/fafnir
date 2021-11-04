@@ -1,0 +1,20 @@
+[elasticsearch]
+url = "http://localhost:9200"
+
+# Timeout in milliseconds on client calls to Elasticsearch.
+timeout = 5000
+
+# Constraint on the version of Elasticsearch.
+version_req = ">=7.13.0"
+
+# Number of documents loaded per request when performing a `list_documents`
+scroll_chunk_size = 1000
+
+# Liveness of the PIT while performing a `list_documents`.
+scroll_pit_alive = "1m"
+
+# Max of concurrent requests during insertion.
+insertion_concurrent_requests = 8
+
+# Number of document per request during insertion.
+insertion_chunk_size = 100

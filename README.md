@@ -17,8 +17,11 @@
 - Then you can run fafnir (with the connections to postgres and elasticsearch):
 
   ```shell
-  cargo run --release -- --dataset=<dataset name> --es=http://<es-IP>:9200 --pg=postgresql://<pg-IP>:5432
+  cargo run --release -- --config-dir ./config -s 'elasticsearch.url="http://<es-IP>:9200"' -s 'fafnir.postgres="postgresql://<pg-IP>:5432"'
   ```
+
+You can learn more about settings structure in `src/config` and
+[mimirsbrunn's documentation](https://github.com/CanalTP/mimirsbrunn/blob/master/docs/indexing.md).
 
 ## Run with docker :whale:
 
@@ -27,7 +30,7 @@
 - Or build your own image with this repo:
 
   ```shell
-  docker build . -t fafnir
+  DOCKER_BUILDKIT=1 docker build . -t fafnir
   ```
 
 ## Tests

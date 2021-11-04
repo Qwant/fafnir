@@ -1,5 +1,6 @@
 *
 !src/
 !tests/
+!config/
 !Cargo*
 !build.rs
