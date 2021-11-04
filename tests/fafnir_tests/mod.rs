@@ -9,7 +9,7 @@ use std::iter;
 use std::sync::Arc;
 use tokio::join;
 
-const FAFNIR_BIN: &str = concat!(env!("OUT_DIR"), "/../../../fafnir");
+const OPENMAPTILES2MIMIR_BIN: &str = concat!(env!("OUT_DIR"), "/../../../openmaptiles2mimir");
 const CONFIG_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/config");
 
 // Init the Postgres Wrapper
@@ -130,7 +130,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
 
     super::launch_and_assert(
-        FAFNIR_BIN,
+        OPENMAPTILES2MIMIR_BIN,
         vec![
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),
@@ -368,7 +368,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
 pub async fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper<'_>) {
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     super::launch_and_assert(
-        FAFNIR_BIN,
+        OPENMAPTILES2MIMIR_BIN,
         vec![
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),
@@ -407,7 +407,7 @@ pub async fn test_with_langs(
 ) {
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     super::launch_and_assert(
-        FAFNIR_BIN,
+        OPENMAPTILES2MIMIR_BIN,
         vec![
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),
@@ -465,7 +465,7 @@ pub async fn test_address_format(
     // Import data with DE as country code in admins
     init_tests(&mut es_wrapper, &pg_wrapper, "DE").await;
     super::launch_and_assert(
-        FAFNIR_BIN,
+        OPENMAPTILES2MIMIR_BIN,
         vec![
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),
@@ -503,7 +503,7 @@ pub async fn test_current_country_label(
 ) {
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     super::launch_and_assert(
-        FAFNIR_BIN,
+        OPENMAPTILES2MIMIR_BIN,
         vec![
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),
@@ -534,7 +534,7 @@ pub async fn test_current_country_label(
 
     // Now check that we have the fr label too!
     super::launch_and_assert(
-        FAFNIR_BIN,
+        OPENMAPTILES2MIMIR_BIN,
         vec![
             "--config-dir".to_string(),
             CONFIG_DIR.to_string(),

@@ -126,6 +126,7 @@ impl IndexedPoi {
         Some(IndexedPoi { poi, is_searchable })
     }
 
+    // TODO: shoudn't we move self?
     pub fn locate_poi<'a>(
         &'a self,
         geofinder: &'a AdminGeoFinder,
@@ -250,7 +251,8 @@ fn build_poi_type_text(
         When the tag contains multiple values (separated by ";"), these values are split
         and indexed as distinct tag values.
     */
-    std::array::IntoIter::new([format!("class_{}", class), format!("subclass_{}", subclass)])
+    [format!("class_{}", class), format!("subclass_{}", subclass)]
+        .into_iter()
         .chain(
             TAGS_TO_INDEX_AS_POI_TYPE_NAME
                 .iter()
