@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # Move binary out of cache
 RUN mkdir bin
 RUN --mount=type=cache,target=/srv/fafnir/target \
-    cp /srv/fafnir/target/release/fafnir bin/
+    cp /srv/fafnir/target/release/openmaptiles2mimir bin/
 
 
 FROM debian:buster-slim
@@ -37,11 +37,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN npm install -g bunyan
-RUN echo "#!/bin/bash" >> /usr/bin/bunyan_formated
-RUN echo "\$@ | bunyan" >> /usr/bin/bunyan_formated
+RUN echo "#!/bin/bash"                                  >> /usr/bin/bunyan_formated
+RUN echo "CMD=$1; shift; ARG=$@"                        >> /usr/bin/bunyan_formated
+RUN echo "\$CMD --config-dir /etc/fafnir @ARG | bunyan" >> /usr/bin/bunyan_formated
 RUN chmod +x /usr/bin/bunyan_formated
 
 COPY ./config /etc/fafnir
-COPY --from=builder /srv/fafnir/bin/fafnir /usr/bin/fafnir
+COPY --from=builder /srv/fafnir/bin/openmaptiles2mimir /usr/bin/
 
-ENTRYPOINT ["bunyan_formated", "fafnir", "--config-dir", "/etc/fafnir"]
+ENTRYPOINT ["bunyan_formated"]

@@ -18,6 +18,7 @@ tokio-postgres = "0.7"
 tokio-stream = { version = "0.1", default_features = false }
 tokio = { version = "1.10", features = ["macros", "rt-multi-thread", "time", "sync"] }
 tracing = { version = "0.1", default_features = false, features = ["release_max_level_info"] }
+tracing-futures = "0.2"
 url = { version = "2", features = ["serde"] }
 
 # Mimirsbrunn dependancies
