@@ -142,40 +142,45 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
         .await
         .expect("Unable to connect to postgres");
 
-    let fetch_pois_task = openmaptiles::fetch_and_locate_pois(
-        &pg_client,
-        es,
-        admins_geofinder,
-        poi_index_name,
-        poi_index_nosearch_name,
-        try_skip_reverse,
-        &settings,
-    )
-    .await
-    .try_for_each(|p| {
-        let total_nb_pois = &total_nb_pois;
-        let poi_channel_search = poi_channel_search.clone();
-        let poi_channel_nosearch = poi_channel_nosearch.clone();
+    let fetch_pois_task = {
+        openmaptiles::fetch_and_locate_pois(
+            &pg_client,
+            es,
+            admins_geofinder,
+            poi_index_name,
+            poi_index_nosearch_name,
+            try_skip_reverse,
+            &settings,
+        )
+        .await
+        .try_for_each({
+            let total_nb_pois = &total_nb_pois;
 
-        async move {
-            if p.is_searchable {
-                poi_channel_search
-                    .send(p.poi)
-                    .await
-                    .expect("failed to send search POI into channel");
-            } else {
-                poi_channel_nosearch
-                    .send(p.poi)
-                    .await
-                    .expect("failed to send nosearch POI into channel");
+            move |p| {
+                let poi_channel_search = poi_channel_search.clone();
+                let poi_channel_nosearch = poi_channel_nosearch.clone();
+
+                async move {
+                    if p.is_searchable {
+                        poi_channel_search
+                            .send(p.poi)
+                            .await
+                            .expect("failed to send search POI into channel");
+                    } else {
+                        poi_channel_nosearch
+                            .send(p.poi)
+                            .await
+                            .expect("failed to send nosearch POI into channel");
+                    }
+
+                    // Log advancement
+                    // TODO: maybe we should be exhaustive as before
+                    total_nb_pois.fetch_add(1, atomic::Ordering::Relaxed);
+                    Ok(())
+                }
             }
-
-            // Log advancement
-            // TODO: maybe we should be exhaustive as before
-            total_nb_pois.fetch_add(1, atomic::Ordering::Relaxed);
-            Ok(())
-        }
-    });
+        })
+    };
 
     // Wait for the indexing tasks to complete
     let (index_search, index_nosearch, _) =
