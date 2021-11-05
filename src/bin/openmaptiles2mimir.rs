@@ -2,7 +2,8 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{atomic, Arc};
 use structopt::StructOpt;
-use tracing::error;
+use tracing::{error, info_span};
+use tracing_futures::Instrument;
 
 use config::Config;
 use elasticsearch::http::transport::Transport;
@@ -118,6 +119,7 @@ pub async fn load_and_index_pois(
             &settings.fafnir,
         )
         .await
+        .instrument(info_span!("fetch POIs"))
         .try_for_each({
             let total_nb_pois = &total_nb_pois;
 
@@ -139,8 +141,12 @@ pub async fn load_and_index_pois(
                     }
 
                     // Log advancement
-                    // TODO: maybe we should be exhaustive as before with logs
-                    total_nb_pois.fetch_add(1, atomic::Ordering::Relaxed);
+                    let curr_indexed = 1 + total_nb_pois.fetch_add(1, atomic::Ordering::Relaxed);
+
+                    if curr_indexed % settings.fafnir.log_indexed_count_interval == 0 {
+                        info!("Number of indexed POIs: {}", curr_indexed)
+                    }
+
                     Ok(())
                 }
             }

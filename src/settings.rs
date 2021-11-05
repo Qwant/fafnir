@@ -1,4 +1,5 @@
 //! Shared settings structs.
+
 use std::path::PathBuf;
 
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
@@ -23,6 +24,7 @@ pub struct FafnirSettings {
     #[serde(default = "num_cpus::get")]
     pub concurrent_blocks: usize,
     pub max_query_batch_size: usize,
+    pub log_indexed_count_interval: usize,
 }
 
 #[derive(Deserialize)]

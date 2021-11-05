@@ -13,6 +13,10 @@
   # Skip reverse when address information can be retrieved from previous data.
   skip_reverse = true
 
+  # Constant interval of indexed documents between logs of the state of the
+  # indexation.
+  log_indexed_count_interval = 100_000
+
   # Each task can concurrently perform reverse queries, this will only affect
   # concurrency over how POIs are built, if you wish to change how many
   # insertions are performed at the same time, see
