@@ -1,22 +1,8 @@
 //! Shared settings structs.
 
-use std::path::PathBuf;
-
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use serde::Deserialize;
 
-#[derive(Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct Settings {
-    pub fafnir: FafnirSettings,
-    pub postgres: PostgresSettings,
-    pub elasticsearch: ElasticsearchStorageConfig,
-    pub container_search: ContainerConfig,
-    pub container_nosearch: ContainerConfig,
-    pub logging: LogConfig,
-}
-
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct FafnirSettings {
     pub bounding_box: Option<[f64; 4]>,
     pub langs: Vec<String>,
@@ -27,17 +13,12 @@ pub struct FafnirSettings {
     pub log_indexed_count_interval: usize,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct PostgresSettings {
     pub url: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct ContainerConfig {
     pub dataset: String,
-}
-
-#[derive(Deserialize)]
-pub struct LogConfig {
-    pub path: PathBuf,
 }
