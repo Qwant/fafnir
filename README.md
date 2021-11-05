@@ -17,7 +17,7 @@
 - Then you can run fafnir (with the connections to postgres and elasticsearch):
 
   ```shell
-  cargo run --release -- --config-dir ./config -s 'elasticsearch.url="http://<es-IP>:9200"' -s 'fafnir.postgres="postgresql://<pg-IP>:5432"'
+  cargo run --release --bin openmaptiles2mimir -- --config-dir ./config -s 'elasticsearch.url="http://<es-IP>:9200"' -s 'fafnir.postgres="postgresql://<pg-IP>:5432"'
   ```
 
 You can learn more about settings structure in `src/config` and

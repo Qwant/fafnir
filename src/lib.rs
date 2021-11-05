@@ -2,7 +2,6 @@ mod addresses;
 mod langs;
 mod lazy_es;
 pub mod mimir;
-pub mod openmaptiles2mimir;
 pub mod settings;
 pub mod sources;
 pub mod utils;
