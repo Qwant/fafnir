@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{atomic, Arc};
 
@@ -8,61 +7,24 @@ use elasticsearch::Elasticsearch;
 use futures::stream::TryStreamExt;
 use futures::try_join;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir2::domain::model::index::IndexVisibility;
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::utils::logger::logger_init;
-use serde::Deserialize;
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::info;
 
 use crate::mimir::{address_updated_after_pois, build_admin_geofinder, create_index, MIMIR_PREFIX};
+use crate::settings::Settings;
 use crate::sources::openmaptiles;
 use crate::utils::start_postgres_session;
 
 // Size of the buffers of POIs that have to be indexed.
 const CHANNEL_SIZE: usize = 10_000;
 
-#[derive(Deserialize)]
-pub struct Settings {
-    pub bounding_box: Option<[f64; 4]>,
-    pub langs: Vec<String>,
-    pub skip_reverse: bool,
-    #[serde(default = "num_cpus::get")]
-    pub concurrent_blocks: usize,
-    pub max_query_batch_size: usize,
-}
-
-#[derive(Deserialize)]
-struct PgSettings {
-    url: String,
-}
-
 pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Error> {
-    // Read fafnir settings
-    let settings: Settings = config.get("fafnir").expect("invalid fafnir config");
-    let pg_settings: PgSettings = config.get("postgres").expect("invalid postgres config");
-
-    let es_config: ElasticsearchStorageConfig = config
-        .get("elasticsearch")
-        .expect("invalid elasticsearch config");
-
-    let dataset_search: String = config
-        .get("container-search.dataset")
-        .expect("could not fetch search container dataset");
-
-    let dataset_nosearch: String = config
-        .get("container-nosearch.dataset")
-        .expect("could not fetch nosearch container dataset");
-
-    // Init global logger
-    let _guard = logger_init(
-        config
-            .get::<PathBuf>("logging.path")
-            .expect("could not fetch logging path"),
-    )
-    .expect("could not init logger");
+    let settings: Settings = config.clone().try_into().expect("invalid fafnir config");
+    let _log_guard = logger_init(&settings.logging.path).expect("could not init logger");
 
     info!(
         "Full configuration:\n{}",
@@ -77,13 +39,13 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
 
     // Local Elasticsearch client
     let es = &Elasticsearch::new(
-        Transport::single_node(es_config.url.as_str())
+        Transport::single_node(settings.elasticsearch.url.as_str())
             .expect("failed to initialize Elasticsearch transport"),
     );
 
     let mimir_es = Arc::new(
-        connection_pool_url(&es_config.url)
-            .conn(es_config)
+        connection_pool_url(&settings.elasticsearch.url)
+            .conn(settings.elasticsearch)
             .await
             .expect("failed to open Elasticsearch connection"),
     );
@@ -91,7 +53,7 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
     // If addresses have not changed since last update of POIs, it is not
     // necessary to perform a reverse again for POIs that don't have an address.
     let addr_updated = address_updated_after_pois(es).await;
-    let try_skip_reverse = settings.skip_reverse && !addr_updated;
+    let try_skip_reverse = settings.fafnir.skip_reverse && !addr_updated;
 
     if try_skip_reverse {
         info!(
@@ -111,7 +73,7 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
         let task = create_index(
             mimir_es.as_ref(),
             &config,
-            &dataset_search,
+            &settings.container_search.dataset,
             IndexVisibility::Public,
             ReceiverStream::new(recv),
         );
@@ -125,7 +87,7 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
         let task = create_index(
             mimir_es.as_ref(),
             &config,
-            &dataset_nosearch,
+            &settings.container_nosearch.dataset,
             IndexVisibility::Private,
             ReceiverStream::new(recv),
         );
@@ -135,10 +97,18 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
 
     // Build POIs and send them to indexing tasks
     let total_nb_pois = AtomicUsize::new(0);
-    let poi_index_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_search);
-    let poi_index_nosearch_name = &format!("{}_poi_{}", MIMIR_PREFIX, &dataset_nosearch);
 
-    let pg_client = start_postgres_session(&pg_settings.url)
+    let poi_index_name = &format!(
+        "{}_poi_{}",
+        MIMIR_PREFIX, &settings.container_search.dataset
+    );
+
+    let poi_index_nosearch_name = &format!(
+        "{}_poi_{}",
+        MIMIR_PREFIX, &settings.container_nosearch.dataset
+    );
+
+    let pg_client = start_postgres_session(&settings.postgres.url)
         .await
         .expect("Unable to connect to postgres");
 
@@ -150,7 +120,7 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
             poi_index_name,
             poi_index_nosearch_name,
             try_skip_reverse,
-            &settings,
+            &settings.fafnir,
         )
         .await
         .try_for_each({
@@ -174,7 +144,7 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
                     }
 
                     // Log advancement
-                    // TODO: maybe we should be exhaustive as before
+                    // TODO: maybe we should be exhaustive as before with logs
                     total_nb_pois.fetch_add(1, atomic::Ordering::Relaxed);
                     Ok(())
                 }

@@ -8,7 +8,7 @@ use futures::stream::{Stream, StreamExt, TryStreamExt};
 use futures::{future, stream};
 
 use crate::lazy_es::LazyEs;
-use crate::openmaptiles2mimir::Settings;
+use crate::settings::FafnirSettings;
 use crate::Error;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use pois::IndexedPoi;
@@ -50,7 +50,7 @@ pub async fn fetch_and_locate_pois<'a>(
     poi_index_name: &'a str,
     poi_index_nosearch_name: &'a str,
     try_skip_reverse: bool,
-    settings: &'a Settings,
+    settings: &'a FafnirSettings,
 ) -> impl Stream<Item = Result<IndexedPoi, Error>> + 'a {
     fetch_pois(pg, settings.bounding_box, &settings.langs)
         .await
