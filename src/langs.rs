@@ -1,109 +1,60 @@
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
-// This map has been filled from https://en.wikipedia.org/wiki/ISO_3166-1
+/// This map has been filled from https://en.wikipedia.org/wiki/ISO_3166-1
 pub static COUNTRIES_LANGS: Lazy<HashMap<String, Vec<&'static str>>> = Lazy::new(|| {
     [
-        // australia
-        ("AU", vec!["en"]),
-        // austria
-        ("AT", vec!["de"]),
-        // belarus
-        ("BY", vec!["be", "ru"]),
-        // belgium
-        ("BE", vec!["fr", "de", "nl"]),
-        // brazil
-        ("BR", vec!["pt"]),
-        // bulgaria
-        ("BG", vec!["bg"]),
-        // canada
-        ("CA", vec!["en", "fr"]),
-        // china
-        ("CN", vec!["zh"]),
-        // croatia
-        ("HR", vec!["hr"]),
-        // czechia
-        ("CZ", vec!["cs"]),
-        // denmark
-        ("DK", vec!["da"]),
-        // estonia
-        ("EE", vec!["et"]),
-        // france
-        ("FR", vec!["fr"]),
-        // germany
-        ("DE", vec!["de"]),
-        // greece
-        ("GR", vec!["el"]),
-        // ireland
-        ("IE", vec!["ga", "en"]),
-        // italy
-        ("IT", vec!["it"]),
-        // japan
-        ("JP", vec!["ja"]),
-        // south korea
-        ("KR", vec!["ko"]),
-        // latvia
-        ("LV", vec!["lv"]),
-        // lithuania
-        ("LT", vec!["lt"]),
-        // luxembourg
-        ("LU", vec!["lb", "fr", "de"]),
-        // mexico
-        ("MX", vec!["es"]),
-        // moldova
-        ("MD", vec!["ro"]),
-        // netherlands
-        ("NL", vec!["nl"]),
-        // new zealand
-        ("NZ", vec!["en", "mi"]),
-        // north macedonia
-        ("MK", vec!["mk", "sq"]),
-        // norway
-        ("NO", vec!["no"]),
-        // poland
-        ("PL", vec!["pl"]),
-        // portugal
-        ("PT", vec!["pt"]),
-        // romania
-        ("RO", vec!["ro"]),
-        // russia
-        ("RU", vec!["ru"]),
-        // serbia
-        ("RS", vec!["sr"]),
-        // singapour
-        ("SG", vec!["en", "ms", "ta"]),
-        // slovakia
-        ("SK", vec!["sk"]),
-        // slovenia
-        ("SL", vec!["sl"]),
-        // spain
-        ("ES", vec!["es"]),
-        // sweden
-        ("SE", vec!["sv"]),
-        // switzerland
-        ("CH", vec!["de", "fr", "it", "rm"]),
-        // thailand
-        ("TH", vec!["th"]),
-        // tunisia
-        ("TN", vec!["ar"]),
-        // turkey
-        ("TR", vec!["tr"]),
-        // ukraine
-        ("UA", vec!["uk"]),
-        // united kingdom
-        ("GB", vec!["en"]),
-        // usa
-        ("US", vec!["en"]),
-        // uruguay
-        ("UY", vec!["es"]),
-        // uzbekistan
-        ("UZ", vec!["uz"]),
-        // venezuela
-        ("VE", vec!["es"]),
-        // viet nam
-        ("VN", vec!["vi"]),
+        ("AU", vec!["en"]),                   // australia
+        ("AT", vec!["de"]),                   // austria
+        ("BY", vec!["be", "ru"]),             // belarus
+        ("BE", vec!["fr", "de", "nl"]),       // belgium
+        ("BR", vec!["pt"]),                   // brazil
+        ("BG", vec!["bg"]),                   // bulgaria
+        ("CA", vec!["en", "fr"]),             // canada
+        ("CN", vec!["zh"]),                   // china
+        ("HR", vec!["hr"]),                   // croatia
+        ("CZ", vec!["cs"]),                   // czechia
+        ("DK", vec!["da"]),                   // denmark
+        ("EE", vec!["et"]),                   // estonia
+        ("FR", vec!["fr"]),                   // france
+        ("DE", vec!["de"]),                   // germany
+        ("GR", vec!["el"]),                   // greece
+        ("IE", vec!["ga", "en"]),             // ireland
+        ("IT", vec!["it"]),                   // italy
+        ("JP", vec!["ja"]),                   // japan
+        ("KR", vec!["ko"]),                   // south korea
+        ("LV", vec!["lv"]),                   // latvia
+        ("LT", vec!["lt"]),                   // lithuania
+        ("LU", vec!["lb", "fr", "de"]),       // luxembourg
+        ("MX", vec!["es"]),                   // mexico
+        ("MD", vec!["ro"]),                   // moldova
+        ("NL", vec!["nl"]),                   // netherlands
+        ("NZ", vec!["en", "mi"]),             // new zealand
+        ("MK", vec!["mk", "sq"]),             // north macedonia
+        ("NO", vec!["no"]),                   // norway
+        ("PL", vec!["pl"]),                   // poland
+        ("PT", vec!["pt"]),                   // portugal
+        ("RO", vec!["ro"]),                   // romania
+        ("RU", vec!["ru"]),                   // russia
+        ("RS", vec!["sr"]),                   // serbia
+        ("SG", vec!["en", "ms", "ta"]),       // singapour
+        ("SK", vec!["sk"]),                   // slovakia
+        ("SL", vec!["sl"]),                   // slovenia
+        ("ES", vec!["es"]),                   // spain
+        ("SE", vec!["sv"]),                   // sweden
+        ("CH", vec!["de", "fr", "it", "rm"]), // switzerland
+        ("TH", vec!["th"]),                   // thailand
+        ("TN", vec!["ar"]),                   // tunisia
+        ("TR", vec!["tr"]),                   // turkey
+        ("UA", vec!["uk"]),                   // ukraine
+        ("GB", vec!["en"]),                   // united kingdom
+        ("US", vec!["en"]),                   // usa
+        ("UY", vec!["es"]),                   // uruguay
+        ("UZ", vec!["uz"]),                   // uzbekistan
+        ("VE", vec!["es"]),                   // venezuela
+        ("VN", vec!["vi"]),                   // viet nam
     ]
-    .iter()
-    .map(|(a, b)| (a.to_string(), b.clone()))
+    .into_iter()
+    .map(|(key, val)| (key.to_string(), val))
     .collect()
 });

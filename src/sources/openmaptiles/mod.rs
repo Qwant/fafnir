@@ -1,3 +1,5 @@
+//! Utilities to fetch list of POIs from a postgres databased indexed with the openmaptiles schema.
+//! See https://github.com/Qwant/openmaptiles/
 pub mod pois;
 pub mod postgres;
 

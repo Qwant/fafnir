@@ -5,33 +5,24 @@ use std::sync::{atomic, Arc};
 use config::Config;
 use elasticsearch::http::transport::Transport;
 use elasticsearch::Elasticsearch;
-use futures::stream::{StreamExt, TryStreamExt};
-use futures::{join, try_join};
+use futures::stream::TryStreamExt;
+use futures::try_join;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use mimir2::common::document::ContainerDocument;
 use mimir2::domain::model::index::IndexVisibility;
-use mimir2::domain::ports::primary::{
-    generate_index::GenerateIndex, list_documents::ListDocuments,
-};
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::utils::logger::logger_init;
-use places::poi::Poi;
 use serde::Deserialize;
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::info;
 
+use crate::mimir::{address_updated_after_pois, build_admin_geofinder, create_index, MIMIR_PREFIX};
 use crate::sources::openmaptiles;
-use crate::utils::{get_index_creation_date, start_postgres_session};
-
-// Prefix to ES index names for mimirsbrunn
-const MIMIR_PREFIX: &str = "munin";
+use crate::utils::start_postgres_session;
 
 // Size of the buffers of POIs that have to be indexed.
 const CHANNEL_SIZE: usize = 10_000;
-
-type Error = Box<dyn std::error::Error>;
 
 #[derive(Deserialize)]
 pub struct Settings {
@@ -97,19 +88,9 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
             .expect("failed to open Elasticsearch connection"),
     );
 
-    // Check if addresses have been updated more recently than last update
-    let (poi_creation_date, addr_creation_date) = join!(
-        get_index_creation_date(es, format!("{}_poi", MIMIR_PREFIX)),
-        get_index_creation_date(es, format!("{}_addr", MIMIR_PREFIX))
-    );
-
-    let addr_updated = match (poi_creation_date, addr_creation_date) {
-        (Some(poi_ts), Some(addr_ts)) => addr_ts > poi_ts,
-        _ => true,
-    };
-
     // If addresses have not changed since last update of POIs, it is not
     // necessary to perform a reverse again for POIs that don't have an address.
+    let addr_updated = address_updated_after_pois(es).await;
     let try_skip_reverse = settings.skip_reverse && !addr_updated;
 
     if try_skip_reverse {
@@ -119,52 +100,38 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
         );
     }
 
-    // Fetch administrative regions
-    let admins_geofinder = &mimir_es
-        .list_documents()
-        .await
-        .expect("administratives regions not found in es db")
-        .map(|admin| admin.expect("could not parse admin"))
-        .collect()
-        .await;
+    // Fetch admins
+    let admins_geofinder = &build_admin_geofinder(mimir_es.as_ref()).await;
 
     // Spawn tasks that will build indexes. These tasks will provide a single
     // stream to mimirsbrunn which is built from data sent into async channels.
-    let spawn_index_task = |config, visibility| {
-        let mimir_es = mimir_es.clone();
-        let (send, recv) = channel::<Poi>(CHANNEL_SIZE);
+    let (poi_channel_search, index_search_task) = {
+        let (send, recv) = channel(CHANNEL_SIZE);
 
-        let task = async move {
-            mimir_es
-                .generate_index(config, ReceiverStream::new(recv), visibility)
-                .await
-                .map_err(Error::from)
-        };
+        let task = create_index(
+            mimir_es.as_ref(),
+            &config,
+            &dataset_search,
+            IndexVisibility::Public,
+            ReceiverStream::new(recv),
+        );
 
         (send, task)
     };
 
-    let poi_index_config = Config::builder()
-        .add_source(Poi::default_es_container_config())
-        .add_source(config.clone())
-        .set_override("container.dataset", dataset_search.clone())
-        .expect("failed to create config key container.dataset")
-        .build()
-        .expect("could not build search config");
+    let (poi_channel_nosearch, index_nosearch_task) = {
+        let (send, recv) = channel(CHANNEL_SIZE);
 
-    let poi_index_nosearch_config = Config::builder()
-        .add_source(Poi::default_es_container_config())
-        .add_source(config.clone())
-        .set_override("container.dataset", dataset_nosearch.clone())
-        .expect("failed to create config key container.dataset")
-        .build()
-        .expect("could not build nosearch config");
+        let task = create_index(
+            mimir_es.as_ref(),
+            &config,
+            &dataset_nosearch,
+            IndexVisibility::Private,
+            ReceiverStream::new(recv),
+        );
 
-    let (poi_channel_search, index_search_task) =
-        spawn_index_task(poi_index_config, IndexVisibility::Public);
-
-    let (poi_channel_nosearch, index_nosearch_task) =
-        spawn_index_task(poi_index_nosearch_config, IndexVisibility::Private);
+        (send, task)
+    };
 
     // Build POIs and send them to indexing tasks
     let total_nb_pois = AtomicUsize::new(0);
@@ -204,6 +171,7 @@ pub async fn load_and_index_pois(config: Config) -> Result<(), mimirsbrunn::Erro
             }
 
             // Log advancement
+            // TODO: maybe we should be exhaustive as before
             total_nb_pois.fetch_add(1, atomic::Ordering::Relaxed);
             Ok(())
         }
