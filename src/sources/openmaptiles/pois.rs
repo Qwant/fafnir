@@ -126,6 +126,7 @@ impl IndexedPoi {
         Some(IndexedPoi { poi, is_searchable })
     }
 
+    // TODO: shoudn't we move self?
     pub fn locate_poi<'a>(
         &'a self,
         geofinder: &'a AdminGeoFinder,
