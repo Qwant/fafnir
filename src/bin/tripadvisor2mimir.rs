@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use async_compression::tokio::bufread::GzipDecoder;
@@ -54,7 +55,7 @@ async fn load_and_index_tripadvisor(settings: Settings, raw_config: Config) {
     //       stream. Watch for later versions of mimir which should not enforce to use a 'static
     //       stream: https://github.com/CanalTP/mimirsbrunn/pull/625
     //       Also, after this change AdminGeoFinder should not required to be wrapped into an Arc.
-    let count_ok = Arc::new(Mutex::new(0u64));
+    let count_ok = Arc::new(AtomicU64::new(0));
     let count_errors = Arc::new(Mutex::new(HashMap::new()));
 
     let pois = {
@@ -74,7 +75,9 @@ async fn load_and_index_tripadvisor(settings: Settings, raw_config: Config) {
                     .ok(),
                 )
             })
-            .inspect(move |_| *count_ok.lock().expect("statistics are not available") += 1)
+            .inspect(move |_| {
+                count_ok.fetch_add(1, Ordering::Relaxed);
+            })
     };
 
     // Index POIs
@@ -88,7 +91,12 @@ async fn load_and_index_tripadvisor(settings: Settings, raw_config: Config) {
     .await
     .expect("error while indexing POIs");
 
-    info!("Indexed {} POIs", count_ok.lock().unwrap());
+    // Output statistics
+    let count_ok = Arc::try_unwrap(count_ok)
+        .expect("there are remaining copies of `count_ok`")
+        .into_inner();
+
+    info!("Indexed {} POIs", count_ok);
     info!("Skipped POIs: {:?}", count_errors.lock().unwrap());
 }
 
