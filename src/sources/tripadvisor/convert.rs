@@ -4,11 +4,12 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::admin::find_country_codes;
 use places::coord::Coord;
 use places::i18n_properties::I18nProperties;
-use places::poi::Poi;
+use places::poi::{Poi, PoiType};
 use places::street::Street;
 use places::Address;
 
 use super::models::{LangProperty, Property};
+use crate::langs::COUNTRIES_LANGS;
 
 /// Required review count to get the maximal weight of 1.
 const MAX_REVIEW_COUNT: u64 = 1000;
@@ -39,30 +40,51 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<Poi, 
     let names = build_i18n_property(property.name);
     let labels = names.clone();
     let weight = (property.review_count as f64 / MAX_REVIEW_COUNT as f64).clamp(0., 1.);
-    let address_i18n = build_i18n_property(property.address);
     let approx_coord = Some(coord.into());
+    let country_codes = find_country_codes(administrative_regions.iter().map(AsRef::as_ref));
 
-    // TODO: requires to read mapping correctly
-    let poi_type = Default::default();
-    let name = names
-        .0
-        .first()
-        .map(|prop| prop.value.as_str())
-        .unwrap_or("")
+    let name = get_local_string(&country_codes, &names)
+        .ok_or(BuildError::MissingField("name"))?
         .to_string();
 
-    let country_codes = find_country_codes(administrative_regions.iter().map(AsRef::as_ref));
-    let zip_codes = Default::default();
-
-    let address = address_i18n.0.first().map(|label| {
-        Address::Street(Street {
-            coord,
-            label: label.value.to_string(),
-            ..Default::default()
-        })
-    });
-
     let label = name.clone();
+
+    let zip_codes = administrative_regions
+        .iter()
+        .find(|admin| !admin.zip_codes.is_empty())
+        .map(|admin| admin.zip_codes.clone())
+        .unwrap_or_default();
+
+    // Read address label
+    let address =
+        get_local_string(&country_codes, &build_i18n_property(property.address)).map(|label| {
+            Address::Street(Street {
+                coord,
+                label: label.to_string(),
+                ..Default::default()
+            })
+        });
+
+    // Build poi_type
+    let category = get_local_string(&["us".to_string()], &build_i18n_property(property.category))
+        .ok_or(BuildError::MissingField("category"))?
+        .to_lowercase();
+
+    let sub_category = property
+        .sub_categories
+        .inner
+        .into_iter()
+        .find_map(|sub_category| {
+            get_local_string(&["us".to_string()], &build_i18n_property(sub_category.name))
+                .map(ToString::to_string)
+        })
+        .unwrap_or_else(|| category.clone())
+        .to_lowercase();
+
+    let poi_type = PoiType {
+        id: format!("class_{}:subclass_{}", category, sub_category),
+        name: format!("class_{} subclass_{}", category, sub_category),
+    };
 
     let properties = [
         ("website", property.url),
@@ -110,6 +132,17 @@ fn build_i18n_property(props: Vec<LangProperty>) -> I18nProperties {
             })
             .collect(),
     )
+}
+
+/// Read a property from local country langs if available, if not defined
+/// fallbacks to English and finally outputs an arbitrary value as last resort.
+fn get_local_string<'a>(country_codes: &'a [String], props: &'a I18nProperties) -> Option<&'a str> {
+    country_codes
+        .iter()
+        .flat_map(|cc| COUNTRIES_LANGS.get(cc).into_iter().flatten().copied())
+        .chain(["en"]) // fallback to English if no local language is defined
+        .find_map(|lang| Some(props.0.iter().find(|prop| prop.key == lang)?.value.as_str()))
+        .or_else(|| Some(props.0.first()?.value.as_str()))
 }
 
 impl std::fmt::Display for BuildError {

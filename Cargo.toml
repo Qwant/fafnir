@@ -38,6 +38,3 @@ default_features = false
 cosmogony = "0.10.3"
 serde_derive = "1"
 approx = "0.5.0"
-
-[patch.crates-io]
-cosmogony = { git = "https://github.com/osm-without-borders/cosmogony", branch = "master"}

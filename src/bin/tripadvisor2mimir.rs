@@ -4,7 +4,6 @@ use std::sync::Arc;
 use async_compression::tokio::bufread::GzipDecoder;
 use config::Config;
 use fafnir::mimir::{build_admin_geofinder, create_index};
-use futures::stream::StreamExt;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir2::domain::model::index::IndexVisibility;
@@ -36,7 +35,7 @@ async fn load_and_index_tripadvisor(settings: Settings, raw_config: Config) {
         .await
         .expect("could not open input");
 
-    let raw_data = BufReader::new(GzipDecoder::new(BufReader::new(file)));
+    let raw_xml = BufReader::new(GzipDecoder::new(BufReader::new(file)));
 
     // Connect to mimir ES
     let mimir_es = connection_pool_url(&settings.elasticsearch.url)
@@ -51,7 +50,7 @@ async fn load_and_index_tripadvisor(settings: Settings, raw_config: Config) {
         &raw_config,
         &settings.container_tripadvisor.dataset,
         IndexVisibility::Private,
-        read_pois(raw_data, admin_geofinder),
+        read_pois(raw_xml, admin_geofinder),
     )
     .await
     .expect("error while indexing POIs");
