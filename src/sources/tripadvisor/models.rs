@@ -5,9 +5,9 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Property {
-    pub name: Vec<LangProperty>,
-    pub category: Vec<LangProperty>,
-    pub address: Vec<LangProperty>,
+    pub name: Vec<I18nProperty>,
+    pub category: Vec<I18nProperty>,
+    pub address: Vec<I18nProperty>,
     pub latitude: Option<f64>,
     pub longitude: Option<f64>,
     pub average_rating: Option<f64>,
@@ -38,11 +38,11 @@ pub struct SubCategories {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct SubCategory {
-    pub name: Vec<LangProperty>,
+    pub name: Vec<I18nProperty>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct LangProperty {
+pub struct I18nProperty {
     pub lang: String,
     #[serde(rename = "$value")]
     pub value: Option<String>,

@@ -8,7 +8,7 @@ use places::poi::{Poi, PoiType};
 use places::street::Street;
 use places::Address;
 
-use super::models::{LangProperty, Property};
+use super::models;
 use crate::langs::COUNTRIES_LANGS;
 
 /// Required review count to get the maximal weight of 1.
@@ -20,7 +20,10 @@ pub enum BuildError {
     EmptyAdmins,
 }
 
-pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<Poi, BuildError> {
+pub fn build_poi(
+    property: models::Property,
+    geofinder: &AdminGeoFinder,
+) -> Result<Poi, BuildError> {
     let coord = Coord::new(
         property
             .longitude
@@ -120,11 +123,12 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<Poi, 
     })
 }
 
-fn build_i18n_property(props: Vec<LangProperty>) -> I18nProperties {
+/// Convert i18n fields to mimir format.
+fn build_i18n_property(props: Vec<models::I18nProperty>) -> I18nProperties {
     I18nProperties(
         props
             .into_iter()
-            .filter_map(|LangProperty { lang, value }| {
+            .filter_map(|models::I18nProperty { lang, value }| {
                 Some(places::Property {
                     key: lang,
                     value: value?,
@@ -135,7 +139,7 @@ fn build_i18n_property(props: Vec<LangProperty>) -> I18nProperties {
 }
 
 /// Read a property from local country langs if available, if not defined
-/// fallbacks to English and finally outputs an arbitrary value as last resort.
+/// fallback to English or any arbitrary value as a last resort.
 fn get_local_string<'a>(country_codes: &'a [String], props: &'a I18nProperties) -> Option<&'a str> {
     country_codes
         .iter()
