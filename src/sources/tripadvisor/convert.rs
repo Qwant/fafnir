@@ -143,7 +143,14 @@ fn build_i18n_property(props: Vec<models::I18nProperty>) -> I18nProperties {
 fn get_local_string<'a>(country_codes: &'a [String], props: &'a I18nProperties) -> Option<&'a str> {
     country_codes
         .iter()
-        .flat_map(|cc| COUNTRIES_LANGS.get(cc).into_iter().flatten().copied())
+        .flat_map(|cc| {
+            COUNTRIES_LANGS
+                .get(cc.as_str())
+                .into_iter()
+                .copied()
+                .flatten()
+                .copied()
+        })
         .chain(["en"]) // fallback to English if no local language is defined
         .find_map(|lang| Some(props.0.iter().find(|prop| prop.key == lang)?.value.as_str()))
         .or_else(|| Some(props.0.first()?.value.as_str()))
