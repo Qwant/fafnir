@@ -30,7 +30,7 @@ FROM debian:buster-slim
 WORKDIR /srv
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV RUST_LOG "tracing=info,mimir2=info,fafnir=info"
+ENV RUST_LOG "tracing=info,mimir=info,fafnir=info"
 
 RUN apt-get update \
     && apt-get install -y libcurl4 sqlite3 npm \
