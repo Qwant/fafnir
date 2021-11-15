@@ -1,9 +1,5 @@
-use std::path::PathBuf;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{atomic, Arc};
-use structopt::StructOpt;
-use tracing::{error, info_span};
-use tracing_futures::Instrument;
 
 use config::Config;
 use elasticsearch::http::transport::Transport;
@@ -11,25 +7,37 @@ use elasticsearch::Elasticsearch;
 use futures::stream::TryStreamExt;
 use futures::try_join;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
-use mimir2::common::config::config_from;
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir2::domain::model::index::IndexVisibility;
 use mimir2::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::utils::logger::logger_init;
+use serde::Deserialize;
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::info;
+use tracing::{error, info_span};
+use tracing_futures::Instrument;
 
 use fafnir::mimir::{
     address_updated_after_pois, build_admin_geofinder, create_index, MIMIR_PREFIX,
 };
-use fafnir::settings::Settings;
+use fafnir::settings::{ContainerConfig, FafnirSettings, PostgresSettings};
 use fafnir::sources::openmaptiles;
 use fafnir::utils::start_postgres_session;
 
 // Size of the buffers of POIs that have to be indexed.
 const CHANNEL_SIZE: usize = 10_000;
 
-pub async fn load_and_index_pois(
+#[derive(Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct Settings {
+    fafnir: FafnirSettings,
+    postgres: PostgresSettings,
+    elasticsearch: ElasticsearchStorageConfig,
+    container_search: ContainerConfig,
+    container_nosearch: ContainerConfig,
+}
+
+async fn load_and_index_pois(
     settings: Settings,
     raw_config: Config,
 ) -> Result<(), mimirsbrunn::Error> {
@@ -165,56 +173,9 @@ pub async fn load_and_index_pois(
     Ok(())
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-struct Args {
-    /// Defines the config directories
-    #[structopt(parse(from_os_str), short = "c", long = "config-dir")]
-    pub config_dir: PathBuf,
-
-    /// Defines the run mode in {testing, dev, prod, ...}
-    ///
-    /// If no run mode is provided, a default behavior will be used.
-    #[structopt(short = "m", long = "run-mode")]
-    pub run_mode: Option<String>,
-
-    /// Override settings values using key=value
-    #[structopt(short = "s", long = "setting")]
-    pub settings: Vec<String>,
-}
-
 #[tokio::main]
 async fn main() {
-    let args = Args::from_args();
-
-    let raw_config = config_from(
-        &args.config_dir,
-        &["elasticsearch", "fafnir", "logging"],
-        args.run_mode.as_deref(),
-        "MIMIR",
-        args.settings,
-    )
-    .expect("could not build fafnir config");
-
-    let settings: Settings = raw_config
-        .clone()
-        .try_into()
-        .expect("invalid fafnir config");
-
-    let _log_guard = logger_init(&settings.logging.path).expect("could not init logger");
-
-    info!(
-        "Full configuration:\n{}",
-        serde_json::to_string_pretty(
-            &raw_config
-                .clone()
-                .try_into::<serde_json::Value>()
-                .expect("could not convert config to json"),
-        )
-        .expect("could not serialize config"),
-    );
-
-    if let Err(err) = load_and_index_pois(settings, raw_config).await {
+    if let Err(err) = fafnir::cli::run(load_and_index_pois).await {
         error!("Error while running fafnir: {}", err)
     }
 }

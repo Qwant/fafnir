@@ -1,4 +1,5 @@
 mod addresses;
+pub mod cli;
 mod langs;
 mod lazy_es;
 pub mod mimir;
