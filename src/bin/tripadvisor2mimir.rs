@@ -20,6 +20,9 @@ use tracing::info;
 use fafnir::settings::FafnirSettings;
 use fafnir::sources::tripadvisor::read_pois;
 
+/// Buffer size use for IO over XML files
+const XML_BUFFER_SIZE: usize = 1024 * 1024;
+
 #[derive(Debug, Deserialize)]
 struct TripAdvisorSettings {
     properties: PathBuf,
@@ -36,11 +39,14 @@ struct Settings {
 
 async fn load_and_index_tripadvisor(settings: Settings) {
     // Open GZip file
-    let file = File::open(&settings.tripadvisor.properties)
-        .await
-        .expect("could not open input");
+    let file = BufReader::with_capacity(
+        XML_BUFFER_SIZE,
+        File::open(&settings.tripadvisor.properties)
+            .await
+            .expect("could not open input"),
+    );
 
-    let raw_xml = BufReader::new(GzipDecoder::new(BufReader::new(file)));
+    let raw_xml = BufReader::new(GzipDecoder::new(file));
 
     // Connect to mimir ES
     let mimir_es = connection_pool_url(&settings.elasticsearch.url)
