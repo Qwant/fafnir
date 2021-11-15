@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
-use config::Config;
 use futures::Future;
-use mimir2::common::config::config_from;
+use mimir::common::config::config_from;
 use mimirsbrunn::utils::logger::logger_init;
 use serde::de::DeserializeOwned;
 use structopt::StructOpt;
@@ -26,7 +25,7 @@ struct Args {
     pub settings: Vec<String>,
 }
 
-pub async fn run<S: DeserializeOwned, R: Future>(f: impl FnOnce(S, Config) -> R) -> R::Output {
+pub async fn run<S: DeserializeOwned, R: Future>(f: impl FnOnce(S) -> R) -> R::Output {
     let args = Args::from_args();
 
     let raw_config = config_from(
@@ -56,5 +55,5 @@ pub async fn run<S: DeserializeOwned, R: Future>(f: impl FnOnce(S, Config) -> R)
         .expect("could not serialize config"),
     );
 
-    f(settings, raw_config).await
+    f(settings).await
 }

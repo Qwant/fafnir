@@ -4,20 +4,20 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use async_compression::tokio::bufread::GzipDecoder;
-use config::Config;
-use fafnir::mimir::{build_admin_geofinder, create_index};
+use fafnir::mimir::build_admin_geofinder;
 use futures::future;
 use futures::stream::StreamExt;
-use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use mimir2::domain::model::index::IndexVisibility;
-use mimir2::domain::ports::secondary::remote::Remote;
+use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::domain::model::configuration::ContainerConfig;
+use mimir::domain::ports::primary::generate_index::GenerateIndex;
+use mimir::domain::ports::secondary::remote::Remote;
 use serde::Deserialize;
 use tokio::fs::File;
 use tokio::io::BufReader;
 use tracing::info;
 
-use fafnir::settings::{ContainerConfig, FafnirSettings};
+use fafnir::settings::FafnirSettings;
 use fafnir::sources::tripadvisor::read_pois;
 
 #[derive(Debug, Deserialize)]
@@ -34,7 +34,7 @@ struct Settings {
     container_tripadvisor: ContainerConfig,
 }
 
-async fn load_and_index_tripadvisor(settings: Settings, raw_config: Config) {
+async fn load_and_index_tripadvisor(settings: Settings) {
     // Open GZip file
     let file = File::open(&settings.tripadvisor.properties)
         .await
@@ -81,15 +81,10 @@ async fn load_and_index_tripadvisor(settings: Settings, raw_config: Config) {
     };
 
     // Index POIs
-    create_index(
-        &mimir_es,
-        &raw_config,
-        &settings.container_tripadvisor.dataset,
-        IndexVisibility::Private,
-        pois,
-    )
-    .await
-    .expect("error while indexing POIs");
+    mimir_es
+        .generate_index(&settings.container_tripadvisor, pois)
+        .await
+        .expect("error while indexing POIs");
 
     // Output statistics
     let count_ok = Arc::try_unwrap(count_ok)

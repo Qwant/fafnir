@@ -33,12 +33,18 @@
 
 # Container configuration for searchable POIs.
 [container-search]
+  name = "poi"
   dataset = "default"
+  visibility = "public"
 
 # Container configuration for non-searchable POIs.
 [container-nosearch]
+  name = "poi"
   dataset = "nosearch"
+  visibility = "private"
 
 # Container configuration for tripadvisor2mimir.
 [container-tripadvisor]
+  name = "poi"
   dataset = "tripadvisor"
+  visibility = "private"

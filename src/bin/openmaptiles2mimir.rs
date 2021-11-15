@@ -1,15 +1,15 @@
 use std::sync::atomic::AtomicUsize;
 use std::sync::{atomic, Arc};
 
-use config::Config;
 use elasticsearch::http::transport::Transport;
 use elasticsearch::Elasticsearch;
 use futures::stream::TryStreamExt;
-use futures::try_join;
-use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use mimir2::domain::model::index::IndexVisibility;
-use mimir2::domain::ports::secondary::remote::Remote;
+use futures::{try_join, FutureExt};
+use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::domain::model::configuration::ContainerConfig;
+use mimir::domain::ports::primary::generate_index::GenerateIndex;
+use mimir::domain::ports::secondary::remote::Remote;
 use serde::Deserialize;
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
@@ -17,10 +17,8 @@ use tracing::info;
 use tracing::{error, info_span};
 use tracing_futures::Instrument;
 
-use fafnir::mimir::{
-    address_updated_after_pois, build_admin_geofinder, create_index, MIMIR_PREFIX,
-};
-use fafnir::settings::{ContainerConfig, FafnirSettings, PostgresSettings};
+use fafnir::mimir::{address_updated_after_pois, build_admin_geofinder, MIMIR_PREFIX};
+use fafnir::settings::{FafnirSettings, PostgresSettings};
 use fafnir::sources::openmaptiles;
 use fafnir::utils::start_postgres_session;
 
@@ -37,10 +35,7 @@ struct Settings {
     container_nosearch: ContainerConfig,
 }
 
-async fn load_and_index_pois(
-    settings: Settings,
-    raw_config: Config,
-) -> Result<(), mimirsbrunn::Error> {
+async fn load_and_index_pois(settings: Settings) -> Result<(), mimirsbrunn::Error> {
     // Local Elasticsearch client
     let es = &Elasticsearch::new(
         Transport::single_node(settings.elasticsearch.url.as_str())
@@ -74,13 +69,9 @@ async fn load_and_index_pois(
     let (poi_channel_search, index_search_task) = {
         let (send, recv) = channel(CHANNEL_SIZE);
 
-        let task = create_index(
-            mimir_es.as_ref(),
-            &raw_config,
-            &settings.container_search.dataset,
-            IndexVisibility::Public,
-            ReceiverStream::new(recv),
-        );
+        let task = mimir_es
+            .generate_index(&settings.container_search, ReceiverStream::new(recv))
+            .map(|res| res.map_err(Into::into));
 
         (send, task)
     };
@@ -88,13 +79,9 @@ async fn load_and_index_pois(
     let (poi_channel_nosearch, index_nosearch_task) = {
         let (send, recv) = channel(CHANNEL_SIZE);
 
-        let task = create_index(
-            mimir_es.as_ref(),
-            &raw_config,
-            &settings.container_nosearch.dataset,
-            IndexVisibility::Private,
-            ReceiverStream::new(recv),
-        );
+        let task = mimir_es
+            .generate_index(&settings.container_nosearch, ReceiverStream::new(recv))
+            .map(|res| res.map_err(Into::into));
 
         (send, task)
     };

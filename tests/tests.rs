@@ -1,22 +1,21 @@
 pub mod docker_wrapper;
 pub mod fafnir_tests;
 
-use config::Config;
 use docker_wrapper::PostgresDocker;
 use fafnir::utils::start_postgres_session;
 use futures::stream::TryStreamExt;
-use mimir2::adapters::secondary::elasticsearch::{
+use mimir::adapters::secondary::elasticsearch::{
     remote, ElasticsearchStorage, ElasticsearchStorageConfig,
 };
-use mimir2::common::document::{ContainerDocument, Document};
-use mimir2::domain::model::index::IndexVisibility;
-use mimir2::domain::model::query::Query;
-use mimir2::domain::ports::primary::generate_index::GenerateIndex;
-use mimir2::domain::ports::primary::list_documents::ListDocuments;
-use mimir2::domain::ports::primary::search_documents::SearchDocuments;
-use mimir2::domain::ports::secondary::remote::Remote;
-use mimir2::domain::ports::secondary::storage::Storage;
-use mimir2::utils::docker;
+use mimir::common::document::{ContainerDocument, Document};
+use mimir::domain::model::configuration::{ContainerConfig, ContainerVisibility};
+use mimir::domain::model::query::Query;
+use mimir::domain::ports::primary::generate_index::GenerateIndex;
+use mimir::domain::ports::primary::list_documents::ListDocuments;
+use mimir::domain::ports::primary::search_documents::SearchDocuments;
+use mimir::domain::ports::secondary::remote::Remote;
+use mimir::domain::ports::secondary::storage::Storage;
+use mimir::utils::docker;
 use places::poi::Poi;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
@@ -85,18 +84,14 @@ impl ElasticSearchWrapper {
         T: ContainerDocument + Send + Sync + 'static,
         I: Iterator<Item = T> + Send + Sync + 'static,
     {
-        let config = Config::builder()
-            .add_source(T::default_es_container_config())
-            .set_override("container.dataset", dataset)
-            .expect("could not update config")
-            .build()
-            .expect("could not build config");
-
         self.es
             .generate_index(
-                config,
+                &ContainerConfig {
+                    name: T::static_doc_type().to_string(),
+                    dataset: dataset.to_string(),
+                    visibility: ContainerVisibility::Public,
+                },
                 futures::stream::iter(objects),
-                IndexVisibility::Public,
             )
             .await
             .expect("could not create index");
@@ -123,10 +118,6 @@ impl ElasticSearchWrapper {
         impl ContainerDocument for PoiNoSearch {
             fn static_doc_type() -> &'static str {
                 "poi_nosearch"
-            }
-
-            fn default_es_container_config() -> Config {
-                Poi::default_es_container_config()
             }
         }
 
