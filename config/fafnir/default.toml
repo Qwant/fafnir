@@ -28,6 +28,9 @@
   # of elasticsearch.
   max_query_batch_size = 100
 
+[tripadvisor]
+  properties = "propertylist.xml.gz"
+
 # Container configuration for searchable POIs.
 [container-search]
   dataset = "default"
@@ -35,3 +38,7 @@
 # Container configuration for non-searchable POIs.
 [container-nosearch]
   dataset = "nosearch"
+
+# Container configuration for tripadvisor2mimir.
+[container-tripadvisor]
+  dataset = "tripadvisor"

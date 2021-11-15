@@ -193,7 +193,7 @@ impl IndexedPoi {
             );
 
             for country_code in country_codes.iter() {
-                if let Some(country_langs) =
+                if let Some(&country_langs) =
                     COUNTRIES_LANGS.get(country_code.to_uppercase().as_str())
                 {
                     let has_lang = |props: &I18nProperties, lang: &str| {
