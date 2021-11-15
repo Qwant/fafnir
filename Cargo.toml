@@ -23,16 +23,9 @@ tracing-futures = "0.2"
 tracing = { version = "0.1", default_features = false, features = ["release_max_level_info"] }
 url = { version = "2", features = ["serde"] }
 
-# Mimirsbrunn dependancies
-# requires higher `size` in search_documents
-mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
-mimir2 = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
-places = { git = "https://github.com/CanalTP/mimirsbrunn.git" }
-
-[dependencies.config]
-git = "https://github.com/mehcode/config-rs.git"
-branch = "master"
-default_features = false
+mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "b3c5143e" }
+mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "b3c5143e" }
+places = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "b3c5143e" }
 
 [dev-dependencies]
 cosmogony = "0.10.3"

@@ -17,8 +17,3 @@ pub struct FafnirSettings {
 pub struct PostgresSettings {
     pub url: String,
 }
-
-#[derive(Debug, Deserialize)]
-pub struct ContainerConfig {
-    pub dataset: String,
-}

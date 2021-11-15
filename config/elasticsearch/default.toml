@@ -1,20 +1,33 @@
 [elasticsearch]
-url = "http://localhost:9200"
+  url = "http://localhost:9200"
 
-# Timeout in milliseconds on client calls to Elasticsearch.
-timeout = 5000
+  # Timeout in milliseconds on client calls to Elasticsearch.
+  timeout = 5000
 
-# Constraint on the version of Elasticsearch.
-version_req = ">=7.13.0"
+  # Constraint on the version of Elasticsearch.
+  version_req = ">=7.13.0"
 
-# Number of documents loaded per request when performing a `list_documents`
-scroll_chunk_size = 1000
+  # Number of documents loaded per request when performing a `list_documents`
+  scroll_chunk_size = 1000
 
-# Liveness of the PIT while performing a `list_documents`.
-scroll_pit_alive = "1m"
+  # Liveness of the PIT while performing a `list_documents`.
+  scroll_pit_alive = "1m"
 
-# Max of concurrent requests during insertion.
-insertion_concurrent_requests = 8
+  # Max of concurrent requests during insertion.
+  insertion_concurrent_requests = 8
 
-# Number of document per request during insertion.
-insertion_chunk_size = 100
+  # Number of document per request during insertion.
+  insertion_chunk_size = 100
+
+  # Number of shards copies that must be active before performing indexing
+  # operations.
+  wait_for_active_shards = 1
+
+[elasticsearch.force_merge]
+  # If this is set to `true` a force merge will be performed after an index
+  # is published. For more details see
+  # https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-forcemerge.html
+  enabled = true
+
+  # Number of segments to merge to.
+  max_number_segments = 1

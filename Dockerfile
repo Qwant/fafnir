@@ -30,7 +30,7 @@ FROM debian:buster-slim
 WORKDIR /srv
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV RUST_LOG "tracing=info,mimir2=info,fafnir=info"
+ENV RUST_LOG "tracing=info,mimir=info,fafnir=info"
 
 RUN apt-get update \
     && apt-get install -y libcurl4 sqlite3 npm \
@@ -39,6 +39,7 @@ RUN apt-get update \
 
 RUN npm install -g bunyan
 RUN echo "#!/bin/bash"                                   >> /usr/bin/bunyan_formated
+RUN echo "set -o pipefail"                               >> /usr/bin/bunyan_formated
 RUN echo "CMD=\$1; shift; ARG=\$@"                       >> /usr/bin/bunyan_formated
 RUN echo "\$CMD --config-dir /etc/fafnir \$ARG | bunyan" >> /usr/bin/bunyan_formated
 RUN chmod +x /usr/bin/bunyan_formated
