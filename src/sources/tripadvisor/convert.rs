@@ -82,11 +82,50 @@ pub fn build_poi(
                 .map(ToString::to_string)
         })
         .unwrap_or_else(|| category.clone())
+        .replace(" ", "")
         .to_lowercase();
+
+    let autorized_cuisine = vec![
+        "lebanese",
+        "african",
+        "asian",
+        "french",
+        "italian",
+        "thai",
+        "vietnamese",
+        "pakistani",
+        "mexican",
+        "swiss",
+        "european",
+    ];
+
+    let cuisine = property
+        .cuisine
+        .inner
+        .into_iter()
+        .map(|item| {
+            get_local_string(&["en".to_string()], &build_i18n_property(item.name))
+                .map(ToString::to_string)
+                .unwrap()
+        })
+        .filter(|s| autorized_cuisine.contains(&s.to_lowercase().as_str()))
+        .next();
+
+    let poi_type_name: String;
+
+    match cuisine {
+        Some(cuisine) => {
+            poi_type_name = format!(
+                "class_{} subclass_{} cuisine:{}",
+                category, sub_category, cuisine
+            )
+        }
+        _ => poi_type_name = format!("class_{} subclass_{}", category, sub_category),
+    }
 
     let poi_type = PoiType {
         id: format!("class_{}:subclass_{}", category, sub_category),
-        name: format!("class_{} subclass_{}", category, sub_category),
+        name: poi_type_name,
     };
 
     let properties = [

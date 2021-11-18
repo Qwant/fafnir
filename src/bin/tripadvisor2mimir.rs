@@ -57,11 +57,9 @@ async fn load_and_index_tripadvisor(settings: Settings) {
     //       Also, after this change AdminGeoFinder should not required to be wrapped into an Arc.
     let count_ok = Arc::new(AtomicU64::new(0));
     let count_errors = Arc::new(Mutex::new(HashMap::new()));
-
     let pois = {
         let count_ok = count_ok.clone();
         let count_errors = count_errors.clone();
-
         read_pois(raw_xml, admin_geofinder)
             .filter_map(move |poi| {
                 future::ready(
