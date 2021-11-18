@@ -1,4 +1,4 @@
-//! Models for TripAdvisor's XML feed structure.
+//! Models for TripAdvisor's XML PropertyList feed structure.
 
 use serde::{Deserialize, Deserializer};
 

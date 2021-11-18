@@ -10,8 +10,8 @@ use places::street::Street;
 use places::Address;
 use std::collections::HashMap;
 
-use super::models;
 use crate::langs::COUNTRIES_LANGS;
+use crate::sources::tripadvisor::models;
 
 /// Required review count to get the maximal weight of 1.
 const MAX_REVIEW_COUNT: u64 = 1000;
@@ -62,7 +62,7 @@ pub enum BuildError {
 }
 
 pub fn build_poi(
-    property: models::Property,
+    property: models::pois::Property,
     geofinder: &AdminGeoFinder,
 ) -> Result<Poi, BuildError> {
     let coord = Coord::new(
