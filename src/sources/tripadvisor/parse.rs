@@ -1,15 +1,14 @@
 //! Parsing utilities for TripAdvisor XML feed.
 
-use futures::stream::{Stream, StreamExt};
+use futures::stream::Stream;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
-use tokio_stream::wrappers::LinesStream;
 use tracing::debug;
 
 /// Expected string at start of a <Property /> item.
 const START_TOKEN: &str = "<Property ";
 
 /// Expected string at the end of a <Property /> item.
-const END_TOKEN: &str = "</Property>";
+const END_TOKEN: &str = "</Property>\n";
 
 /// Split each <Property /> item into a buffer that can be deserialized independantly.
 ///
@@ -19,42 +18,40 @@ const END_TOKEN: &str = "</Property>";
 ///    the line will be ignoreed.
 ///  - each item ends with a line "</Property>"
 pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Item = String> {
-    let lines = LinesStream::new(input.lines());
-
-    futures::stream::unfold(lines, move |mut lines| {
+    futures::stream::unfold(input, |mut input| async {
+        let mut first_line = true;
         let mut buffer = String::new();
 
-        async move {
-            while let Some(line) = lines.next().await {
-                let line = line.expect("could not read raw line from XML");
-
-                // The first line may contain some extra XML informations
-                let line = {
-                    if buffer.is_empty() {
-                        let token_start = line.find(START_TOKEN)?;
-
-                        if token_start > 0 {
-                            debug!("Ignored begining of file: {}", &line[..token_start]);
-                        }
-
-                        &line[token_start..]
+        while input
+            .read_line(&mut buffer)
+            .await
+            .expect("failed to read line from XML")
+            > 0
+        {
+            // The first line may contain some extra XML informations
+            if first_line {
+                let token_start = {
+                    if let Some(start) = buffer.find(START_TOKEN) {
+                        start
                     } else {
-                        &line
+                        break;
                     }
                 };
 
-                buffer.push_str(line);
-
-                if line.trim() == END_TOKEN {
-                    return Some((buffer, lines));
+                if token_start > 0 {
+                    debug!("Ignored begining of file: {}", &buffer[..token_start]);
                 }
+
+                first_line = false;
+                buffer = buffer[token_start..].to_string();
             }
 
-            if !buffer.is_empty() {
-                debug!("Ignored end of file: {}", buffer);
+            if buffer.ends_with(END_TOKEN) {
+                return Some((buffer, input));
             }
-
-            None
         }
+
+        debug!("Ignored end of file: {}", buffer);
+        None
     })
 }
