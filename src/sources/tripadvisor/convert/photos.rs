@@ -1,6 +1,6 @@
 use crate::sources::tripadvisor::{models, Photos};
 
-#[derive(Debug)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub enum BuildError {
     NotFound,
 }

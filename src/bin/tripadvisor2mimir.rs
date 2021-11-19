@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use async_compression::tokio::bufread::GzipDecoder;
 use fafnir::mimir::build_admin_geofinder;
+use fafnir::sources::tripadvisor::convert::build_id;
 use futures::future;
 use futures::stream::StreamExt;
 use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::model::configuration::ContainerConfig;
+use mimir::domain::model::update::UpdateOperation;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimir::domain::ports::secondary::remote::Remote;
 use serde::Deserialize;
@@ -53,30 +54,11 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         .await
         .expect("failed to open Elasticsearch connection");
 
-    {
-        let raw_xml = read_gzip_file(&settings.tripadvisor.photos).await;
+    let admin_geofinder = build_admin_geofinder(&mimir_es).await;
 
-        read_photos(raw_xml)
-            .for_each(|photos| async move {
-                if let Ok(photos) = photos {
-                    let urls = photos
-                        .urls
-                        .into_iter()
-                        .map(|url| url.replace(',', "%2C")) // see https://en.wikipedia.org/wiki/Percent-encoding#Reserved_characters
-                        .collect::<Vec<_>>()
-                        .join(",");
-
-                    println!("{}: {}", photos.id, urls)
-                }
-            })
-            .await;
-    }
-
-    let admin_geofinder = Arc::new(build_admin_geofinder(&mimir_es).await);
-
-    // Initialize stats
-    let mut count_ok: u64 = 0;
-    let mut count_errors: HashMap<_, u64> = HashMap::new();
+    // Initialize POIs
+    let mut count_poi_ok: u64 = 0;
+    let mut count_poi_errors: HashMap<_, u64> = HashMap::new();
 
     let pois = {
         let raw_xml = read_gzip_file(&settings.tripadvisor.properties).await;
@@ -84,22 +66,49 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         read_pois(raw_xml, admin_geofinder)
             .filter_map(|poi| {
                 future::ready(
-                    poi.map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
+                    poi.map_err(|err| *count_poi_errors.entry(err).or_insert(0) += 1)
                         .ok(),
                 )
             })
-            .inspect(|_| count_ok += 1)
+            .inspect(|_| count_poi_ok += 1)
+    };
+
+    // Initialize photos
+    let mut count_photos_ok: u64 = 0;
+    let mut count_photos_errors: HashMap<_, u64> = HashMap::new();
+
+    let photos = {
+        let raw_xml = read_gzip_file(&settings.tripadvisor.photos).await;
+
+        read_photos(raw_xml).filter_map(|photos| {
+            future::ready(
+                photos
+                    .map_err(|err| *count_photos_errors.entry(err).or_insert(0) += 1)
+                    .map(|photos| {
+                        let op = UpdateOperation::Set {
+                            ident: "properties['ta:images']".to_string(),
+                            value: photos.urls.join(","),
+                        };
+
+                        count_photos_ok += 1;
+                        (build_id(photos.id), op)
+                    })
+                    .ok(),
+            )
+        })
     };
 
     // Index POIs
     mimir_es
-        .generate_index(&settings.container_tripadvisor, pois)
+        .generate_and_update_index(&settings.container_tripadvisor, pois, photos)
         .await
-        .expect("error while indexing POIs");
+        .expect("error while building index");
 
     // Output statistics
-    info!("Indexed {} POIs", count_ok);
-    info!("Skipped POIs: {:?}", count_errors);
+    info!("Parsed {} POIs", count_poi_ok);
+    info!("Skipped POIs: {:?}", count_poi_errors);
+    info!("Parsed {} Photos", count_photos_ok);
+    info!("Skipped Photos: {:?}", count_photos_errors);
 }
 
 #[tokio::main]
