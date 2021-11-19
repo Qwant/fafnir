@@ -18,14 +18,14 @@ serde = { version = "1", default_features = false }
 structopt = "0.3"
 tokio-postgres = "0.7"
 tokio-stream = { version = "0.1", features = [ "io-util" ] }
-tokio = { version = "1.10", features = ["macros", "rt-multi-thread", "time", "sync", "io-util"] }
+tokio = { version = "1.14", features = ["macros", "rt-multi-thread", "time", "sync", "io-util"] }
 tracing-futures = "0.2"
 tracing = { version = "0.1", default_features = false, features = ["release_max_level_info"] }
 url = { version = "2", features = ["serde"] }
 
-mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "b3c5143e" }
-mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "b3c5143e" }
-places = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "b3c5143e" }
+mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "c881addc" }
+mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "c881addc" }
+places = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "c881addc" }
 
 [dev-dependencies]
 cosmogony = "0.10.3"

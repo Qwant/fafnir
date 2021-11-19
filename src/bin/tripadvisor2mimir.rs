@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use async_compression::tokio::bufread::GzipDecoder;
 use fafnir::mimir::build_admin_geofinder;
@@ -76,33 +75,20 @@ async fn load_and_index_tripadvisor(settings: Settings) {
     let admin_geofinder = Arc::new(build_admin_geofinder(&mimir_es).await);
 
     // Initialize stats
-    // TODO: the stream requires to be static so there is no way to pass mutable reference into the
-    //       stream. Watch for later versions of mimir which should not enforce to use a 'static
-    //       stream: https://github.com/CanalTP/mimirsbrunn/pull/625
-    //       Also, after this change AdminGeoFinder should not required to be wrapped into an Arc.
-    let count_ok = Arc::new(AtomicU64::new(0));
-    let count_errors = Arc::new(Mutex::new(HashMap::new()));
+    let mut count_ok: u64 = 0;
+    let mut count_errors: HashMap<_, u64> = HashMap::new();
+
     let pois = {
-        let count_ok = count_ok.clone();
-        let count_errors = count_errors.clone();
         let raw_xml = read_gzip_file(&settings.tripadvisor.properties).await;
 
         read_pois(raw_xml, admin_geofinder)
-            .filter_map(move |poi| {
+            .filter_map(|poi| {
                 future::ready(
-                    poi.map_err(|err| {
-                        *count_errors
-                            .lock()
-                            .expect("statistics are not available")
-                            .entry(err)
-                            .or_insert(0) += 1
-                    })
-                    .ok(),
+                    poi.map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
+                        .ok(),
                 )
             })
-            .inspect(move |_| {
-                count_ok.fetch_add(1, Ordering::Relaxed);
-            })
+            .inspect(|_| count_ok += 1)
     };
 
     // Index POIs
@@ -112,12 +98,8 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         .expect("error while indexing POIs");
 
     // Output statistics
-    let count_ok = Arc::try_unwrap(count_ok)
-        .expect("there are remaining copies of `count_ok`")
-        .into_inner();
-
     info!("Indexed {} POIs", count_ok);
-    info!("Skipped POIs: {:?}", count_errors.lock().unwrap());
+    info!("Skipped POIs: {:?}", count_errors);
 }
 
 #[tokio::main]
