@@ -107,7 +107,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     )
     .await;
 
-    assert_eq!(es_wrapper.get_all_tripadvisor_pois().await.count(), 3);
+    assert_eq!(es_wrapper.get_all_tripadvisor_pois().await.count(), 4);
 
     // Test that the place "Gasthof Au" has been imported in the elastic wrapper
     let pois: Vec<places::Place> = es_wrapper
@@ -120,10 +120,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
 
     let poi_type = &gasthof_au.poi().unwrap().poi_type;
     assert_eq!(poi_type.id, "class_restaurant:subclass_sitdown");
-    assert_eq!(
-        poi_type.name,
-        "class_restaurant subclass_sitdown cuisine:swiss"
-    );
+    assert_eq!(poi_type.name, "class_restaurant subclass_sitdown");
 
     // Test that the place "b'eat Restaurant & Bar" has been imported in the elastic wrapper
     let pois: Vec<places::Place> = es_wrapper
@@ -155,4 +152,21 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     let poi_type = &suecka.poi().unwrap().poi_type;
     assert_eq!(poi_type.id, "class_hotel:subclass_bedandbreakfast");
     assert_eq!(poi_type.name, "class_hotel subclass_bedandbreakfast");
+
+    // Test that the place "Mr B's - A Bartolotta Steakhouse - Brookfield" has been imported in the elastic wrapper
+    let pois: Vec<places::Place> = es_wrapper
+        .search_and_filter("name:Bartolotta*", |_| true)
+        .await
+        .collect();
+    assert_eq!(&pois.len(), &1);
+    let bartolotta = &pois[0];
+    assert!(&bartolotta.is_poi());
+
+    // TA cuisine tag should be converted to OSM (steakhouse -> steak_house)
+    let poi_type = &bartolotta.poi().unwrap().poi_type;
+    assert_eq!(poi_type.id, "class_restaurant:subclass_sitdown");
+    assert_eq!(
+        poi_type.name,
+        "class_restaurant subclass_sitdown cuisine:steak_house"
+    );
 }

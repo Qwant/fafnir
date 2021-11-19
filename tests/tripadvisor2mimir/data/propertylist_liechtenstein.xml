@@ -367,7 +367,7 @@
       <Name lang="de_AT">Italienisch</Name>
       <Name lang="de">Italienisch</Name>
       <Name lang="pt">Italiana</Name>
-      <Name lang="en_PH">Italian</Name>
+      <Name lang="en">Italian</Name>
       <Name lang="hu">Olasz</Name>
       <Name lang="es_MX">Italiana</Name>
       <Name lang="es_VE">Italiana</Name>
@@ -1192,6 +1192,424 @@
   </SubCategories>
   <Menu/>
 </Property>
+  <Property id="392161" geoid="59733">
+    <Name lang="de_AT"/>
+    <Name lang="de"/>
+    <Name lang="it_CH"/>
+    <Name lang="pt"/>
+    <Name lang="en_PH"/>
+    <Name lang="hu"/>
+    <Name lang="es_MX"/>
+    <Name lang="en_HK"/>
+    <Name lang="nl_BE"/>
+    <Name lang="es_VE"/>
+    <Name lang="in"/>
+    <Name lang="es_AR"/>
+    <Name lang="el"/>
+    <Name lang="en">Mr B's - A Bartolotta Steakhouse - Brookfield</Name>
+    <Name lang="it"/>
+    <Name lang="zh"/>
+    <Name lang="en_UK"/>
+    <Name lang="iw"/>
+    <Name lang="es"/>
+    <Name lang="en_IE"/>
+    <Name lang="ar"/>
+    <Name lang="vi"/>
+    <Name lang="ja"/>
+    <Name lang="en_IN"/>
+    <Name lang="nl"/>
+    <Name lang="en_ZA"/>
+    <Name lang="en_MY"/>
+    <Name lang="no"/>
+    <Name lang="fi"/>
+    <Name lang="ru"/>
+    <Name lang="fr_BE"/>
+    <Name lang="en_AU"/>
+    <Name lang="fr"/>
+    <Name lang="zh_TW"/>
+    <Name lang="zh_HK"/>
+    <Name lang="de_CH"/>
+    <Name lang="sk"/>
+    <Name lang="es_CO"/>
+    <Name lang="es_CL"/>
+    <Name lang="sr"/>
+    <Name lang="en_NZ"/>
+    <Name lang="es_PE"/>
+    <Name lang="fr_CA"/>
+    <Name lang="sv"/>
+    <Name lang="ko"/>
+    <Name lang="en_SG"/>
+    <Name lang="fr_CH"/>
+    <Name lang="cs"/>
+    <Name lang="th"/>
+    <Name lang="en_CA"/>
+    <Name lang="zh_CN"/>
+    <Name lang="pl"/>
+    <Name lang="da"/>
+    <Name lang="ar_AE"/>
+    <Name lang="tr"/>
+    <Name lang="pt_PT"/>
+    <TripAdvisorURL>https://www.tripadvisor.com/Restaurant_Review-g59733-d392161-Reviews-Mr_B_s_A_Bartolotta_Steakhouse_Brookfield-Brookfield_Wisconsin.html?m=66497</TripAdvisorURL>
+    <ViewPhotosURL>https://www.tripadvisor.com/Restaurant_Review-g59733-d392161-Reviews-Mr_B_s_A_Bartolotta_Steakhouse_Brookfield-Brookfield_Wisconsin.html?m=66497#photos</ViewPhotosURL>
+    <BookingURL>https://www.tripadvisor.com/Restaurant_Review-g59733-d392161-Reviews-Mr_B_s_A_Bartolotta_Steakhouse_Brookfield-Brookfield_Wisconsin.html?m=66497</BookingURL>
+    <WriteReviewURL>https://www.tripadvisor.com/UserReview-g59733-d392161-Mr_B_s_A_Bartolotta_Steakhouse_Brookfield-Brookfield_Wisconsin.html?m=66497</WriteReviewURL>
+    <Category lang="de_AT"/>
+    <Category lang="de">Restaurant</Category>
+    <Category lang="it_CH"/>
+    <Category lang="pt">Restaurante</Category>
+    <Category lang="en_PH"/>
+    <Category lang="hu">Étterem</Category>
+    <Category lang="es_MX"/>
+    <Category lang="en_HK"/>
+    <Category lang="nl_BE"/>
+    <Category lang="es_VE"/>
+    <Category lang="in">Restoran</Category>
+    <Category lang="es_AR"/>
+    <Category lang="el">Εστιατόριο</Category>
+    <Category lang="en">Restaurant</Category>
+    <Category lang="it">Ristorante</Category>
+    <Category lang="zh">餐厅</Category>
+    <Category lang="en_UK"/>
+    <Category lang="iw">מסעדה</Category>
+    <Category lang="es">Restaurante</Category>
+    <Category lang="en_IE"/>
+    <Category lang="ar">مطعم</Category>
+    <Category lang="vi">Nhà hàng</Category>
+    <Category lang="ja">レストラン</Category>
+    <Category lang="en_IN"/>
+    <Category lang="nl">Restaurant</Category>
+    <Category lang="en_ZA"/>
+    <Category lang="en_MY"/>
+    <Category lang="no">Restaurant</Category>
+    <Category lang="fi">Ravintola</Category>
+    <Category lang="ru">Ресторан</Category>
+    <Category lang="fr_BE"/>
+    <Category lang="en_AU"/>
+    <Category lang="fr">Restaurant</Category>
+    <Category lang="zh_TW">餐廳</Category>
+    <Category lang="zh_HK">餐廳</Category>
+    <Category lang="de_CH"/>
+    <Category lang="sk">Reštaurácia</Category>
+    <Category lang="es_CO"/>
+    <Category lang="es_CL"/>
+    <Category lang="sr">Restoran</Category>
+    <Category lang="en_NZ"/>
+    <Category lang="es_PE"/>
+    <Category lang="fr_CA">Restaurant</Category>
+    <Category lang="sv">Restaurang</Category>
+    <Category lang="ko">음식점</Category>
+    <Category lang="en_SG"/>
+    <Category lang="fr_CH"/>
+    <Category lang="cs">Restaurace</Category>
+    <Category lang="th">ร้านอาหาร</Category>
+    <Category lang="en_CA"/>
+    <Category lang="zh_CN">餐馆</Category>
+    <Category lang="pl">Restauracja</Category>
+    <Category lang="da">Restaurant</Category>
+    <Category lang="ar_AE"/>
+    <Category lang="tr">Restoran</Category>
+    <Category lang="pt_PT">Restaurante</Category>
+    <Address lang="en">Alp Sucka Sueckastrasse 41 Sückastrasse 42, Triesenberg 9497 Liechtenstein</Address>
+    <GeoHierarchy>1:9999:World|4:10000:Europe|190357:10001:Liechtenstein|190370:10004:Triesenberg</GeoHierarchy>
+    <PhoneNumber type="main">+1 262-790-7005</PhoneNumber>
+    <PropertyURL>http://www.bartolottas.com/mr-b-s-steakhouse/mr-b-s-steakhouse-brookfield</PropertyURL>
+    <Latitude>47.1163</Latitude>
+    <Longitude>9.56505</Longitude>
+    <GeoCodes>
+      <GeoCodes>
+        <GeoCodeSource>tripadvisor</GeoCodeSource>
+        <Latitude>43.091248</Latitude>
+        <Longitude>-88.140518</Longitude>
+      </GeoCodes>
+    </GeoCodes>
+    <AverageRating>4.0</AverageRating>
+    <ReviewCount>332</ReviewCount>
+    <UserReviewRatings>
+      <UserReviewRating name="Service" score="4.0" total="210"/>
+      <UserReviewRating name="Value" score="3.5" total="209"/>
+    </UserReviewRatings>
+    <PriceLevel>$$$$</PriceLevel>
+    <Hours>
+      <Day>
+        <DayName>Sunday</DayName>
+        <Time>
+          <OpenTime>17:00</OpenTime>
+          <CloseTime>21:00</CloseTime>
+        </Time>
+      </Day>
+      <Day>
+        <DayName>Monday</DayName>
+      </Day>
+      <Day>
+        <DayName>Tuesday</DayName>
+      </Day>
+      <Day>
+        <DayName>Wednesday</DayName>
+        <Time>
+          <OpenTime>17:00</OpenTime>
+          <CloseTime>21:00</CloseTime>
+        </Time>
+      </Day>
+      <Day>
+        <DayName>Thursday</DayName>
+        <Time>
+          <OpenTime>17:00</OpenTime>
+          <CloseTime>21:00</CloseTime>
+        </Time>
+      </Day>
+      <Day>
+        <DayName>Friday</DayName>
+        <Time>
+          <OpenTime>17:00</OpenTime>
+          <CloseTime>21:00</CloseTime>
+        </Time>
+      </Day>
+      <Day>
+        <DayName>Saturday</DayName>
+        <Time>
+          <OpenTime>17:00</OpenTime>
+          <CloseTime>21:00</CloseTime>
+        </Time>
+      </Day>
+      <TimeZone>America/Chicago</TimeZone>
+    </Hours>
+    <AlsoViewed>
+      <AlsoViewedProperty id="2341693"/>
+      <AlsoViewedProperty id="392422"/>
+      <AlsoViewedProperty id="1089947"/>
+      <AlsoViewedProperty id="1007153"/>
+      <AlsoViewedProperty id="392146"/>
+      <AlsoViewedProperty id="392230"/>
+      <AlsoViewedProperty id="519841"/>
+      <AlsoViewedProperty id="392706"/>
+      <AlsoViewedProperty id="3314497"/>
+      <AlsoViewedProperty id="392127"/>
+    </AlsoViewed>
+    <LocationString lang="de">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="de_AT">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="pt">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="it_CH">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="en_PH">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="hu">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="es_MX">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="en_HK">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="es_VE">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="nl_BE">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="in">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="es_AR">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="el">Brookfield, Ουισκόνσιν</LocationString>
+    <LocationString lang="en">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="it">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="es">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="iw">Brookfield, ויסקונסין</LocationString>
+    <LocationString lang="en_UK">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="zh">布鲁克菲尔德, 威斯康星</LocationString>
+    <LocationString lang="en_IE">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="ar">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="vi">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="ja">ブルックフィールド, ウィスコンシン州</LocationString>
+    <LocationString lang="en_IN">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="nl">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="en_ZA">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="en_MY">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="no">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="fi">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="ru">Брукфилд, Висконсин</LocationString>
+    <LocationString lang="fr_BE">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="en_AU">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="fr">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="de_CH">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="zh_HK">Brookfield, 威斯康辛</LocationString>
+    <LocationString lang="zh_TW">布魯克菲爾德, 威斯康星</LocationString>
+    <LocationString lang="sk">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="es_CO">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="es_CL">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="sr">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="en_NZ">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="es_PE">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="sv">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="fr_CA">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="ko">브룩필드, 위스콘신</LocationString>
+    <LocationString lang="en_SG">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="fr_CH">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="cs">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="th">บรุกฟีลด์, วิสคอนซิน</LocationString>
+    <LocationString lang="en_CA">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="zh_CN">布鲁克菲尔德, 威斯康星</LocationString>
+    <LocationString lang="pl">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="da">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="tr">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="ar_AE">Brookfield, Wisconsin</LocationString>
+    <LocationString lang="pt_PT">Brookfield, Wisconsin</LocationString>
+    <AttractionTypes/>
+    <SubCategories>
+      <SubCategory>
+        <Name lang="de_AT"/>
+        <Name lang="de">Restaurant</Name>
+        <Name lang="it_CH"/>
+        <Name lang="pt">Restaurante</Name>
+        <Name lang="en_PH"/>
+        <Name lang="hu">Van felszolgálás</Name>
+        <Name lang="es_MX">Sentarse</Name>
+        <Name lang="en_HK"/>
+        <Name lang="nl_BE"/>
+        <Name lang="es_VE"/>
+        <Name lang="in">Duduk</Name>
+        <Name lang="es_AR">Sentarse</Name>
+        <Name lang="el">Εστιατόριο</Name>
+        <Name lang="en">Sit down</Name>
+        <Name lang="it">Posto a sedere</Name>
+        <Name lang="zh">餐厅</Name>
+        <Name lang="en_UK">Sit down</Name>
+        <Name lang="iw">הגשה לשולחנות</Name>
+        <Name lang="es">Sentado</Name>
+        <Name lang="en_IE"/>
+        <Name lang="ar">استمتع بالجلوس</Name>
+        <Name lang="vi">Ngồi xuống</Name>
+        <Name lang="ja">座席あり</Name>
+        <Name lang="en_IN"/>
+        <Name lang="nl">Restaurant</Name>
+        <Name lang="en_ZA"/>
+        <Name lang="en_MY"/>
+        <Name lang="no">Sitt ned</Name>
+        <Name lang="fi">Pöytiin tarjoilu</Name>
+        <Name lang="ru">Ресторан</Name>
+        <Name lang="fr_BE"/>
+        <Name lang="en_AU"/>
+        <Name lang="fr">Assis</Name>
+        <Name lang="zh_TW">坐下</Name>
+        <Name lang="zh_HK">坐下</Name>
+        <Name lang="de_CH"/>
+        <Name lang="sk">Posedenie</Name>
+        <Name lang="es_CO"/>
+        <Name lang="es_CL"/>
+        <Name lang="sr">Mesta za sedenje</Name>
+        <Name lang="en_NZ"/>
+        <Name lang="es_PE"/>
+        <Name lang="fr_CA">Assis</Name>
+        <Name lang="sv">Äta på stället</Name>
+        <Name lang="ko">테이블 착석</Name>
+        <Name lang="en_SG"/>
+        <Name lang="fr_CH"/>
+        <Name lang="cs">Formální</Name>
+        <Name lang="th">มีที่นั่ง</Name>
+        <Name lang="en_CA"/>
+        <Name lang="zh_CN">餐厅</Name>
+        <Name lang="pl">Restauracja z obsługą kelnerską</Name>
+        <Name lang="da">Spise på stedet</Name>
+        <Name lang="ar_AE"/>
+        <Name lang="tr">Masaya servis</Name>
+        <Name lang="pt_PT">Sentado</Name>
+      </SubCategory>
+    </SubCategories>
+    <Menu/>
+    <Cuisine>
+      <Item>
+        <Name lang="de_AT">Steakhaus</Name>
+        <Name lang="de">Steakhaus</Name>
+        <Name lang="pt">Steakhouse</Name>
+        <Name lang="en_PH">Steakhouse</Name>
+        <Name lang="hu">Steakétterem</Name>
+        <Name lang="es_MX">Churrasquería</Name>
+        <Name lang="es_VE">Churrasquería</Name>
+        <Name lang="in">Restoran Steak</Name>
+        <Name lang="es_AR">Churrasquería</Name>
+        <Name lang="el">Ψητοπωλείο</Name>
+        <Name lang="en">Steakhouse</Name>
+        <Name lang="it">Steakhouse</Name>
+        <Name lang="zh">牛排馆</Name>
+        <Name lang="en_UK">Steakhouse</Name>
+        <Name lang="iw">מסעדת סטייקים</Name>
+        <Name lang="es">Restaurante de carne</Name>
+        <Name lang="en_IE">Steakhouse</Name>
+        <Name lang="ar">الستيك هاوس</Name>
+        <Name lang="vi">Nhà hàng bít tết</Name>
+        <Name lang="ja">ステーキハウス</Name>
+        <Name lang="en_IN">Steakhouse</Name>
+        <Name lang="nl">Steakhouse</Name>
+        <Name lang="en_ZA">Steakhouse</Name>
+        <Name lang="en_MY">Steakhouse</Name>
+        <Name lang="no">Steakhouse</Name>
+        <Name lang="fi">Pihviravintola</Name>
+        <Name lang="ru">Стейк-хаус</Name>
+        <Name lang="en_AU">Steakhouse</Name>
+        <Name lang="fr">Steakhouse</Name>
+        <Name lang="zh_TW">牛排</Name>
+        <Name lang="zh_HK">牛排</Name>
+        <Name lang="de_CH">Steakhaus</Name>
+        <Name lang="sk">Steaková reštaurácia</Name>
+        <Name lang="es_CO">Churrasquería</Name>
+        <Name lang="es_CL">Churrasquería</Name>
+        <Name lang="sr">odresci</Name>
+        <Name lang="en_NZ">Steakhouse</Name>
+        <Name lang="es_PE">Churrasquería</Name>
+        <Name lang="fr_CA">Grilladerie</Name>
+        <Name lang="sv">Steakhouse</Name>
+        <Name lang="ko">스테이크하우스</Name>
+        <Name lang="en_SG">Steakhouse</Name>
+        <Name lang="cs">Steaková restaurace</Name>
+        <Name lang="th">สเต๊กเฮาส์</Name>
+        <Name lang="en_CA">Steakhouse</Name>
+        <Name lang="zh_CN">牛排馆</Name>
+        <Name lang="pl">Bar ze stekami</Name>
+        <Name lang="da">Steakhouse</Name>
+        <Name lang="tr">Biftek Restoranı</Name>
+        <Name lang="pt_PT">Steakhouse</Name>
+      </Item>
+      <Item>
+        <Name lang="de_AT">Amerikanisch</Name>
+        <Name lang="de">Amerikanisch</Name>
+        <Name lang="pt">Americana</Name>
+        <Name lang="en_PH">American</Name>
+        <Name lang="hu">Amerikai</Name>
+        <Name lang="es_MX">Estadounidense</Name>
+        <Name lang="es_VE">Estadounidense</Name>
+        <Name lang="in">Amerika</Name>
+        <Name lang="es_AR">Estadounidense</Name>
+        <Name lang="el">Αμερικανική</Name>
+        <Name lang="en">American</Name>
+        <Name lang="it">Americana</Name>
+        <Name lang="zh">美式烹饪</Name>
+        <Name lang="en_UK">American</Name>
+        <Name lang="iw">אמריקאי</Name>
+        <Name lang="es">Americana</Name>
+        <Name lang="en_IE">American</Name>
+        <Name lang="ar">الأمريكية</Name>
+        <Name lang="vi">Kiểu Mỹ</Name>
+        <Name lang="ja">アメリカ料理</Name>
+        <Name lang="en_IN">American</Name>
+        <Name lang="nl">Amerikaans</Name>
+        <Name lang="en_ZA">American</Name>
+        <Name lang="en_MY">American</Name>
+        <Name lang="no">Amerikansk</Name>
+        <Name lang="fi">Amerikkalainen</Name>
+        <Name lang="ru">Американская</Name>
+        <Name lang="en_AU">American</Name>
+        <Name lang="fr">Américaine</Name>
+        <Name lang="zh_TW">美式料理</Name>
+        <Name lang="zh_HK">美國菜</Name>
+        <Name lang="de_CH">Amerikanisch</Name>
+        <Name lang="sk">Americké</Name>
+        <Name lang="es_CO">Estadounidense</Name>
+        <Name lang="es_CL">Estadounidense</Name>
+        <Name lang="sr">američka</Name>
+        <Name lang="en_NZ">American</Name>
+        <Name lang="es_PE">Estadounidense</Name>
+        <Name lang="fr_CA">Des États-Unis</Name>
+        <Name lang="sv">Amerikanskt</Name>
+        <Name lang="ko">미국 요리</Name>
+        <Name lang="en_SG">American</Name>
+        <Name lang="cs">Americká</Name>
+        <Name lang="th">อเมริกัน</Name>
+        <Name lang="en_CA">American</Name>
+        <Name lang="zh_CN">美式烹饪</Name>
+        <Name lang="pl">Amerykańska</Name>
+        <Name lang="da">Amerikansk</Name>
+        <Name lang="tr">Amerikan</Name>
+        <Name lang="pt_PT">Americana</Name>
+      </Item>
+    </Cuisine>
+  </Property>
 </PropertyList>
 
 

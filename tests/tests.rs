@@ -170,7 +170,7 @@ impl ElasticSearchWrapper {
     where
         F: FnMut(&places::Place) -> bool,
     {
-        let indices = ["admin", "addr", "poi", "tripadvisor"]
+        let indices = ["admin", "addr", "poi"]
             .into_iter()
             .map(String::from)
             .collect();
@@ -201,7 +201,7 @@ async fn launch_and_assert(cmd: &'static str, args: Vec<std::string::String>) {
 }
 
 #[tokio::test]
-async fn main_test() {
+async fn openmaptiles2mimir_test() {
     let pg_docker = PostgresDocker::new().await.unwrap();
 
     openmaptiles2mimir::main_test(
@@ -233,6 +233,9 @@ async fn main_test() {
         PostgresWrapper::new(&pg_docker),
     )
     .await;
+}
 
+#[tokio::test]
+async fn tripadvisor2mimir_test() {
     tripadvisor2mimir::main_test(ElasticSearchWrapper::new().await).await;
 }
