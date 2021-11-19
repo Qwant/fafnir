@@ -30,6 +30,8 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
         {
             // The first line may contain some extra XML informations
             if first_line {
+                first_line = false;
+
                 let token_start = {
                     if let Some(start) = buffer.find(START_TOKEN) {
                         start
@@ -40,10 +42,8 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
 
                 if token_start > 0 {
                     debug!("Ignored begining of file: {}", &buffer[..token_start]);
+                    buffer = buffer[token_start..].to_string();
                 }
-
-                first_line = false;
-                buffer = buffer[token_start..].to_string();
             }
 
             if buffer.ends_with(END_TOKEN) {
