@@ -14,6 +14,33 @@ use crate::langs::COUNTRIES_LANGS;
 /// Required review count to get the maximal weight of 1.
 const MAX_REVIEW_COUNT: u64 = 1000;
 
+const OSM_CUISINE: &[&str] = &[
+    "african",
+    "american",
+    "asian",
+    "barbecue",
+    "caribbean",
+    "chinese",
+    "french",
+    "german",
+    "greek",
+    "italian",
+    "indian",
+    "japanese",
+    "lebanese",
+    "mediterranean",
+    "mexican",
+    "pakistani",
+    "pizza",
+    "seafood",
+    "swiss",
+    "sushi",
+    "spanish",
+    "thai",
+    "vietnamese",
+    "western",
+];
+
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub enum BuildError {
     MissingField(&'static str),
@@ -85,20 +112,6 @@ pub fn build_poi(
         .replace(" ", "")
         .to_lowercase();
 
-    let autorized_cuisine = vec![
-        "lebanese",
-        "african",
-        "asian",
-        "french",
-        "italian",
-        "thai",
-        "vietnamese",
-        "pakistani",
-        "mexican",
-        "swiss",
-        "european",
-    ];
-
     let cuisine = property
         .cuisine
         .inner
@@ -108,8 +121,7 @@ pub fn build_poi(
                 .map(ToString::to_string)
                 .unwrap()
         })
-        .filter(|s| autorized_cuisine.contains(&s.to_lowercase().as_str()))
-        .next();
+        .find(|s| OSM_CUISINE.contains(&s.to_lowercase().as_str()));
 
     let poi_type_name: String;
 

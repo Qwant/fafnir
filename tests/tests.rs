@@ -170,7 +170,7 @@ impl ElasticSearchWrapper {
     where
         F: FnMut(&places::Place) -> bool,
     {
-        let indices = ["admin", "addr", "poi"]
+        let indices = ["admin", "addr", "poi", "tripadvisor"]
             .into_iter()
             .map(String::from)
             .collect();
