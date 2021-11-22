@@ -1,18 +1,59 @@
 //! Utilities to convert a super::models::Property into mimir's Poi.
 
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use once_cell::sync::Lazy;
 use places::admin::find_country_codes;
 use places::coord::Coord;
 use places::i18n_properties::I18nProperties;
 use places::poi::{Poi, PoiType};
 use places::street::Street;
 use places::Address;
+use std::collections::HashMap;
 
 use super::models;
 use crate::langs::COUNTRIES_LANGS;
 
 /// Required review count to get the maximal weight of 1.
 const MAX_REVIEW_COUNT: u64 = 1000;
+
+const OSM_CUISINE: &[&str] = &[
+    "african",
+    "american",
+    "asian",
+    "barbecue",
+    "caribbean",
+    "chinese",
+    "french",
+    "german",
+    "greek",
+    "italian",
+    "indian",
+    "japanese",
+    "latin_american",
+    "lebanese",
+    "mediterranean",
+    "mexican",
+    "pakistani",
+    "pizza",
+    "seafood",
+    "steak_house",
+    "sushi",
+    "spanish",
+    "thai",
+    "vietnamese",
+    "western",
+];
+
+static CUISINE_CONVERTER: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
+    [
+        ("steakhouse", "steak_house"),
+        ("mexican_&_southwestern", "mexican"),
+        ("south_american", "latin_american"),
+        ("mexican_&_european", "western"),
+    ]
+    .into_iter()
+    .collect()
+});
 
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub enum BuildError {
@@ -82,11 +123,42 @@ pub fn build_poi(
                 .map(ToString::to_string)
         })
         .unwrap_or_else(|| category.clone())
+        .replace(" ", "_")
         .to_lowercase();
+
+    let cuisine = property
+        .cuisine
+        .inner
+        .into_iter()
+        .filter_map(|item| {
+            get_local_string(&["us".to_string()], &build_i18n_property(item.name))
+                .map(ToString::to_string)
+        })
+        .map(|ta_cuisine| {
+            CUISINE_CONVERTER
+                .get(ta_cuisine.to_lowercase().replace(" ", "_").as_str())
+                .map(ToString::to_string)
+                .unwrap_or_else(|| ta_cuisine.clone())
+        })
+        .find(|cuisine| OSM_CUISINE.contains(&cuisine.to_lowercase().as_str()));
+
+    let poi_type_name: String;
+
+    match cuisine {
+        Some(cuisine) => {
+            poi_type_name = format!(
+                "class_{} subclass_{} cuisine:{}",
+                category,
+                sub_category,
+                cuisine.to_lowercase()
+            )
+        }
+        _ => poi_type_name = format!("class_{} subclass_{}", category, sub_category),
+    }
 
     let poi_type = PoiType {
         id: format!("class_{}:subclass_{}", category, sub_category),
-        name: format!("class_{} subclass_{}", category, sub_category),
+        name: poi_type_name,
     };
 
     let properties = [

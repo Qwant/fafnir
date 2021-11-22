@@ -1,5 +1,6 @@
 pub mod docker_wrapper;
-pub mod fafnir_tests;
+pub mod openmaptiles2mimir;
+pub mod tripadvisor2mimir;
 
 use docker_wrapper::PostgresDocker;
 use fafnir::utils::start_postgres_session;
@@ -22,6 +23,7 @@ use tokio::process::Command;
 
 // Dataset name used for tests.
 static DATASET: &str = "test";
+static TRIPADVISOR_DATASET: &str = "tripadvisor";
 
 pub struct PostgresWrapper<'a> {
     docker_wrapper: &'a PostgresDocker,
@@ -132,6 +134,34 @@ impl ElasticSearchWrapper {
             .map(|PoiNoSearch(poi)| poi)
     }
 
+    pub async fn get_all_tripadvisor_pois(&mut self) -> impl Iterator<Item = Poi> {
+        #[derive(Deserialize, Serialize)]
+        #[serde(transparent)]
+        pub struct PoiTripadvisor(Poi);
+
+        impl Document for PoiTripadvisor {
+            fn id(&self) -> std::string::String {
+                self.0.id()
+            }
+        }
+
+        impl ContainerDocument for PoiTripadvisor {
+            fn static_doc_type() -> &'static str {
+                "poi_tripadvisor"
+            }
+        }
+
+        self.es
+            .list_documents()
+            .await
+            .expect("could not query a list of POIs from ES")
+            .try_collect::<Vec<_>>()
+            .await
+            .expect("could not fetch a POI from ES")
+            .into_iter()
+            .map(|PoiTripadvisor(poi)| poi)
+    }
+
     pub async fn search_and_filter<F>(
         &self,
         word: &str,
@@ -171,36 +201,38 @@ async fn launch_and_assert(cmd: &'static str, args: Vec<std::string::String>) {
 }
 
 #[tokio::test]
-async fn main_test() {
+async fn fafnir_test() {
     let pg_docker = PostgresDocker::new().await.unwrap();
 
-    fafnir_tests::main_test(
+    openmaptiles2mimir::main_test(
         ElasticSearchWrapper::new().await,
         PostgresWrapper::new(&pg_docker),
     )
     .await;
 
-    fafnir_tests::bbox_test(
+    openmaptiles2mimir::bbox_test(
         ElasticSearchWrapper::new().await,
         PostgresWrapper::new(&pg_docker),
     )
     .await;
 
-    fafnir_tests::test_with_langs(
+    openmaptiles2mimir::test_with_langs(
         ElasticSearchWrapper::new().await,
         PostgresWrapper::new(&pg_docker),
     )
     .await;
 
-    fafnir_tests::test_address_format(
+    openmaptiles2mimir::test_address_format(
         ElasticSearchWrapper::new().await,
         PostgresWrapper::new(&pg_docker),
     )
     .await;
 
-    fafnir_tests::test_current_country_label(
+    openmaptiles2mimir::test_current_country_label(
         ElasticSearchWrapper::new().await,
         PostgresWrapper::new(&pg_docker),
     )
     .await;
+
+    tripadvisor2mimir::main_test(ElasticSearchWrapper::new().await).await;
 }

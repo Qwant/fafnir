@@ -19,6 +19,9 @@ pub struct Property {
     #[serde(default)]
     pub sub_categories: SubCategories,
 
+    #[serde(default)]
+    pub cuisine: Cuisine,
+
     #[serde(rename = "TripAdvisorURL")]
     pub ta_url: Option<String>,
 
@@ -27,6 +30,18 @@ pub struct Property {
 
     #[serde(rename = "PropertyURL")]
     pub url: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct Cuisine {
+    #[serde(rename = "Item")]
+    pub inner: Vec<Item>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Item {
+    pub name: Vec<I18nProperty>,
 }
 
 #[derive(Debug, Default, Deserialize)]
