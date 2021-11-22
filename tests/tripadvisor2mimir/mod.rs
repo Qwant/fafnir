@@ -119,8 +119,8 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     assert!(&gasthof_au.is_poi());
 
     let poi_type = &gasthof_au.poi().unwrap().poi_type;
-    assert_eq!(poi_type.id, "class_restaurant:subclass_sitdown");
-    assert_eq!(poi_type.name, "class_restaurant subclass_sitdown");
+    assert_eq!(poi_type.id, "class_restaurant:subclass_sit_down");
+    assert_eq!(poi_type.name, "class_restaurant subclass_sit_down");
 
     // Test that the place "b'eat Restaurant & Bar" has been imported in the elastic wrapper
     let pois: Vec<places::Place> = es_wrapper
@@ -133,10 +133,10 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
 
     // Cuisine should match a OpenstreetMap cuisine tag
     let poi_type = &b_eat.poi().unwrap().poi_type;
-    assert_eq!(poi_type.id, "class_restaurant:subclass_sitdown");
+    assert_eq!(poi_type.id, "class_restaurant:subclass_sit_down");
     assert_eq!(
         poi_type.name,
-        "class_restaurant subclass_sitdown cuisine:italian"
+        "class_restaurant subclass_sit_down cuisine:italian"
     );
 
     // Test that the place "Bergrestaurant Suecka" has been imported in the elastic wrapper
@@ -150,8 +150,8 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
 
     // Hotel subclass should match a OpenstreetMap category tag
     let poi_type = &suecka.poi().unwrap().poi_type;
-    assert_eq!(poi_type.id, "class_hotel:subclass_bedandbreakfast");
-    assert_eq!(poi_type.name, "class_hotel subclass_bedandbreakfast");
+    assert_eq!(poi_type.id, "class_hotel:subclass_bed_and_breakfast");
+    assert_eq!(poi_type.name, "class_hotel subclass_bed_and_breakfast");
 
     // Test that the place "Mr B's - A Bartolotta Steakhouse - Brookfield" has been imported in the elastic wrapper
     let pois: Vec<places::Place> = es_wrapper
@@ -164,9 +164,9 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
 
     // TA cuisine tag should be converted to OSM (steakhouse -> steak_house)
     let poi_type = &bartolotta.poi().unwrap().poi_type;
-    assert_eq!(poi_type.id, "class_restaurant:subclass_sitdown");
+    assert_eq!(poi_type.id, "class_restaurant:subclass_sit_down");
     assert_eq!(
         poi_type.name,
-        "class_restaurant subclass_sitdown cuisine:steak_house"
+        "class_restaurant subclass_sit_down cuisine:steak_house"
     );
 }

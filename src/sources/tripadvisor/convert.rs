@@ -123,27 +123,22 @@ pub fn build_poi(
                 .map(ToString::to_string)
         })
         .unwrap_or_else(|| category.clone())
-        .replace(" ", "")
+        .replace(" ", "_")
         .to_lowercase();
 
     let cuisine = property
         .cuisine
         .inner
         .into_iter()
-        .map(|item| {
-            let ta_cuisine = get_local_string(&["us".to_string()], &build_i18n_property(item.name))
+        .filter_map(|item| {
+            get_local_string(&["us".to_string()], &build_i18n_property(item.name))
                 .map(ToString::to_string)
-                .unwrap();
-            println!("{}", ta_cuisine);
-            match CUISINE_CONVERTER
-                .contains_key(ta_cuisine.to_lowercase().replace(" ", "").as_str())
-            {
-                true => CUISINE_CONVERTER
-                    .get(ta_cuisine.to_lowercase().replace(" ", "").as_str())
-                    .unwrap()
-                    .to_string(),
-                false => ta_cuisine,
-            }
+        })
+        .map(|ta_cuisine| {
+            CUISINE_CONVERTER
+                .get(ta_cuisine.to_lowercase().replace(" ", "").as_str())
+                .map(ToString::to_string)
+                .unwrap_or_else(|| ta_cuisine.clone())
         })
         .find(|cuisine| OSM_CUISINE.contains(&cuisine.to_lowercase().as_str()));
 
