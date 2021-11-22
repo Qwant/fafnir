@@ -47,4 +47,4 @@
 [container-tripadvisor]
   name = "poi"
   dataset = "tripadvisor"
-  visibility = "public"
+  visibility = "private"

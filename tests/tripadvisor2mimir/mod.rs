@@ -100,6 +100,8 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
             "-s".to_string(),
             format!(r#"container-tripadvisor.dataset="{}""#, TRIPADVISOR_DATASET),
             "-s".to_string(),
+            format!(r#"container-tripadvisor.visibility="{}""#, "public"),
+            "-s".to_string(),
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
             "-s".to_string(),
             format!(r#"tripadvisor.properties="{}""#, PROPERTY_LIST),
