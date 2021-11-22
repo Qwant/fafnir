@@ -201,7 +201,7 @@ async fn launch_and_assert(cmd: &'static str, args: Vec<std::string::String>) {
 }
 
 #[tokio::test]
-async fn openmaptiles2mimir_test() {
+async fn fafnir_test() {
     let pg_docker = PostgresDocker::new().await.unwrap();
 
     openmaptiles2mimir::main_test(
@@ -233,9 +233,6 @@ async fn openmaptiles2mimir_test() {
         PostgresWrapper::new(&pg_docker),
     )
     .await;
-}
 
-#[tokio::test]
-async fn tripadvisor2mimir_test() {
     tripadvisor2mimir::main_test(ElasticSearchWrapper::new().await).await;
 }
