@@ -15,16 +15,10 @@ use tokio::task::spawn_blocking;
 /// Number of tokio's blocking thread that can be spawned to parse XML. Keeping
 /// a rather low constant value is fine as the input will be provided by a GZip
 /// decoder, which only runs on a single thread.
-const PARSER_THREADS: usize = 1;
+const PARSER_THREADS: usize = 4;
 
 /// Number of <Property /> items that are sent to spawned threads for parsing.
 const PARSER_CHUNK_SIZE: usize = 1000;
-
-#[derive(Debug)]
-pub struct Photos {
-    pub id: u32,
-    pub urls: Vec<String>,
-}
 
 fn parse_properties<P, R>(
     input: impl AsyncBufRead + Unpin,
@@ -66,7 +60,7 @@ where
 pub fn read_pois(
     input: impl AsyncBufRead + Unpin,
     geofinder: AdminGeoFinder,
-) -> impl Stream<Item = Result<Poi, convert::pois::BuildError>> {
+) -> impl Stream<Item = Result<(u32, Poi), convert::pois::BuildError>> {
     parse_properties(input, move |property| {
         convert::pois::build_poi(property, &geofinder)
     })
@@ -74,6 +68,6 @@ pub fn read_pois(
 
 pub fn read_photos(
     input: impl AsyncBufRead + Unpin,
-) -> impl Stream<Item = Result<Photos, convert::photos::BuildError>> {
+) -> impl Stream<Item = Result<(u32, Vec<String>), convert::photos::BuildError>> {
     parse_properties(input, convert::photos::build_photo)
 }

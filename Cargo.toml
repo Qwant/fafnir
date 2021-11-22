@@ -26,9 +26,9 @@ url = { version = "2", features = ["serde"] }
 # mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "c881addc" }
 # mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "c881addc" }
 # places = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "c881addc" }
-mimirsbrunn = { path = "/home/remi/code/mimirsbrunn" }
-mimir = { path = "/home/remi/code/mimirsbrunn/libs/mimir" }
-places = { path = "/home/remi/code/mimirsbrunn/libs/places" }
+mimirsbrunn = { git = "https://github.com/remi-dupre/mimirsbrunn.git", branch = "es-update" }
+mimir = { git = "https://github.com/remi-dupre/mimirsbrunn.git", branch = "es-update" }
+places = { git = "https://github.com/remi-dupre/mimirsbrunn.git", branch = "es-update" }
 
 [dev-dependencies]
 cosmogony = "0.10.3"

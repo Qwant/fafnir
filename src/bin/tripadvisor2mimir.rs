@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use async_compression::tokio::bufread::GzipDecoder;
@@ -57,6 +58,7 @@ async fn load_and_index_tripadvisor(settings: Settings) {
     let admin_geofinder = build_admin_geofinder(&mimir_es).await;
 
     // Initialize POIs
+    let indexed_documents = RefCell::new(HashSet::new());
     let mut count_poi_ok: u64 = 0;
     let mut count_poi_errors: HashMap<_, u64> = HashMap::new();
 
@@ -70,7 +72,11 @@ async fn load_and_index_tripadvisor(settings: Settings) {
                         .ok(),
                 )
             })
-            .inspect(|_| count_poi_ok += 1)
+            .map(|(ta_id, poi)| {
+                indexed_documents.borrow_mut().insert(ta_id);
+                count_poi_ok += 1;
+                poi
+            })
     };
 
     // Initialize photos
@@ -80,22 +86,24 @@ async fn load_and_index_tripadvisor(settings: Settings) {
     let photos = {
         let raw_xml = read_gzip_file(&settings.tripadvisor.photos).await;
 
-        read_photos(raw_xml).filter_map(|photos| {
-            future::ready(
-                photos
-                    .map_err(|err| *count_photos_errors.entry(err).or_insert(0) += 1)
-                    .map(|photos| {
-                        let op = UpdateOperation::Set {
-                            ident: "properties['ta:images']".to_string(),
-                            value: photos.urls.join(","),
-                        };
+        read_photos(raw_xml)
+            .filter_map(|photos| {
+                future::ready(
+                    photos
+                        .map_err(|err| *count_photos_errors.entry(err).or_insert(0) += 1)
+                        .ok(),
+                )
+            })
+            .filter(|(ta_id, _)| future::ready(indexed_documents.borrow().contains(ta_id)))
+            .map(|(ta_id, urls)| {
+                let op = UpdateOperation::Set {
+                    ident: "properties.image".to_string(),
+                    value: urls.join(","),
+                };
 
-                        count_photos_ok += 1;
-                        (build_id(photos.id), op)
-                    })
-                    .ok(),
-            )
-        })
+                count_photos_ok += 1;
+                (build_id(ta_id), op)
+            })
     };
 
     // Index POIs

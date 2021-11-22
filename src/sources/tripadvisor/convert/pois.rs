@@ -65,7 +65,7 @@ pub enum BuildError {
 pub fn build_poi(
     property: models::pois::Property,
     geofinder: &AdminGeoFinder,
-) -> Result<Poi, BuildError> {
+) -> Result<(u32, Poi), BuildError> {
     let coord = Coord::new(
         property
             .longitude
@@ -162,24 +162,27 @@ pub fn build_poi(
     .filter_map(|(key, val)| Some((key.to_string(), val?)))
     .collect();
 
-    Ok(Poi {
-        id,
-        label,
-        name,
-        coord,
-        approx_coord,
-        administrative_regions,
-        weight,
-        zip_codes,
-        poi_type,
-        properties,
-        address,
-        country_codes,
-        names,
-        labels,
-        distance: None,
-        context: None,
-    })
+    Ok((
+        property.id,
+        Poi {
+            id,
+            label,
+            name,
+            coord,
+            approx_coord,
+            administrative_regions,
+            weight,
+            zip_codes,
+            poi_type,
+            properties,
+            address,
+            country_codes,
+            names,
+            labels,
+            distance: None,
+            context: None,
+        },
+    ))
 }
 
 /// Read a property from local country langs if available, if not defined

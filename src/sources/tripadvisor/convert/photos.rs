@@ -1,13 +1,11 @@
-use crate::sources::tripadvisor::{models, Photos};
+use crate::sources::tripadvisor::models;
 
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub enum BuildError {
     NotFound,
 }
 
-pub fn build_photo(property: models::photos::Property) -> Result<Photos, BuildError> {
-    let id = property.id;
-
+pub fn build_photo(property: models::photos::Property) -> Result<(u32, Vec<String>), BuildError> {
     let urls: Vec<_> = property
         .photos
         .inner
@@ -24,6 +22,6 @@ pub fn build_photo(property: models::photos::Property) -> Result<Photos, BuildEr
     if urls.is_empty() {
         Err(BuildError::NotFound)
     } else {
-        Ok(Photos { id, urls })
+        Ok((property.id, urls))
     }
 }
