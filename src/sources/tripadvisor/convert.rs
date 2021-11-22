@@ -47,9 +47,9 @@ const OSM_CUISINE: &[&str] = &[
 static CUISINE_CONVERTER: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     [
         ("steakhouse", "steak_house"),
-        ("mexican&southwestern", "mexican"),
-        ("southamerican", "latin_american"),
-        ("mexican&european", "western"),
+        ("mexican_&_southwestern", "mexican"),
+        ("south_american", "latin_american"),
+        ("mexican_&_european", "western"),
     ]
     .into_iter()
     .collect()
@@ -136,7 +136,7 @@ pub fn build_poi(
         })
         .map(|ta_cuisine| {
             CUISINE_CONVERTER
-                .get(ta_cuisine.to_lowercase().replace(" ", "").as_str())
+                .get(ta_cuisine.to_lowercase().replace(" ", "_").as_str())
                 .map(ToString::to_string)
                 .unwrap_or_else(|| ta_cuisine.clone())
         })
