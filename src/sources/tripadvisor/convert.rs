@@ -81,7 +81,7 @@ pub fn build_poi(
     }
 
     let id = format!("ta:poi:{}", property.id);
-    let names = build_i18n_property(property.name);
+    let names = property.name;
     let labels = names.clone();
     let weight = (property.review_count as f64 / MAX_REVIEW_COUNT as f64).clamp(0., 1.);
     let approx_coord = Some(coord.into());
@@ -100,61 +100,47 @@ pub fn build_poi(
         .unwrap_or_default();
 
     // Read address label
-    let address =
-        get_local_string(&country_codes, &build_i18n_property(property.address)).map(|label| {
-            Address::Street(Street {
-                coord,
-                label: label.to_string(),
-                ..Default::default()
-            })
-        });
+    let address = get_local_string(&country_codes, &property.address).map(|label| {
+        Address::Street(Street {
+            coord,
+            label: label.to_string(),
+            ..Default::default()
+        })
+    });
 
     // Build poi_type
-    let category = get_local_string(&["us".to_string()], &build_i18n_property(property.category))
+    let category = get_local_string(&["us".to_string()], &property.category)
         .ok_or(BuildError::MissingField("category"))?
         .to_lowercase();
 
-    let sub_category = property
-        .sub_categories
-        .inner
-        .into_iter()
-        .find_map(|sub_category| {
-            get_local_string(&["us".to_string()], &build_i18n_property(sub_category.name))
-                .map(ToString::to_string)
-        })
-        .unwrap_or_else(|| category.clone())
+    let sub_category = (property.sub_categories.inner)
+        .iter()
+        .find_map(|sub_category| get_local_string(&["us".to_string()], &sub_category.name))
+        .unwrap_or(&category)
         .replace(" ", "_")
         .to_lowercase();
 
-    let cuisine = property
-        .cuisine
-        .inner
-        .into_iter()
-        .filter_map(|item| {
-            get_local_string(&["us".to_string()], &build_i18n_property(item.name))
-                .map(ToString::to_string)
-        })
+    let cuisine = (property.cuisine.inner)
+        .iter()
+        .filter_map(|item| get_local_string(&["us".to_string()], &item.name))
         .map(|ta_cuisine| {
             CUISINE_CONVERTER
                 .get(ta_cuisine.to_lowercase().replace(" ", "_").as_str())
-                .map(ToString::to_string)
-                .unwrap_or_else(|| ta_cuisine.clone())
+                .copied()
+                .unwrap_or(ta_cuisine)
         })
         .find(|cuisine| OSM_CUISINE.contains(&cuisine.to_lowercase().as_str()));
 
-    let poi_type_name: String;
-
-    match cuisine {
-        Some(cuisine) => {
-            poi_type_name = format!(
+    let poi_type_name = cuisine
+        .map(|cuisine| {
+            format!(
                 "class_{} subclass_{} cuisine:{}",
                 category,
                 sub_category,
                 cuisine.to_lowercase()
             )
-        }
-        _ => poi_type_name = format!("class_{} subclass_{}", category, sub_category),
-    }
+        })
+        .unwrap_or_else(|| format!("class_{} subclass_{}", category, sub_category));
 
     let poi_type = PoiType {
         id: format!("class_{}:subclass_{}", category, sub_category),
@@ -195,24 +181,9 @@ pub fn build_poi(
     })
 }
 
-/// Convert i18n fields to mimir format.
-fn build_i18n_property(props: Vec<models::I18nProperty>) -> I18nProperties {
-    I18nProperties(
-        props
-            .into_iter()
-            .filter_map(|models::I18nProperty { lang, value }| {
-                Some(places::Property {
-                    key: lang,
-                    value: value?,
-                })
-            })
-            .collect(),
-    )
-}
-
 /// Read a property from local country langs if available, if not defined
 /// fallback to English or any arbitrary value as a last resort.
-fn get_local_string<'a>(country_codes: &'a [String], props: &'a I18nProperties) -> Option<&'a str> {
+fn get_local_string<'a>(country_codes: &[String], props: &'a I18nProperties) -> Option<&'a str> {
     country_codes
         .iter()
         .flat_map(|cc| {
