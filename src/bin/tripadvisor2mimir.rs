@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -57,66 +56,83 @@ async fn load_and_index_tripadvisor(settings: Settings) {
 
     let admin_geofinder = build_admin_geofinder(&mimir_es).await;
 
-    // Initialize POIs
-    let indexed_documents = RefCell::new(HashSet::new());
-    let mut count_poi_ok: u64 = 0;
-    let mut count_poi_errors: HashMap<_, u64> = HashMap::new();
+    // Init Index
+    let index_generator = mimir_es
+        .init_container(&settings.container_tripadvisor)
+        .await
+        .expect("could not create index");
 
-    let pois = {
+    // Insert POIs
+    let mut indexed_documents = HashSet::new();
+
+    let index_generator = {
         let raw_xml = read_gzip_file(&settings.tripadvisor.properties).await;
+        let mut count_ok: u64 = 0;
+        let mut count_errors: HashMap<_, u64> = HashMap::new();
 
-        read_pois(raw_xml, admin_geofinder)
+        let pois = read_pois(raw_xml, admin_geofinder)
             .filter_map(|poi| {
                 future::ready(
-                    poi.map_err(|err| *count_poi_errors.entry(err).or_insert(0) += 1)
+                    poi.map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
                         .ok(),
                 )
             })
             .map(|(ta_id, poi)| {
-                indexed_documents.borrow_mut().insert(ta_id);
-                count_poi_ok += 1;
+                indexed_documents.insert(ta_id);
+                count_ok += 1;
                 poi
-            })
+            });
+
+        let index_generator = index_generator
+            .insert_documents(pois)
+            .await
+            .expect("could not insert POIs into index");
+
+        info!("Parsed {} POIs", count_ok);
+        info!("Skipped POIs: {:?}", count_errors);
+        index_generator
     };
 
-    // Initialize photos
-    let mut count_photos_ok: u64 = 0;
-    let mut count_photos_errors: HashMap<_, u64> = HashMap::new();
-
-    let photos = {
+    // Insert Photos
+    let index_generator = {
         let raw_xml = read_gzip_file(&settings.tripadvisor.photos).await;
+        let mut count_ok: u64 = 0;
+        let mut count_errors: HashMap<_, u64> = HashMap::new();
 
-        read_photos(raw_xml)
+        let photos = read_photos(raw_xml)
             .filter_map(|photos| {
                 future::ready(
                     photos
-                        .map_err(|err| *count_photos_errors.entry(err).or_insert(0) += 1)
+                        .map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
                         .ok(),
                 )
             })
-            .filter(|(ta_id, _)| future::ready(indexed_documents.borrow().contains(ta_id)))
+            .filter(|(ta_id, _)| future::ready(indexed_documents.contains(ta_id)))
             .map(|(ta_id, urls)| {
                 let op = UpdateOperation::Set {
                     ident: "properties.image".to_string(),
                     value: urls.join(","),
                 };
 
-                count_photos_ok += 1;
+                count_ok += 1;
                 (build_id(ta_id), op)
-            })
+            });
+
+        let index_generator = index_generator
+            .update_documents(photos)
+            .await
+            .expect("could not update documents from index");
+
+        info!("Parsed {} Photos", count_ok);
+        info!("Skipped Photos: {:?}", count_errors);
+        index_generator
     };
 
-    // Index POIs
-    mimir_es
-        .generate_and_update_index(&settings.container_tripadvisor, pois, photos)
+    // Publih index
+    index_generator
+        .publish()
         .await
-        .expect("error while building index");
-
-    // Output statistics
-    info!("Parsed {} POIs", count_poi_ok);
-    info!("Skipped POIs: {:?}", count_poi_errors);
-    info!("Parsed {} Photos", count_photos_ok);
-    info!("Skipped Photos: {:?}", count_photos_errors);
+        .expect("could not publish index");
 }
 
 #[tokio::main]
