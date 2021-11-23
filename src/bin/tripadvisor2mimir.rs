@@ -108,10 +108,10 @@ async fn load_and_index_tripadvisor(settings: Settings) {
                 )
             })
             .filter(|(ta_id, _)| future::ready(indexed_documents.contains(ta_id)))
-            .map(|(ta_id, urls)| {
+            .map(|(ta_id, url)| {
                 let op = UpdateOperation::Set {
                     ident: "properties.image".to_string(),
-                    value: urls.join(","),
+                    value: url,
                 };
 
                 count_ok += 1;

@@ -68,6 +68,6 @@ pub fn read_pois(
 
 pub fn read_photos(
     input: impl AsyncBufRead + Unpin,
-) -> impl Stream<Item = Result<(u32, Vec<String>), convert::photos::BuildError>> {
+) -> impl Stream<Item = Result<(u32, String), convert::photos::BuildError>> {
     parse_properties(input, convert::photos::build_photo)
 }
