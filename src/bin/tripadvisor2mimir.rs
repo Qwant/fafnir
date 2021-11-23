@@ -128,7 +128,7 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         index_generator
     };
 
-    // Publih index
+    // Publish index
     index_generator
         .publish()
         .await
