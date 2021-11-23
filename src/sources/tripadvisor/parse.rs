@@ -5,10 +5,10 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 use tracing::debug;
 
 /// Expected string at start of a <Property /> item.
-const START_TOKEN: &str = "<Property ";
+const START_TOKEN: &[u8] = b"<Property ";
 
 /// Expected string at the end of a <Property /> item.
-const END_TOKEN: &str = "</Property>\n";
+const END_TOKEN: &[u8] = b"</Property>\n";
 
 /// Split each <Property /> item into a buffer that can be deserialized independantly.
 ///
@@ -17,13 +17,13 @@ const END_TOKEN: &str = "</Property>\n";
 ///  - each item starts with a line containing "<Property ", the begining of
 ///    the line will be ignoreed.
 ///  - each item ends with a line "</Property>"
-pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Item = String> {
+pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Item = Vec<u8>> {
     futures::stream::unfold(input, |mut input| async {
         let mut first_line = true;
-        let mut buffer = String::new();
+        let mut buffer = Vec::new();
 
         while input
-            .read_line(&mut buffer)
+            .read_until(b'\n', &mut buffer)
             .await
             .expect("failed to read line from XML")
             > 0
@@ -33,7 +33,7 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
                 first_line = false;
 
                 let token_start = {
-                    if let Some(start) = buffer.find(START_TOKEN) {
+                    if let Some(start) = find_naive(&buffer, START_TOKEN) {
                         start
                     } else {
                         break;
@@ -41,8 +41,12 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
                 };
 
                 if token_start > 0 {
-                    debug!("Ignored begining of file: {}", &buffer[..token_start]);
-                    buffer = buffer[token_start..].to_string();
+                    debug!(
+                        "Ignored begining of file: {}",
+                        String::from_utf8_lossy(&buffer[..token_start])
+                    );
+
+                    buffer = buffer[token_start..].to_vec();
                 }
             }
 
@@ -51,7 +55,27 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
             }
         }
 
-        debug!("Ignored end of file: {}", buffer);
+        if !buffer.is_empty() {
+            debug!("Ignored end of file: {}", String::from_utf8_lossy(&buffer));
+        }
+
         None
     })
+}
+
+/// Search for first occurrence of `needle` in `haystack`.
+///
+/// This is a naïve approach that runs in `O(haystack.len() * needle.len())`
+/// but which is still very efficient with small instances of `needle` which
+/// is the case here.
+///
+/// # Example
+///
+/// ```
+/// # use fafnir::sources::tripadvisor::parse::find_naive;
+/// assert_eq!(find_naive(b"barbarbare", b"barbare"), Some(3));
+/// assert_eq!(find_naive(b"yes", b"no"), None);
+/// ```
+pub fn find_naive(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack.windows(needle.len()).position(|win| win == needle)
 }
