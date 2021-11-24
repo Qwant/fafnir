@@ -34,10 +34,7 @@ pub fn read_pois(
                     chunk
                         .into_iter()
                         .map(|raw| {
-                            let raw_utf8 =
-                                String::from_utf8(raw).expect("invalid UTF-8 for property");
-
-                            let property = quick_xml::de::from_str(&raw_utf8)
+                            let property = quick_xml::de::from_reader(raw.as_slice())
                                 .expect("failed to parse property");
 
                             convert::build_poi(property, geofinder.as_ref())
