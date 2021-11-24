@@ -82,7 +82,7 @@ pub fn build_poi(
     }
 
     let id = build_id(property.id);
-    let names = build_i18n_property(property.name);
+    let names = property.name;
     let labels = names.clone();
     let weight = (property.review_count as f64 / MAX_REVIEW_COUNT as f64).clamp(0., 1.);
     let approx_coord = Some(coord.into());
