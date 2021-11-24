@@ -34,8 +34,8 @@ pub fn read_pois(
                     chunk
                         .into_iter()
                         .map(|raw| {
-                            let property =
-                                quick_xml::de::from_str(&raw).expect("failed to parse properties");
+                            let property = quick_xml::de::from_reader(raw.as_slice())
+                                .expect("failed to parse property");
 
                             convert::build_poi(property, geofinder.as_ref())
                         })

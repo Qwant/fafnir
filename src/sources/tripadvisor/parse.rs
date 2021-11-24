@@ -1,15 +1,14 @@
 //! Parsing utilities for TripAdvisor XML feed.
 
-use futures::stream::{Stream, StreamExt};
+use futures::stream::Stream;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
-use tokio_stream::wrappers::LinesStream;
 use tracing::debug;
 
 /// Expected string at start of a <Property /> item.
-const START_TOKEN: &str = "<Property ";
+const START_TOKEN: &[u8] = b"<Property ";
 
 /// Expected string at the end of a <Property /> item.
-const END_TOKEN: &str = "</Property>";
+const END_TOKEN: &[u8] = b"</Property>\n";
 
 /// Split each <Property /> item into a buffer that can be deserialized independantly.
 ///
@@ -18,43 +17,65 @@ const END_TOKEN: &str = "</Property>";
 ///  - each item starts with a line containing "<Property ", the begining of
 ///    the line will be ignoreed.
 ///  - each item ends with a line "</Property>"
-pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Item = String> {
-    let lines = LinesStream::new(input.lines());
+pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Item = Vec<u8>> {
+    futures::stream::unfold(input, |mut input| async {
+        let mut first_line = true;
+        let mut buffer = Vec::new();
 
-    futures::stream::unfold(lines, move |mut lines| {
-        let mut buffer = String::new();
+        while input
+            .read_until(b'\n', &mut buffer)
+            .await
+            .expect("failed to read line from XML")
+            > 0
+        {
+            // The first line may contain some extra XML informations
+            if first_line {
+                first_line = false;
 
-        async move {
-            while let Some(line) = lines.next().await {
-                let line = line.expect("could not read raw line from XML");
-
-                // The first line may contain some extra XML informations
-                let line = {
-                    if buffer.is_empty() {
-                        let token_start = line.find(START_TOKEN)?;
-
-                        if token_start > 0 {
-                            debug!("Ignored begining of file: {}", &line[..token_start]);
-                        }
-
-                        &line[token_start..]
+                let token_start = {
+                    if let Some(start) = find_naive(&buffer, START_TOKEN) {
+                        start
                     } else {
-                        &line
+                        break;
                     }
                 };
 
-                buffer.push_str(line);
+                if token_start > 0 {
+                    debug!(
+                        "Ignored begining of file: {}",
+                        String::from_utf8_lossy(&buffer[..token_start])
+                    );
 
-                if line.trim() == END_TOKEN {
-                    return Some((buffer, lines));
+                    buffer = buffer[token_start..].to_vec();
                 }
             }
 
-            if !buffer.is_empty() {
-                debug!("Ignored end of file: {}", buffer);
+            if buffer.ends_with(END_TOKEN) {
+                return Some((buffer, input));
             }
-
-            None
         }
+
+        if !buffer.is_empty() {
+            debug!("Ignored end of file: {}", String::from_utf8_lossy(&buffer));
+        }
+
+        None
     })
+}
+
+/// Search for first occurrence of `needle` in `haystack`.
+///
+/// This is a naïve approach that runs in `O(haystack.len() * needle.len())`
+/// but which is still very efficient with small instances of `needle` which
+/// is the case here.
+///
+/// # Example
+///
+/// ```
+/// # use fafnir::sources::tripadvisor::parse::find_naive;
+/// assert_eq!(find_naive(b"barbarbare", b"barbare"), Some(3));
+/// assert_eq!(find_naive(b"yes", b"no"), None);
+/// ```
+pub fn find_naive(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack.windows(needle.len()).position(|win| win == needle)
 }
