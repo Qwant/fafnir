@@ -10,9 +10,9 @@ use places::street::Street;
 use places::Address;
 use std::collections::HashMap;
 
+use super::models::Property;
 use crate::langs::COUNTRIES_LANGS;
-use crate::sources::tripadvisor::convert::build_id;
-use crate::sources::tripadvisor::models;
+use crate::sources::tripadvisor::build_id;
 
 /// Required review count to get the maximal weight of 1.
 const MAX_REVIEW_COUNT: u64 = 1000;
@@ -62,10 +62,7 @@ pub enum BuildError {
     EmptyAdmins,
 }
 
-pub fn build_poi(
-    property: models::pois::Property,
-    geofinder: &AdminGeoFinder,
-) -> Result<(u32, Poi), BuildError> {
+pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32, Poi), BuildError> {
     let coord = Coord::new(
         property
             .longitude

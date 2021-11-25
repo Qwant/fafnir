@@ -1,4 +1,4 @@
-use crate::sources::tripadvisor::models;
+use super::models::Property;
 use tracing::warn;
 
 #[derive(Debug, Eq, Hash, PartialEq)]
@@ -6,7 +6,7 @@ pub enum BuildError {
     NotFound,
 }
 
-pub fn build_photo(property: models::photos::Property) -> Result<(u32, String), BuildError> {
+pub fn build_photo(property: Property) -> Result<(u32, String), BuildError> {
     let mut all_urls = property.photos.inner.into_iter().filter_map(|photo| {
         (photo.original_size_url)
             .or(photo.standard_size_url)

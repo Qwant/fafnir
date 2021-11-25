@@ -1,6 +1,6 @@
-pub mod convert;
-pub mod models;
 pub mod parse;
+pub mod photos;
+pub mod pois;
 
 use std::sync::Arc;
 
@@ -19,6 +19,12 @@ const PARSER_THREADS: usize = 4;
 
 /// Number of <Property /> items that are sent to spawned threads for parsing.
 const PARSER_CHUNK_SIZE: usize = 1000;
+
+/// Compute the actual Elasticsearch ID of a document given TripAdvisor's
+/// property ID.
+pub fn build_id(ta_id: u32) -> String {
+    format!("ta:poi:{}", ta_id)
+}
 
 fn parse_properties<P, R>(
     input: impl AsyncBufRead + Unpin,
@@ -60,14 +66,14 @@ where
 pub fn read_pois(
     input: impl AsyncBufRead + Unpin,
     geofinder: AdminGeoFinder,
-) -> impl Stream<Item = Result<(u32, Poi), convert::pois::BuildError>> {
+) -> impl Stream<Item = Result<(u32, Poi), pois::convert::BuildError>> {
     parse_properties(input, move |property| {
-        convert::pois::build_poi(property, &geofinder)
+        pois::convert::build_poi(property, &geofinder)
     })
 }
 
 pub fn read_photos(
     input: impl AsyncBufRead + Unpin,
-) -> impl Stream<Item = Result<(u32, String), convert::photos::BuildError>> {
-    parse_properties(input, convert::photos::build_photo)
+) -> impl Stream<Item = Result<(u32, String), photos::convert::BuildError>> {
+    parse_properties(input, photos::convert::build_photo)
 }

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use async_compression::tokio::bufread::GzipDecoder;
 use fafnir::mimir::build_admin_geofinder;
-use fafnir::sources::tripadvisor::convert::build_id;
+use fafnir::sources::tripadvisor::build_id;
 use futures::future;
 use futures::stream::StreamExt;
 use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
