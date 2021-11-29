@@ -518,7 +518,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "1.0.0-rc2"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=es-update#395631c4a9620116d0f35e610caba29c892c57e0"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=1ae146d8#1ae146d8939a2ada21a2d62ce7471f83b52a6539"
 dependencies = [
  "config",
  "serde",
@@ -1735,7 +1735,7 @@ dependencies = [
 [[package]]
 name = "mimir"
 version = "1.0.0-rc2"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=es-update#395631c4a9620116d0f35e610caba29c892c57e0"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=1ae146d8#1ae146d8939a2ada21a2d62ce7471f83b52a6539"
 dependencies = [
  "async-graphql",
  "async-graphql-warp",
@@ -1774,7 +1774,7 @@ dependencies = [
 [[package]]
 name = "mimirsbrunn"
 version = "2.0.0-rc2"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=es-update#395631c4a9620116d0f35e610caba29c892c57e0"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=1ae146d8#1ae146d8939a2ada21a2d62ce7471f83b52a6539"
 dependencies = [
  "address-formatter",
  "async-compression",
@@ -2291,7 +2291,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "places"
 version = "1.0.0-rc2"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=es-update#395631c4a9620116d0f35e610caba29c892c57e0"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=1ae146d8#1ae146d8939a2ada21a2d62ce7471f83b52a6539"
 dependencies = [
  "chrono-tz",
  "common",

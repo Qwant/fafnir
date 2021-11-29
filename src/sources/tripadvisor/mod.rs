@@ -15,7 +15,7 @@ use tokio::task::spawn_blocking;
 /// Number of tokio's blocking thread that can be spawned to parse XML. Keeping
 /// a rather low constant value is fine as the input will be provided by a GZip
 /// decoder, which only runs on a single thread.
-const PARSER_THREADS: usize = 4;
+const PARSER_THREADS: usize = 8;
 
 /// Number of <Property /> items that are sent to spawned threads for parsing.
 const PARSER_CHUNK_SIZE: usize = 1000;
