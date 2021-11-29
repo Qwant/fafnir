@@ -30,6 +30,7 @@
 
 [tripadvisor]
   properties = "propertylist.xml.gz"
+  photos = "photolist.xml.gz"
 
 # Container configuration for searchable POIs.
 [container-search]

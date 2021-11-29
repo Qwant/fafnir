@@ -10,8 +10,9 @@ use places::street::Street;
 use places::Address;
 use std::collections::HashMap;
 
-use super::models;
+use super::models::Property;
 use crate::langs::COUNTRIES_LANGS;
+use crate::sources::tripadvisor::build_id;
 
 /// Required review count to get the maximal weight of 1.
 const MAX_REVIEW_COUNT: u64 = 1000;
@@ -61,10 +62,7 @@ pub enum BuildError {
     EmptyAdmins,
 }
 
-pub fn build_poi(
-    property: models::Property,
-    geofinder: &AdminGeoFinder,
-) -> Result<Poi, BuildError> {
+pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32, Poi), BuildError> {
     let coord = Coord::new(
         property
             .longitude
@@ -80,7 +78,7 @@ pub fn build_poi(
         return Err(BuildError::EmptyAdmins);
     }
 
-    let id = format!("ta:poi:{}", property.id);
+    let id = build_id(property.id);
     let names = property.name;
     let labels = names.clone();
     let weight = (property.review_count as f64 / MAX_REVIEW_COUNT as f64).clamp(0., 1.);
@@ -161,24 +159,27 @@ pub fn build_poi(
     .filter_map(|(key, val)| Some((key.to_string(), val?)))
     .collect();
 
-    Ok(Poi {
-        id,
-        label,
-        name,
-        coord,
-        approx_coord,
-        administrative_regions,
-        weight,
-        zip_codes,
-        poi_type,
-        properties,
-        address,
-        country_codes,
-        names,
-        labels,
-        distance: None,
-        context: None,
-    })
+    Ok((
+        property.id,
+        Poi {
+            id,
+            label,
+            name,
+            coord,
+            approx_coord,
+            administrative_regions,
+            weight,
+            zip_codes,
+            poi_type,
+            properties,
+            address,
+            country_codes,
+            names,
+            labels,
+            distance: None,
+            context: None,
+        },
+    ))
 }
 
 /// Read a property from local country langs if available, if not defined

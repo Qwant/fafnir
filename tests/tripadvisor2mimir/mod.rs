@@ -13,6 +13,10 @@ const PROPERTY_LIST: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/tests/tripadvisor2mimir/data/propertylist_liechtenstein.xml.gz"
 );
+const PHOTO_LIST: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/tests/tripadvisor2mimir/data/photolist_liechtenstein.xml.gz"
+);
 
 async fn init_tests(es_wrapper: &mut ElasticSearchWrapper, country_code: &str) {
     join!(load_es_data(es_wrapper, country_code),);
@@ -105,6 +109,8 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
             "-s".to_string(),
             format!(r#"tripadvisor.properties="{}""#, PROPERTY_LIST),
+            "-s".to_string(),
+            format!(r#"tripadvisor.photos="{}""#, PHOTO_LIST),
         ],
     )
     .await;
@@ -117,12 +123,19 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
         .await
         .collect();
     assert_eq!(&pois.len(), &1);
-    let gasthof_au = &pois[0];
-    assert!(&gasthof_au.is_poi());
+    let gasthof_au = &pois[0].poi().unwrap();
 
-    let poi_type = &gasthof_au.poi().unwrap().poi_type;
-    assert_eq!(poi_type.id, "class_restaurant:subclass_sit_down");
-    assert_eq!(poi_type.name, "class_restaurant subclass_sit_down");
+    assert_eq!(gasthof_au.poi_type.id, "class_restaurant:subclass_sit_down");
+    assert_eq!(
+        gasthof_au.poi_type.name,
+        "class_restaurant subclass_sit_down"
+    );
+
+    // OriginalSizeURL is available for image
+    assert_eq!(
+        gasthof_au.properties.get("image"),
+        Some(&"https://media-cdn.tripadvisor.com/media/photo-o/15/33/ff/4a/europe.jpg".to_string())
+    );
 
     // Test that the place "b'eat Restaurant & Bar" has been imported in the elastic wrapper
     let pois: Vec<places::Place> = es_wrapper
@@ -130,15 +143,19 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
         .await
         .collect();
     assert_eq!(&pois.len(), &1);
-    let b_eat = &pois[0];
-    assert!(&b_eat.is_poi());
+    let b_eat = pois[0].poi().unwrap();
 
     // Cuisine should match a OpenstreetMap cuisine tag
-    let poi_type = &b_eat.poi().unwrap().poi_type;
-    assert_eq!(poi_type.id, "class_restaurant:subclass_sit_down");
+    assert_eq!(b_eat.poi_type.id, "class_restaurant:subclass_sit_down");
     assert_eq!(
-        poi_type.name,
+        b_eat.poi_type.name,
         "class_restaurant subclass_sit_down cuisine:italian"
+    );
+
+    // Image should have fallback to StandardSizeURL
+    assert_eq!(
+        b_eat.properties.get("image"),
+        Some(&"https://media-cdn.tripadvisor.com/media/photo-s/01/9a/8a/54/asia.jpg".to_string())
     );
 
     // Test that the place "Bergrestaurant Suecka" has been imported in the elastic wrapper
@@ -161,14 +178,15 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
         .await
         .collect();
     assert_eq!(&pois.len(), &1);
-    let bartolotta = &pois[0];
-    assert!(&bartolotta.is_poi());
+    let bartolotta = &pois[0].poi().unwrap();
 
     // TA cuisine tag should be converted to OSM (steakhouse -> steak_house)
-    let poi_type = &bartolotta.poi().unwrap().poi_type;
-    assert_eq!(poi_type.id, "class_restaurant:subclass_sit_down");
+    assert_eq!(bartolotta.poi_type.id, "class_restaurant:subclass_sit_down");
     assert_eq!(
-        poi_type.name,
+        bartolotta.poi_type.name,
         "class_restaurant subclass_sit_down cuisine:steak_house"
     );
+
+    // There is no image in the feed for this POI
+    assert!(!bartolotta.properties.contains_key("image"));
 }
