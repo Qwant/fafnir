@@ -10,16 +10,15 @@ const START_TOKEN: &[u8] = b"<Property ";
 /// Expected string at the end of a <Property /> item.
 const END_TOKEN: &[u8] = b"</Property>\n";
 
-/// Split each <Property /> item into a buffer that can be deserialized independantly.
+/// Split each <Property /> item into a buffer that can be deserialized independently.
 ///
 /// There are a few assumptions that are made over the input data, mostly for
 /// performance reasons:
-///  - each item starts with a line containing "<Property ", the begining of
-///    the line will be ignoreed.
+///  - each item starts with a line containing "<Property ", the beginning of
+///    the line will be ignored.
 ///  - each item ends with a line "</Property>"
 pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Item = Vec<u8>> {
     futures::stream::unfold(input, |mut input| async {
-        let mut first_line = true;
         let mut buffer = Vec::new();
 
         while input
@@ -28,29 +27,28 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
             .expect("failed to read line from XML")
             > 0
         {
-            // The first line may contain some extra XML informations
-            if first_line {
-                first_line = false;
-
+            if buffer.ends_with(END_TOKEN) {
+                // The first buffer may contain some extra information
                 let token_start = {
                     if let Some(start) = find_naive(&buffer, START_TOKEN) {
                         start
                     } else {
-                        break;
+                        panic!(
+                            "Found a property which didn't start with pattern `{}`",
+                            std::str::from_utf8(START_TOKEN).unwrap()
+                        );
                     }
                 };
 
                 if token_start > 0 {
                     debug!(
-                        "Ignored begining of file: {}",
+                        "Ignored beginning of buffer: {}",
                         String::from_utf8_lossy(&buffer[..token_start])
                     );
 
                     buffer = buffer[token_start..].to_vec();
                 }
-            }
 
-            if buffer.ends_with(END_TOKEN) {
                 return Some((buffer, input));
             }
         }
