@@ -17,7 +17,6 @@ use tokio::fs::File;
 use tokio::io::{AsyncBufRead, BufReader};
 use tracing::info;
 
-use fafnir::settings::FafnirSettings;
 use fafnir::sources::tripadvisor::{read_photos, read_pois};
 
 /// Buffer size use for IO over XML files
@@ -33,7 +32,6 @@ struct TripAdvisorSettings {
 #[serde(rename_all = "kebab-case")]
 struct Settings {
     tripadvisor: TripAdvisorSettings,
-    fafnir: FafnirSettings,
     elasticsearch: ElasticsearchStorageConfig,
     container_tripadvisor: ContainerConfig,
 }

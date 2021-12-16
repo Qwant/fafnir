@@ -146,7 +146,10 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
     };
 
     let properties = [
+        ("name", Some(name.clone())),
         ("website", property.url),
+        ("poi_class", Some(category)),
+        ("poi_subclass", Some(sub_category)),
         ("ta:url", property.ta_url),
         ("ta:photos_url", property.ta_photos_url),
         ("ta:review_count", Some(property.review_count.to_string())),
@@ -157,6 +160,11 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
     ]
     .into_iter()
     .filter_map(|(key, val)| Some((key.to_string(), val?)))
+    .chain(
+        (names.0)
+            .iter()
+            .map(|prop| (format!("name:{}", prop.key), prop.value.clone())),
+    )
     .collect();
 
     Ok((
