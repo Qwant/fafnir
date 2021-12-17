@@ -1,6 +1,3 @@
-use std::sync::atomic::AtomicUsize;
-use std::sync::{atomic, Arc};
-
 use elasticsearch::http::transport::Transport;
 use elasticsearch::Elasticsearch;
 use futures::stream::TryStreamExt;
@@ -42,12 +39,10 @@ async fn load_and_index_pois(settings: Settings) -> Result<(), mimirsbrunn::Erro
             .expect("failed to initialize Elasticsearch transport"),
     );
 
-    let mimir_es = Arc::new(
-        connection_pool_url(&settings.elasticsearch.url)
-            .conn(settings.elasticsearch)
-            .await
-            .expect("failed to open Elasticsearch connection"),
-    );
+    let mimir_es = connection_pool_url(&settings.elasticsearch.url)
+        .conn(settings.elasticsearch)
+        .await
+        .expect("failed to open Elasticsearch connection");
 
     // If addresses have not changed since last update of POIs, it is not
     // necessary to perform a reverse again for POIs that don't have an address.
@@ -62,7 +57,7 @@ async fn load_and_index_pois(settings: Settings) -> Result<(), mimirsbrunn::Erro
     }
 
     // Fetch admins
-    let admins_geofinder = &build_admin_geofinder(mimir_es.as_ref()).await;
+    let admins_geofinder = &build_admin_geofinder(&mimir_es).await;
 
     // Spawn tasks that will build indexes. These tasks will provide a single
     // stream to mimirsbrunn which is built from data sent into async channels.
@@ -87,7 +82,7 @@ async fn load_and_index_pois(settings: Settings) -> Result<(), mimirsbrunn::Erro
     };
 
     // Build POIs and send them to indexing tasks
-    let total_nb_pois = AtomicUsize::new(0);
+    let mut total_nb_pois: usize = 0;
 
     let poi_index_name = &format!(
         "{}_poi_{}",
@@ -115,35 +110,31 @@ async fn load_and_index_pois(settings: Settings) -> Result<(), mimirsbrunn::Erro
         )
         .await
         .instrument(info_span!("fetch POIs"))
-        .try_for_each({
-            let total_nb_pois = &total_nb_pois;
+        .try_for_each(move |p| {
+            let poi_channel_search = poi_channel_search.clone();
+            let poi_channel_nosearch = poi_channel_nosearch.clone();
 
-            move |p| {
-                let poi_channel_search = poi_channel_search.clone();
-                let poi_channel_nosearch = poi_channel_nosearch.clone();
-
-                async move {
-                    if p.is_searchable {
-                        poi_channel_search
-                            .send(p.poi)
-                            .await
-                            .expect("failed to send search POI into channel");
-                    } else {
-                        poi_channel_nosearch
-                            .send(p.poi)
-                            .await
-                            .expect("failed to send nosearch POI into channel");
-                    }
-
-                    // Log advancement
-                    let curr_indexed = 1 + total_nb_pois.fetch_add(1, atomic::Ordering::Relaxed);
-
-                    if curr_indexed % settings.fafnir.log_indexed_count_interval == 0 {
-                        info!("Number of indexed POIs: {}", curr_indexed)
-                    }
-
-                    Ok(())
+            async move {
+                if p.is_searchable {
+                    poi_channel_search
+                        .send(p.poi)
+                        .await
+                        .expect("failed to send search POI into channel");
+                } else {
+                    poi_channel_nosearch
+                        .send(p.poi)
+                        .await
+                        .expect("failed to send nosearch POI into channel");
                 }
+
+                // Log advancement
+                total_nb_pois += 1;
+
+                if total_nb_pois % settings.fafnir.log_indexed_count_interval == 0 {
+                    info!("Number of indexed POIs: {}", total_nb_pois)
+                }
+
+                Ok(())
             }
         })
     };
@@ -153,7 +144,6 @@ async fn load_and_index_pois(settings: Settings) -> Result<(), mimirsbrunn::Erro
         try_join!(index_search_task, index_nosearch_task, fetch_pois_task)
             .expect("failed to index POIs");
 
-    let total_nb_pois = total_nb_pois.into_inner();
     info!("Created index {:?} for searchable POIs", index_search);
     info!("Created index {:?} for non-searchable POIs", index_nosearch);
     info!("Total number of pois: {}", total_nb_pois);
