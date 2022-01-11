@@ -33,19 +33,17 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV RUST_LOG "tracing=info,mimir=info,fafnir=info"
 
 RUN apt-get update \
-    && apt-get install -y libcurl4 sqlite3 npm \
+    && apt-get install -y libcurl4 sqlite3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN npm install -g bunyan
-RUN echo "#!/bin/bash"                                   >> /usr/bin/bunyan_formated
-RUN echo "set -o pipefail"                               >> /usr/bin/bunyan_formated
-RUN echo "CMD=\$1; shift; ARG=\$@"                       >> /usr/bin/bunyan_formated
-RUN echo "\$CMD --config-dir /etc/fafnir \$ARG | bunyan" >> /usr/bin/bunyan_formated
-RUN chmod +x /usr/bin/bunyan_formated
+RUN echo "#!/bin/bash"                          >> /usr/bin/exec_fafnir
+RUN echo "CMD=\$1; shift; ARG=\$@"              >> /usr/bin/exec_fafnir
+RUN echo "\$CMD --config-dir /etc/fafnir \$ARG" >> /usr/bin/exec_fafnir
+RUN chmod +x /usr/bin/exec_fafnir
 
 COPY ./config /etc/fafnir
 COPY --from=builder /srv/fafnir/bin/openmaptiles2mimir /usr/bin/
 COPY --from=builder /srv/fafnir/bin/tripadvisor2mimir /usr/bin/
 
-ENTRYPOINT ["bunyan_formated"]
+ENTRYPOINT ["exec_fafnir"]

@@ -42,7 +42,7 @@ pub async fn run<S: DeserializeOwned, R: Future>(f: impl FnOnce(S) -> R) -> R::O
         .try_into()
         .expect("invalid fafnir config");
 
-    let _log_guard = logger_init("/dev/stdout").expect("could not init logger");
+    let _log_guard = logger_init().expect("could not init logger");
 
     info!(
         "Full configuration:\n{}",
