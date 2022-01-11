@@ -10,7 +10,6 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use serde::de::DeserializeOwned;
 use tokio::io::AsyncBufRead;
-use tokio::task::spawn_blocking;
 
 /// Number of tokio's blocking thread that can be spawned to parse XML. Keeping
 /// a rather low constant value is fine as the input will be provided by a GZip
@@ -42,7 +41,7 @@ where
             let parse = parse.clone();
 
             async move {
-                let chunk_parsed: Vec<_> = spawn_blocking(move || {
+                let chunk_parsed: Vec<_> = tokio::spawn(async move {
                     chunk
                         .into_iter()
                         .map(|raw| {
