@@ -60,7 +60,7 @@ pub struct ElasticSearchWrapper {
 
 impl ElasticSearchWrapper {
     pub async fn new() -> ElasticSearchWrapper {
-        let host = "http://localhost:9201".into();
+        let host = "http://localhost:9202".into();
         std::env::set_var("MIMIR_TEST_ELASTICSEARCH_URL", &host);
 
         let _docker = docker::initialize()
@@ -170,13 +170,13 @@ impl ElasticSearchWrapper {
     where
         F: FnMut(&places::Place) -> bool,
     {
-        let indices = ["admin", "addr", "poi"]
+        let indices = ["munin_admin", "munin_addr", "munin_poi"]
             .into_iter()
             .map(String::from)
             .collect();
 
         self.es
-            .search_documents(indices, Query::QueryString(word.to_string()), 100)
+            .search_documents(indices, Query::QueryString(word.to_string()), 100, None)
             .await
             .unwrap_or_else(|err| panic!("could not search for {}: {}", word, err))
             .into_iter()

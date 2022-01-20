@@ -11,7 +11,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::info;
-use tracing::{error, info_span};
+use tracing::info_span;
 use tracing_futures::Instrument;
 
 use fafnir::mimir::{address_updated_after_pois, build_admin_geofinder, MIMIR_PREFIX};
@@ -32,7 +32,7 @@ struct Settings {
     container_nosearch: ContainerConfig,
 }
 
-async fn load_and_index_pois(settings: Settings) -> Result<(), mimirsbrunn::Error> {
+async fn load_and_index_pois(settings: Settings) {
     // Local Elasticsearch client
     let es = &Elasticsearch::new(
         Transport::single_node(settings.elasticsearch.url.as_str())
@@ -147,12 +147,9 @@ async fn load_and_index_pois(settings: Settings) -> Result<(), mimirsbrunn::Erro
     info!("Created index {:?} for searchable POIs", index_search);
     info!("Created index {:?} for non-searchable POIs", index_nosearch);
     info!("Total number of pois: {}", total_nb_pois);
-    Ok(())
 }
 
 #[tokio::main]
 async fn main() {
-    if let Err(err) = fafnir::cli::run(load_and_index_pois).await {
-        error!("Error while running fafnir: {}", err)
-    }
+    fafnir::cli::run(load_and_index_pois).await
 }
