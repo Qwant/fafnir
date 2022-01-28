@@ -1,5 +1,6 @@
 //! Utilities to convert a super::models::Property into mimir's Poi.
 
+use itertools::Itertools;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use once_cell::sync::Lazy;
 use places::admin::find_country_codes;
@@ -145,9 +146,27 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
         name: poi_type_name,
     };
 
+    let opening_hours = property
+        .hours
+        .inner
+        .iter()
+        .filter(|day| day.time.is_some())
+        .map(|day| {
+            let opening_times: String = day
+                .time
+                .iter()
+                .flatten()
+                .map(|time| format!("{}-{}", time.open_time, time.close_time))
+                .join(",");
+            format!("{} {}", day.name.get(0..2).unwrap_or(""), opening_times)
+        })
+        .join(";");
+
     let properties = [
         ("name", Some(name.clone())),
         ("website", property.url),
+        ("phone", property.phone),
+        ("opening_hours", Some(opening_hours)),
         ("poi_class", Some(category)),
         ("poi_subclass", Some(sub_category)),
         ("ta:url", property.ta_url),

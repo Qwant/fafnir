@@ -38,6 +38,12 @@ pub struct Property {
 
     #[serde(rename = "PropertyURL")]
     pub url: Option<String>,
+
+    #[serde(rename = "PhoneNumber")]
+    pub phone: Option<String>,
+
+    #[serde(rename = "Hours")]
+    pub hours: Hours,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -66,12 +72,67 @@ pub struct SubCategory {
     pub name: I18nProperties,
 }
 
+#[derive(Debug, Default, Deserialize)]
+pub struct Hours {
+    #[serde(rename = "Day")]
+    pub inner: Vec<Day>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct Day {
+    #[serde(rename = "DayName")]
+    pub name: String,
+
+    #[serde(rename = "Time")]
+    pub time: Option<Vec<Time>>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct Time {
+    #[serde(rename = "OpenTime")]
+    pub open_time: String,
+
+    #[serde(rename = "CloseTime")]
+    pub close_time: String,
+}
+
 /// Serialize i18n info into mimirsbrunn's I18nProperty:
 ///
 /// <Key lang="fr"/>
 /// <Key lang="en"/>
 /// ...
 pub fn deserialize_i18n<'de, D>(deserializer: D) -> Result<I18nProperties, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    pub struct XmlI18nProperty {
+        pub lang: String,
+        #[serde(rename = "$value")]
+        pub value: Option<String>,
+    }
+
+    let xml_i18n: Vec<XmlI18nProperty> = Deserialize::deserialize(deserializer)?;
+
+    let properties = xml_i18n
+        .into_iter()
+        .filter_map(|prop| {
+            Some(places::Property {
+                key: prop.lang,
+                value: prop.value?,
+            })
+        })
+        .collect();
+
+    Ok(I18nProperties(properties))
+}
+
+/// Serialize i18n info into mimirsbrunn's I18nProperty:
+///
+/// <Key lang="fr"/>
+/// <Key lang="en"/>
+/// ...
+pub fn deserialize_opening_hours<'de, D>(deserializer: D) -> Result<I18nProperties, D::Error>
 where
     D: Deserializer<'de>,
 {
