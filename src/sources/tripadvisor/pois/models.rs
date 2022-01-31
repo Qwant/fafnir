@@ -126,34 +126,3 @@ where
 
     Ok(I18nProperties(properties))
 }
-
-/// Serialize i18n info into mimirsbrunn's I18nProperty:
-///
-/// <Key lang="fr"/>
-/// <Key lang="en"/>
-/// ...
-pub fn deserialize_opening_hours<'de, D>(deserializer: D) -> Result<I18nProperties, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    pub struct XmlI18nProperty {
-        pub lang: String,
-        #[serde(rename = "$value")]
-        pub value: Option<String>,
-    }
-
-    let xml_i18n: Vec<XmlI18nProperty> = Deserialize::deserialize(deserializer)?;
-
-    let properties = xml_i18n
-        .into_iter()
-        .filter_map(|prop| {
-            Some(places::Property {
-                key: prop.lang,
-                value: prop.value?,
-            })
-        })
-        .collect();
-
-    Ok(I18nProperties(properties))
-}

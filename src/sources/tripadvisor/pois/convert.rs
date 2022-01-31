@@ -149,16 +149,18 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
     let opening_hours = property
         .hours
         .inner
-        .iter()
-        .filter(|day| day.time.is_some())
-        .map(|day| {
-            let opening_times: String = day
-                .time
-                .iter()
-                .flatten()
-                .map(|time| format!("{}-{}", time.open_time, time.close_time))
-                .join(",");
-            format!("{} {}", day.name.get(0..2).unwrap_or(""), opening_times)
+        .into_iter()
+        .filter_map(|day| {
+            day.time
+                .map(|times| {
+                    times
+                        .iter()
+                        .map(|time| format!("{}-{}", time.open_time, time.close_time))
+                        .join(",")
+                })
+                .map(|opening_times| {
+                    format!("{} {}", day.name.get(0..2).unwrap_or(""), opening_times)
+                })
         })
         .join("; ");
 
@@ -166,7 +168,10 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
         ("name", Some(name.clone())),
         ("website", property.url),
         ("phone", property.phone),
-        ("opening_hours", Some(opening_hours)),
+        (
+            "opening_hours",
+            Some(opening_hours).filter(|x| !x.is_empty()),
+        ),
         ("poi_class", Some(category)),
         ("poi_subclass", Some(sub_category)),
         ("ta:url", property.ta_url),
