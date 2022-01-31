@@ -160,7 +160,7 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
                 .join(",");
             format!("{} {}", day.name.get(0..2).unwrap_or(""), opening_times)
         })
-        .join(";");
+        .join("; ");
 
     let properties = [
         ("name", Some(name.clone())),
