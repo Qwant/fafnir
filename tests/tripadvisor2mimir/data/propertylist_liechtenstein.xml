@@ -644,7 +644,11 @@
       <DayName>Saturday</DayName>
       <Time>
         <OpenTime>11:00</OpenTime>
-        <CloseTime>00:00</CloseTime>
+        <CloseTime>12:30</CloseTime>
+      </Time>
+      <Time>
+        <OpenTime>14:00</OpenTime>
+        <CloseTime>18:00</CloseTime>
       </Time>
     </Day>
     <TimeZone>Europe/Vaduz</TimeZone>
@@ -1048,8 +1052,7 @@
       <Longitude>9.56505</Longitude>
     </GeoCodes>
   </GeoCodes>
-  <AverageRating>4.5</AverageRating>
-  <ReviewCount>5</ReviewCount>
+  <ReviewCount>0</ReviewCount>
   <Hours>
     <Day>
       <DayName>Sunday</DayName>

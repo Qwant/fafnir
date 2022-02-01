@@ -137,6 +137,16 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
         Some(&"https://media-cdn.tripadvisor.com/media/photo-o/15/33/ff/4a/europe.jpg".to_string())
     );
 
+    assert_eq!(
+        gasthof_au.properties.get("phone"),
+        Some(&"+423 232 11 17".to_string())
+    );
+
+    assert_eq!(
+        gasthof_au.properties.get("opening_hours"),
+        Some(&"Mo 11:00-00:00; Tu 11:00-00:00; We 11:00-00:00; Th 11:00-00:00; Fr 11:00-00:00; Sa 11:00-12:30,14:00-18:00".to_string())
+    );
+
     // Test that the place "b'eat Restaurant & Bar" has been imported in the elastic wrapper
     let pois: Vec<places::Place> = es_wrapper
         .search_and_filter("name:Restaurant*", |_| true)
@@ -167,8 +177,12 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     let suecka = &pois[0];
     assert!(&suecka.is_poi());
 
+    let suecka_poi = suecka.poi().unwrap();
+    assert_eq!(&suecka_poi.properties.get("opening_hours"), &None);
+    assert_eq!(&suecka_poi.properties.get("average_rating"), &None);
+
     // Hotel subclass should match a OpenstreetMap category tag
-    let poi_type = &suecka.poi().unwrap().poi_type;
+    let poi_type = &suecka_poi.poi_type;
     assert_eq!(poi_type.id, "class_hotel:subclass_bed_and_breakfast");
     assert_eq!(poi_type.name, "class_hotel subclass_bed_and_breakfast");
 
