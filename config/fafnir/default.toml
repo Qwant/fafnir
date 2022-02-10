@@ -37,15 +37,21 @@
   name = "poi"
   dataset = "default"
   visibility = "public"
+  number_of_shards = 1
+  number_of_replicas = 0
 
 # Container configuration for non-searchable POIs.
 [container-nosearch]
   name = "poi"
   dataset = "nosearch"
   visibility = "private"
+  number_of_shards = 1
+  number_of_replicas = 0
 
 # Container configuration for tripadvisor2mimir.
 [container-tripadvisor]
   name = "poi"
   dataset = "tripadvisor"
   visibility = "private"
+  number_of_shards = 1
+  number_of_replicas = 0

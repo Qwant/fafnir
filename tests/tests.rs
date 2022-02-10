@@ -92,6 +92,8 @@ impl ElasticSearchWrapper {
                     name: T::static_doc_type().to_string(),
                     dataset: dataset.to_string(),
                     visibility: ContainerVisibility::Public,
+                    number_of_shards: 1,
+                    number_of_replicas: 0,
                 },
                 futures::stream::iter(objects),
             )
