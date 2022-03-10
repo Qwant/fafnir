@@ -386,7 +386,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "2.5.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=fd067a3#fd067a328d69e7a8b5f13eef2891c79314c067f2"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git?branch=bulk-backoff#33b66c0f739b226516aecb08ae9a7d4588618447"
 dependencies = [
  "config",
  "serde",
@@ -1479,7 +1479,7 @@ dependencies = [
 [[package]]
 name = "mimir"
 version = "2.5.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=fd067a3#fd067a328d69e7a8b5f13eef2891c79314c067f2"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git?branch=bulk-backoff#33b66c0f739b226516aecb08ae9a7d4588618447"
 dependencies = [
  "async-trait",
  "bollard",
@@ -1516,7 +1516,7 @@ dependencies = [
 [[package]]
 name = "mimirsbrunn"
 version = "2.5.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=fd067a3#fd067a328d69e7a8b5f13eef2891c79314c067f2"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git?branch=bulk-backoff#33b66c0f739b226516aecb08ae9a7d4588618447"
 dependencies = [
  "address-formatter",
  "anyhow",
@@ -2006,7 +2006,7 @@ checksum = "58893f751c9b0412871a09abd62ecd2a00298c6c83befa223ef98c52aef40cbe"
 [[package]]
 name = "places"
 version = "2.5.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=fd067a3#fd067a328d69e7a8b5f13eef2891c79314c067f2"
+source = "git+https://github.com/CanalTP/mimirsbrunn.git?branch=bulk-backoff#33b66c0f739b226516aecb08ae9a7d4588618447"
 dependencies = [
  "chrono-tz",
  "common",

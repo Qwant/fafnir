@@ -31,3 +31,12 @@
 
   # Number of segments to merge to.
   max_number_segments = 1
+
+# Setup a backoff to wait after a bulk operation fail and retry the operation,
+# each successive retry will wait twice as long as the previous one.
+[elasticsearch.bulk_backoff]
+  # Number of retries after the first failure (set 0 to never retry)
+  retry = 6
+
+  # Waiting time in milliseconds after the first failure
+  wait = 1000
