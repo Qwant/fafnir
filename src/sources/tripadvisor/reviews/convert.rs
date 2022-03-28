@@ -1,6 +1,5 @@
 use super::models::Property;
 use crate::sources::tripadvisor::reviews::models::Reviews;
-use tracing::warn;
 
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub enum BuildError {

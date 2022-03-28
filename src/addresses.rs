@@ -140,7 +140,7 @@ fn build_new_addr(
                     .sorted_by_key(|admin| admin.zone_type)
                     .map(|admin| admin.zip_codes.clone())
                     .next()
-                    .unwrap_or_else(Vec::new)
+                    .unwrap_or_default()
             },
             |(_, val)| vec![val.to_owned()],
         );

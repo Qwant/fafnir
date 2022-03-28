@@ -116,7 +116,7 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
         .iter()
         .find_map(|sub_category| get_local_string(&["us".to_string()], &sub_category.name))
         .unwrap_or(&category)
-        .replace(" ", "_")
+        .replace(' ', "_")
         .to_lowercase();
 
     let cuisine = (property.cuisine.inner)
@@ -124,7 +124,7 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
         .filter_map(|item| get_local_string(&["us".to_string()], &item.name))
         .map(|ta_cuisine| {
             CUISINE_CONVERTER
-                .get(ta_cuisine.to_lowercase().replace(" ", "_").as_str())
+                .get(ta_cuisine.to_lowercase().replace(' ', "_").as_str())
                 .copied()
                 .unwrap_or(ta_cuisine)
         })

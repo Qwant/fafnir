@@ -26,6 +26,7 @@ const XML_BUFFER_SIZE: usize = 1024 * 1024;
 struct TripAdvisorSettings {
     properties: PathBuf,
     photos: PathBuf,
+    reviews: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]
