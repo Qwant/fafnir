@@ -1,6 +1,7 @@
 pub mod parse;
 pub mod photos;
 pub mod pois;
+pub mod reviews;
 
 use std::sync::Arc;
 
@@ -75,4 +76,10 @@ pub fn read_photos(
     input: impl AsyncBufRead + Unpin,
 ) -> impl Stream<Item = Result<(u32, String), photos::convert::BuildError>> {
     parse_properties(input, photos::convert::build_photo)
+}
+
+pub fn read_reviews(
+    input: impl AsyncBufRead + Unpin,
+) -> impl Stream<Item = Result<(u32, String), reviews::convert::BuildError>> {
+    parse_properties(input, reviews::convert::build_review)
 }
