@@ -18,6 +18,11 @@ const PHOTO_LIST: &str = concat!(
     "/tests/tripadvisor2mimir/data/photolist_liechtenstein.xml.gz"
 );
 
+const REVIEW_LIST: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/tests/tripadvisor2mimir/data/reviewlist_liechtenstein.xml.gz"
+);
+
 async fn init_tests(es_wrapper: &mut ElasticSearchWrapper, country_code: &str) {
     join!(load_es_data(es_wrapper, country_code),);
 }
@@ -111,6 +116,8 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
             format!(r#"tripadvisor.properties="{}""#, PROPERTY_LIST),
             "-s".to_string(),
             format!(r#"tripadvisor.photos="{}""#, PHOTO_LIST),
+            "-s".to_string(),
+            format!(r#"tripadvisor.reviews="{}""#, REVIEW_LIST),
         ],
     )
     .await;

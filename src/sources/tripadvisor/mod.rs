@@ -81,6 +81,6 @@ pub fn read_photos(
 
 pub fn read_reviews(
     input: impl AsyncBufRead + Unpin,
-) -> impl Stream<Item = Result<(u32, Reviews), reviews::convert::BuildError>> {
+) -> impl Stream<Item = Result<(u32, String), reviews::convert::BuildError>> {
     parse_properties(input, reviews::convert::build_review)
 }
