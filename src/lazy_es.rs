@@ -1,5 +1,8 @@
+use std::time::Duration;
+
 use elasticsearch::http::request::JsonBody;
 use elasticsearch::{Elasticsearch, MsearchParts};
+use mimir::utils::futures::with_backoff;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 
@@ -103,10 +106,17 @@ impl<'p, T: 'p> LazyEs<'p, T> {
                 .collect()
         };
 
-        let es_response = es
-            .msearch(MsearchParts::None)
-            .body(body)
-            .send()
+        let es_request = with_backoff(
+            || {
+                es.msearch(MsearchParts::None)
+                    .body(body.iter().collect())
+                    .send()
+            },
+            6,
+            Duration::from_secs(1),
+        );
+
+        let es_response = es_request
             .await
             .expect("ES query failed")
             .text()
