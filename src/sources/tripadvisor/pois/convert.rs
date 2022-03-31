@@ -13,16 +13,10 @@ use std::collections::HashMap;
 
 use super::models::Property;
 use crate::langs::COUNTRIES_LANGS;
-use crate::sources::tripadvisor::build_id;
+use crate::sources::tripadvisor::{build_id, TripAdvisorWeightSettings};
 
 /// Maximal rating possible
 const MAX_RATING: f64 = 5.;
-
-/// Required review count to get to a weight of 1 with a maximal rating
-const HIGH_REVIEW_COUNT: f64 = 5_000.;
-
-/// Constant offset of the POI to make it a bit easier to match tripadvisor POIs.
-const WEIGHT_BOOST: f64 = 0.3;
 
 const OSM_CUISINE: &[&str] = &[
     "african",
@@ -69,7 +63,11 @@ pub enum BuildError {
     EmptyAdmins,
 }
 
-pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32, Poi), BuildError> {
+pub fn build_poi(
+    property: Property,
+    geofinder: &AdminGeoFinder,
+    weight_settings: TripAdvisorWeightSettings,
+) -> Result<(u32, Poi), BuildError> {
     let coord = Coord::new(
         property
             .longitude
@@ -153,8 +151,12 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
 
     // Build weight
     let rating_weight = property.average_rating.unwrap_or(0.) / MAX_RATING;
-    let review_count_weight = (property.review_count as f64).ln_1p() / HIGH_REVIEW_COUNT.ln_1p();
-    let weight = WEIGHT_BOOST + rating_weight * review_count_weight * (1. - WEIGHT_BOOST);
+
+    let review_count_weight =
+        (property.review_count as f64).ln_1p() / weight_settings.high_review_count.ln_1p();
+
+    let weight =
+        weight_settings.boost + rating_weight * review_count_weight * (1. - weight_settings.boost);
 
     // Build opening_hours
     let opening_hours = property
