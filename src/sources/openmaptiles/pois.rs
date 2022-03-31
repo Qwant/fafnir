@@ -80,11 +80,11 @@ impl IndexedPoi {
 
         let lat = row
             .try_get("lat")
-            .map_err(|e| warn!("impossible to get lat for {} because {}", id, e))
+            .map_err(|e| warn!("impossible to get lat for {id} because {e}"))
             .ok()?;
         let lon = row
             .try_get("lon")
-            .map_err(|e| warn!("impossible to get lon for {} because {}", id, e))
+            .map_err(|e| warn!("impossible to get lon for {id} because {e}"))
             .ok()?;
 
         let poi_coord = Coord::new(lon, lat);
@@ -93,11 +93,11 @@ impl IndexedPoi {
             // Ignore PoI if its coords from db are invalid.
             // Especially, NaN values may exist because of projection
             // transformations around poles.
-            warn!("Got invalid coord for {} lon={},lat={}", id, lon, lat);
+            warn!("Got invalid coord for {id} lon={lon},lat={lat}");
             return None;
         }
 
-        let poi_type_id = format!("class_{}:subclass_{}", class, subclass);
+        let poi_type_id = format!("class_{class}:subclass_{subclass}");
         let poi_type_text = build_poi_type_text(&class, &subclass, &tags);
         let row_properties = properties_from_tags(tags);
         let names = build_names(langs, &row_properties);
@@ -251,23 +251,12 @@ fn build_poi_type_text(
         When the tag contains multiple values (separated by ";"), these values are split
         and indexed as distinct tag values.
     */
-    [format!("class_{}", class), format!("subclass_{}", subclass)]
+    [format!("class_{class}"), format!("subclass_{subclass}")]
         .into_iter()
-        .chain(
-            TAGS_TO_INDEX_AS_POI_TYPE_NAME
-                .iter()
-                .map(|tag| {
-                    let values = tags.get(*tag).unwrap_or(&None).clone().unwrap_or_default();
-                    if values.is_empty() {
-                        return vec![];
-                    }
-                    values
-                        .split(';')
-                        .map(|v| format!("{}:{}", tag, v))
-                        .collect::<Vec<_>>()
-                })
-                .flatten(),
-        )
+        .chain(TAGS_TO_INDEX_AS_POI_TYPE_NAME.iter().flat_map(|tag| {
+            let values = tags.get(*tag).and_then(|x| x.as_deref()).unwrap_or("");
+            values.split(';').map(move |v| format!("{tag}:{v}"))
+        }))
         .join(" ")
 }
 

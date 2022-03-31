@@ -13,10 +13,10 @@ use std::collections::HashMap;
 
 use super::models::Property;
 use crate::langs::COUNTRIES_LANGS;
-use crate::sources::tripadvisor::build_id;
+use crate::sources::tripadvisor::{build_id, TripAdvisorWeightSettings};
 
-/// Required review count to get the maximal weight of 1.
-const MAX_REVIEW_COUNT: u64 = 1000;
+/// Maximal rating possible
+const MAX_RATING: f64 = 5.;
 
 const OSM_CUISINE: &[&str] = &[
     "african",
@@ -63,7 +63,11 @@ pub enum BuildError {
     EmptyAdmins,
 }
 
-pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32, Poi), BuildError> {
+pub fn build_poi(
+    property: Property,
+    geofinder: &AdminGeoFinder,
+    weight_settings: TripAdvisorWeightSettings,
+) -> Result<(u32, Poi), BuildError> {
     let coord = Coord::new(
         property
             .longitude
@@ -82,7 +86,6 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
     let id = build_id(property.id);
     let names = property.name;
     let labels = names.clone();
-    let weight = (property.review_count as f64 / MAX_REVIEW_COUNT as f64).clamp(0., 1.);
     let approx_coord = Some(coord.into());
     let country_codes = find_country_codes(administrative_regions.iter().map(AsRef::as_ref));
 
@@ -116,7 +119,7 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
         .iter()
         .find_map(|sub_category| get_local_string(&["us".to_string()], &sub_category.name))
         .unwrap_or(&category)
-        .replace(" ", "_")
+        .replace(' ', "_")
         .to_lowercase();
 
     let cuisine = (property.cuisine.inner)
@@ -124,7 +127,7 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
         .filter_map(|item| get_local_string(&["us".to_string()], &item.name))
         .map(|ta_cuisine| {
             CUISINE_CONVERTER
-                .get(ta_cuisine.to_lowercase().replace(" ", "_").as_str())
+                .get(ta_cuisine.to_lowercase().replace(' ', "_").as_str())
                 .copied()
                 .unwrap_or(ta_cuisine)
         })
@@ -146,6 +149,16 @@ pub fn build_poi(property: Property, geofinder: &AdminGeoFinder) -> Result<(u32,
         name: poi_type_name,
     };
 
+    // Build weight
+    let rating_weight = property.average_rating.unwrap_or(0.) / MAX_RATING;
+
+    let review_count_weight =
+        (property.review_count as f64).ln_1p() / weight_settings.high_review_count.ln_1p();
+
+    let weight =
+        weight_settings.boost + rating_weight * review_count_weight * (1. - weight_settings.boost);
+
+    // Build opening_hours
     let opening_hours = property
         .hours
         .inner
