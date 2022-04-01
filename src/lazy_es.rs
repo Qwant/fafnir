@@ -1,9 +1,9 @@
-use std::cell::RefCell;
 use std::fmt;
 use std::time::Duration;
 
 use elasticsearch::http::request::JsonBody;
 use elasticsearch::{Elasticsearch, MsearchParts};
+use futures::lock::Mutex;
 use mimir::utils::futures::with_backoff;
 use serde::Deserialize;
 use serde_json::value::RawValue;
@@ -28,7 +28,7 @@ pub enum LazyEs<'p, T> {
         // TODO: Isn't RawValue enough ?
         header: serde_json::Value,
         query: serde_json::Value,
-        progress: Box<dyn FnOnce(Vec<EsHit<&RawValue>>) -> LazyEs<'p, T> + 'p>,
+        progress: Box<dyn FnOnce(Vec<EsHit<&RawValue>>) -> LazyEs<'p, T> + 'p + Send>,
     },
 }
 
@@ -60,14 +60,14 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 
     /// Chain some computation out of the value which will eventually be
     /// computed.
-    pub fn map<U>(self, func: impl FnOnce(T) -> U + 'p) -> LazyEs<'p, U> {
+    pub fn map<U>(self, func: impl FnOnce(T) -> U + Send + 'p) -> LazyEs<'p, U> {
         self.then(move |x| LazyEs::Value(func(x)))
     }
 
     /// Chain some lazy computation out of the value which will eventually be
     /// computed. This means that one more elasticsearch request may be
     /// required to compute the final result.
-    pub fn then<U>(self, func: impl FnOnce(T) -> LazyEs<'p, U> + 'p) -> LazyEs<'p, U> {
+    pub fn then<U>(self, func: impl FnOnce(T) -> LazyEs<'p, U> + Send + 'p) -> LazyEs<'p, U> {
         match self {
             Self::Value(x) => func(x),
             Self::NeedEsQuery {
@@ -173,20 +173,24 @@ impl<'p, T: 'p> LazyEs<'p, T> {
         partials: Vec<Self>,
         max_batch_size: usize,
     ) -> Vec<T> {
-        // `partials` needs to be wrapped into a RefCell because the closure `make_progress` will
-        // return a future containing a mutable reference to it. Hence we need to ensure at runtime
-        // that this closure won't be called twice without consuming the future first.
-        let partials = RefCell::new(partials);
+        // `partials` needs to be wrapped with a `Mutex` (would be a `RefCell` in a single threaded
+        // context) because the closure `make_progress` will return a future containing a mutable
+        // reference to it. Hence we need to ensure at runtime that this closure won't be called
+        // twice without consuming the future first.
+        let partials = Mutex::new(partials);
 
         let make_progress = || async {
-            let mut partials = partials.borrow_mut();
+            let mut partials = partials
+                .try_lock()
+                .expect("`make_progress` was called concurrently");
+
             Self::batch_make_progress(es, partials.as_mut(), max_batch_size).await
         };
 
         // Don't stop while some progress has been made during the loop condition.
-        while make_progress()
+        while with_backoff(make_progress, BACKOFF_RETRIES, BACKOFF_DELAY)
             .await
-            .expect("failed to make batch progress")
+            .expect("exceeded number of retries for batch progress")
             > 0
         {}
 

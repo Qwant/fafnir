@@ -3,6 +3,8 @@
 pub mod pois;
 pub mod postgres;
 
+use std::sync::Arc;
+
 use elasticsearch::Elasticsearch;
 use futures::stream::{Stream, StreamExt};
 use futures::{future, stream};
@@ -44,41 +46,58 @@ pub async fn fetch_pois<'a>(
 /// Iter over all POIs from postgres and search for its admin/address.
 pub async fn fetch_and_locate_pois<'a>(
     pg: &tokio_postgres::Client,
-    es: &'a Elasticsearch,
-    admins_geofinder: &'a AdminGeoFinder,
+    es: Elasticsearch,
+    admin_geofinder: AdminGeoFinder,
     poi_index_name: &'a str,
     poi_index_nosearch_name: &'a str,
     try_skip_reverse: bool,
     settings: &'a FafnirSettings,
 ) -> impl Stream<Item = IndexedPoi> + 'a {
+    let admin_geofinder = Arc::new(admin_geofinder);
+    let es = Arc::new(es);
+
+    // Keeping chunks big enough compared to the batch size will ensure that most of the requests
+    // will have exactly `max_query_batch_size` elements to be sent to ES.
+    let chunks_size = 10 * settings.max_query_batch_size;
+
     fetch_pois(pg, settings.bounding_box, &settings.langs)
         .await
-        .chunks(1500) // TODO
-        .map(move |pois| async move {
-            // Build POIs from postgres
-            let pois: Vec<_> = pois
-                .iter()
-                .map(|indexed_poi| {
-                    indexed_poi.locate_poi(
-                        admins_geofinder,
-                        &settings.langs,
-                        poi_index_name,
-                        poi_index_nosearch_name,
-                        try_skip_reverse,
-                    )
-                })
-                .collect();
+        .chunks(chunks_size)
+        .map(move |pois| {
+            let admin_geofinder = admin_geofinder.clone();
+            let es = es.clone();
+            let poi_index_name = poi_index_name.to_string();
+            let poi_index_nosearch_name = poi_index_nosearch_name.to_string();
+            let langs = settings.langs.clone();
+            let max_query_batch_size = settings.max_query_batch_size;
 
-            // Run ES queries until all POIs are fully built
-            let pois: Vec<_> =
-                LazyEs::batch_make_progress_until_value(es, pois, settings.max_query_batch_size)
-                    .await
-                    .into_iter()
-                    .flatten()
+            tokio::spawn(async move {
+                // Build POIs from postgres
+                let pois: Vec<_> = pois
+                    .iter()
+                    .map(|indexed_poi| {
+                        indexed_poi.locate_poi(
+                            &admin_geofinder,
+                            &langs,
+                            &poi_index_name,
+                            &poi_index_nosearch_name,
+                            try_skip_reverse,
+                        )
+                    })
                     .collect();
 
-            stream::iter(pois)
+                // Run ES queries until all POIs are fully built
+                let pois: Vec<_> =
+                    LazyEs::batch_make_progress_until_value(&es, pois, max_query_batch_size)
+                        .await
+                        .into_iter()
+                        .flatten()
+                        .collect();
+
+                stream::iter(pois)
+            })
         })
         .buffer_unordered(settings.concurrent_blocks)
+        .map(|res| res.expect("task panicked"))
         .flatten()
 }
