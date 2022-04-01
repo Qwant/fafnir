@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::fmt;
 use std::time::Duration;
 
 use elasticsearch::http::request::JsonBody;
@@ -5,6 +7,10 @@ use elasticsearch::{Elasticsearch, MsearchParts};
 use mimir::utils::futures::with_backoff;
 use serde::Deserialize;
 use serde_json::value::RawValue;
+use tracing::warn;
+
+const BACKOFF_RETRIES: u8 = 6;
+const BACKOFF_DELAY: Duration = Duration::from_secs(1);
 
 // ---
 // --- LazyEs
@@ -22,7 +28,7 @@ pub enum LazyEs<'p, T> {
         // TODO: Isn't RawValue enough ?
         header: serde_json::Value,
         query: serde_json::Value,
-        progress: Box<dyn FnOnce(&str) -> LazyEs<'p, T> + 'p>,
+        progress: Box<dyn FnOnce(Vec<EsHit<&RawValue>>) -> LazyEs<'p, T> + 'p>,
     },
 }
 
@@ -78,11 +84,11 @@ impl<'p, T: 'p> LazyEs<'p, T> {
 
     /// Send a request to elasticsearch to make progress for all computations
     /// in `partials` that are not done yet.
-    async fn batch_make_progress(
+    async fn batch_make_progress<'a>(
         es: &Elasticsearch,
         partials: &mut [Self],
         max_batch_size: usize,
-    ) -> usize {
+    ) -> Result<usize, EsError> {
         let need_progress: Vec<_> = partials
             .iter_mut()
             .filter(|partial| partial.value().is_none())
@@ -90,7 +96,7 @@ impl<'p, T: 'p> LazyEs<'p, T> {
             .collect();
 
         if need_progress.is_empty() {
-            return 0;
+            return Ok(0);
         }
 
         let body: Vec<_> = {
@@ -112,8 +118,8 @@ impl<'p, T: 'p> LazyEs<'p, T> {
                     .body(body.iter().collect())
                     .send()
             },
-            6,
-            Duration::from_secs(1),
+            BACKOFF_RETRIES,
+            BACKOFF_DELAY,
         );
 
         let es_response = es_request
@@ -123,36 +129,69 @@ impl<'p, T: 'p> LazyEs<'p, T> {
             .await
             .expect("failed to read ES response");
 
-        let responses = parse_es_multi_response(&es_response)
-            .unwrap_or_else(|err| panic!("failed to parse ES responses: {}\n{}", err, es_response));
+        let need_progress_len = need_progress.len();
+        let responses = parse_es_multi_response(&es_response).map_err(EsError::Parsing)?;
+        assert_eq!(responses.len(), need_progress_len);
 
-        assert_eq!(responses.len(), need_progress.len());
-        let progress_count = need_progress.len();
+        let mut progress_count = 0;
+        let mut errors = Vec::new();
 
         for (partial, res) in need_progress.into_iter().zip(responses) {
-            match partial {
-                LazyEs::NeedEsQuery { progress, .. } => {
+            match res.into_hits() {
+                Ok(hits) => {
+                    let progress = match partial {
+                        LazyEs::Value(_) => unreachable!(),
+                        LazyEs::NeedEsQuery { progress, .. } => progress,
+                    };
+
                     let progress = std::mem::replace(progress, Box::new(|_| unreachable!()));
-                    *partial = progress(res);
+                    *partial = progress(hits);
+                    progress_count += 1;
                 }
-                LazyEs::Value(_) => unreachable!(),
+                Err(err) => errors.push(err),
             }
         }
 
-        progress_count
+        if errors.len() > 1 {
+            warn!(
+                "got {}/{need_progress_len} errors during bulk progress",
+                errors.len(),
+            );
+        }
+
+        if let Some(err) = errors.into_iter().next() {
+            Err(err)
+        } else {
+            Ok(progress_count)
+        }
     }
 
     /// Run all input computations until they are finished and finally output
     /// the resulting values.
     pub async fn batch_make_progress_until_value(
         es: &Elasticsearch,
-        mut partials: Vec<Self>,
+        partials: Vec<Self>,
         max_batch_size: usize,
     ) -> Vec<T> {
+        // `partials` needs to be wrapped into a RefCell because the closure `make_progress` will
+        // return a future containing a mutable reference to it. Hence we need to ensure at runtime
+        // that this closure won't be called twice without consuming the future first.
+        let partials = RefCell::new(partials);
+
+        let make_progress = || async {
+            let mut partials = partials.borrow_mut();
+            Self::batch_make_progress(es, partials.as_mut(), max_batch_size).await
+        };
+
         // Don't stop while some progress has been made during the loop condition.
-        while Self::batch_make_progress(es, &mut partials, max_batch_size).await > 0 {}
+        while make_progress()
+            .await
+            .expect("failed to make batch progress")
+            > 0
+        {}
 
         partials
+            .into_inner()
             .into_iter()
             .map(|partial| partial.into_value().expect("some tasks are not finished"))
             .collect()
@@ -168,6 +207,22 @@ struct EsResponse<'a, U> {
     hits: Option<EsHits<U>>,
     #[serde(borrow)]
     error: Option<&'a RawValue>,
+}
+
+impl<'a, U> EsResponse<'a, U> {
+    fn into_hits(self) -> Result<Vec<EsHit<U>>, EsError> {
+        match self {
+            EsResponse {
+                hits: _,
+                error: Some(err),
+            } => Err(EsError::Es(err.to_owned())),
+            EsResponse {
+                hits: Some(hits),
+                error: _,
+            } => Ok(hits.hits),
+            _ => Err(EsError::MissingFields(&["hits", "error"])),
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -186,40 +241,31 @@ pub struct EsHit<U> {
 // ---
 
 #[derive(Debug)]
-pub enum EsError<'a> {
-    Es(&'a str),
-    MissingFields(&'a str),
+pub enum EsError {
+    Es(Box<RawValue>),
+    MissingFields(&'static [&'static str]),
     Parsing(serde_json::Error),
 }
 
-pub fn parse_es_multi_response(es_multi_response: &str) -> serde_json::Result<Vec<&str>> {
-    #[derive(Deserialize)]
-    struct EsResponse<'a> {
-        #[serde(borrow)]
-        responses: Vec<&'a RawValue>,
+impl fmt::Display for EsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EsError::Es(inner) => write!(f, "ES error: {}", inner),
+            EsError::MissingFields(fields) => write!(f, "missing expected fields: {:?}", fields),
+            EsError::Parsing(inner) => write!(f, "parsing error: {}", inner),
+        }
     }
-
-    let es_response: EsResponse = serde_json::from_str(es_multi_response)?;
-
-    Ok(es_response
-        .responses
-        .into_iter()
-        .map(RawValue::get)
-        .collect())
 }
 
-pub fn parse_es_response<'a, U: Deserialize<'a>>(
-    es_response: &'a str,
-) -> Result<Vec<EsHit<U>>, EsError<'a>> {
-    match serde_json::from_str(es_response).map_err(EsError::Parsing)? {
-        EsResponse {
-            hits: _,
-            error: Some(err),
-        } => Err(EsError::Es(err.get())),
-        EsResponse {
-            hits: Some(hits),
-            error: _,
-        } => Ok(hits.hits),
-        _ => Err(EsError::MissingFields(es_response)),
+fn parse_es_multi_response<'a, U: Deserialize<'a>>(
+    es_multi_response: &'a str,
+) -> serde_json::Result<Vec<EsResponse<'a, U>>> {
+    #[derive(Deserialize)]
+    struct EsResponses<'a, U> {
+        #[serde(borrow)]
+        responses: Vec<EsResponse<'a, U>>,
     }
+
+    let res: EsResponses<'a, U> = serde_json::from_str(es_multi_response)?;
+    Ok(res.responses)
 }

@@ -1,6 +1,6 @@
 use elasticsearch::http::transport::Transport;
 use elasticsearch::Elasticsearch;
-use futures::stream::TryStreamExt;
+use futures::stream::StreamExt;
 use futures::{try_join, FutureExt};
 use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
@@ -110,7 +110,7 @@ async fn load_and_index_pois(settings: Settings) {
         )
         .await
         .instrument(info_span!("fetch POIs"))
-        .try_for_each(move |p| {
+        .for_each(move |p| {
             let poi_channel_search = poi_channel_search.clone();
             let poi_channel_nosearch = poi_channel_nosearch.clone();
 
@@ -133,10 +133,9 @@ async fn load_and_index_pois(settings: Settings) {
                 if total_nb_pois % settings.fafnir.log_indexed_count_interval == 0 {
                     info!("Number of indexed POIs: {}", total_nb_pois)
                 }
-
-                Ok(())
             }
         })
+        .map(Ok::<_, Box<dyn std::error::Error>>)
     };
 
     // Wait for the indexing tasks to complete

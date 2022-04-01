@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::labels::{format_addr_name_and_label, format_street_label};
-// use mimirsbrunn2::utils::find_country_codes;
 use places::{
     addr::Addr, admin::find_country_codes, admin::Admin, coord::Coord, poi::Poi, street::Street,
     Address, Place,
@@ -11,7 +10,7 @@ use serde_json::json;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::lazy_es::{parse_es_response, LazyEs};
+use crate::lazy_es::LazyEs;
 
 // Prefixes used in ids for Address objects derived from OSM tags
 const FAFNIR_ADDR_NAMESPACE: &str = "addr_poi:";
@@ -51,29 +50,27 @@ pub fn get_current_addr<'a>(poi_index: &str, osm_id: &'a str) -> LazyEs<'a, CurP
             "_source": ["address", "coord"],
             "query": {"terms": {"_id": [osm_id]}}
         }),
-        progress: Box::new(move |es_response| {
+        progress: Box::new(move |hits| {
             LazyEs::Value({
-                let hits = parse_es_response(es_response)
-                    .expect("got error from ES while reading old address");
-
                 assert!(hits.len() <= 1);
 
-                hits.into_iter()
-                    .next()
-                    .map(|hit| {
-                        let poi: FetchPoi = hit.source;
-                        let coord = poi.coord;
+                if let Some(hit) = hits.into_iter().next() {
+                    let poi: FetchPoi =
+                        serde_json::from_str(hit.source.get()).expect("got invalid POI from ES");
 
-                        if let Some(address) = poi.address {
-                            CurPoiAddress::Some {
-                                coord,
-                                address: Box::new(address),
-                            }
-                        } else {
-                            CurPoiAddress::None { coord }
+                    let coord = poi.coord;
+
+                    if let Some(address) = poi.address {
+                        CurPoiAddress::Some {
+                            coord,
+                            address: Box::new(address),
                         }
-                    })
-                    .unwrap_or(CurPoiAddress::NotFound)
+                    } else {
+                        CurPoiAddress::None { coord }
+                    }
+                } else {
+                    CurPoiAddress::NotFound
+                }
             })
         }),
     }
@@ -110,12 +107,15 @@ pub fn get_addr_from_coords<'a>(coord: &Coord) -> LazyEs<'a, Vec<Place>> {
                 }
             ]
         }),
-        progress: Box::new(|es_response| {
+        progress: Box::new(|hits| {
             LazyEs::Value(
-                parse_es_response(es_response)
-                    .expect("got error from ES while performing reverse")
-                    .into_iter()
-                    .map(|hit| Place::Addr(serde_json::from_value(hit.source).unwrap()))
+                hits.into_iter()
+                    .map(|hit| {
+                        Place::Addr(
+                            serde_json::from_str(hit.source.get())
+                                .expect("got invalid address from ES"),
+                        )
+                    })
                     .collect(),
             )
         }),
