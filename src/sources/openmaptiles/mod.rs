@@ -4,12 +4,11 @@ pub mod pois;
 pub mod postgres;
 
 use elasticsearch::Elasticsearch;
-use futures::stream::{Stream, StreamExt, TryStreamExt};
+use futures::stream::{Stream, StreamExt};
 use futures::{future, stream};
 
 use crate::lazy_es::LazyEs;
 use crate::settings::FafnirSettings;
-use crate::Error;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use pois::IndexedPoi;
 use postgres::fetch_all_pois_query;
@@ -51,7 +50,7 @@ pub async fn fetch_and_locate_pois<'a>(
     poi_index_nosearch_name: &'a str,
     try_skip_reverse: bool,
     settings: &'a FafnirSettings,
-) -> impl Stream<Item = Result<IndexedPoi, Error>> + 'a {
+) -> impl Stream<Item = IndexedPoi> + 'a {
     fetch_pois(pg, settings.bounding_box, &settings.langs)
         .await
         .chunks(1500) // TODO
@@ -60,15 +59,15 @@ pub async fn fetch_and_locate_pois<'a>(
             let pois: Vec<_> = pois
                 .iter()
                 .map(|indexed_poi| {
-                    Ok(indexed_poi.locate_poi(
+                    indexed_poi.locate_poi(
                         admins_geofinder,
                         &settings.langs,
                         poi_index_name,
                         poi_index_nosearch_name,
                         try_skip_reverse,
-                    ))
+                    )
                 })
-                .collect::<Result<_, Error>>()?;
+                .collect();
 
             // Run ES queries until all POIs are fully built
             let pois: Vec<_> =
@@ -76,11 +75,10 @@ pub async fn fetch_and_locate_pois<'a>(
                     .await
                     .into_iter()
                     .flatten()
-                    .map(Ok)
                     .collect();
 
-            Ok::<_, Error>(stream::iter(pois))
+            stream::iter(pois)
         })
         .buffer_unordered(settings.concurrent_blocks)
-        .try_flatten()
+        .flatten()
 }

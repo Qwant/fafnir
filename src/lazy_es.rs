@@ -184,7 +184,7 @@ impl<'p, T: 'p> LazyEs<'p, T> {
         };
 
         // Don't stop while some progress has been made during the loop condition.
-        while with_backoff(make_progress, BACKOFF_RETRIES, BACKOFF_DELAY)
+        while make_progress()
             .await
             .expect("failed to make batch progress")
             > 0
