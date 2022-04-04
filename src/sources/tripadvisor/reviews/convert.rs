@@ -6,5 +6,9 @@ pub enum BuildError {
 }
 
 pub fn build_review(property: Property) -> Result<(u32, String), BuildError> {
-    Ok((property.id, "test".to_string()))
+    let reviews_json_string = match serde_json::to_string(&property.reviews) {
+        Ok(string) => string,
+        Err(_e) => return Err(BuildError::NotFound),
+    };
+    Ok((property.id, reviews_json_string))
 }

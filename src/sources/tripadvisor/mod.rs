@@ -3,15 +3,13 @@ pub mod photos;
 pub mod pois;
 pub mod reviews;
 
-use std::sync::Arc;
-
-use crate::sources::tripadvisor::reviews::models::Reviews;
 use futures::stream::StreamExt;
 use futures::Stream;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use std::sync::Arc;
 use tokio::io::AsyncBufRead;
 
 /// Number of tokio's blocking thread that can be spawned to parse XML. Keeping

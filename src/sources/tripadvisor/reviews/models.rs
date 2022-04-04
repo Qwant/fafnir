@@ -1,21 +1,22 @@
 //! Models for TripAdvisor's XML Reviews feed structure.
 
 use serde::Deserialize;
+use serde::Serialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Property {
     pub id: u32,
     #[serde(rename = "Reviews")]
     pub reviews: Reviews,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Reviews {
     #[serde(rename = "Review")]
     pub inner: Vec<Review>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Review {
     pub id: u32,
     #[serde(rename = "DatePublished")]
@@ -35,7 +36,7 @@ pub struct Review {
     // TODO do we add sub_rating and photos ?
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Author {
     #[serde(rename = "AuthorName")]
     pub name: Option<String>,

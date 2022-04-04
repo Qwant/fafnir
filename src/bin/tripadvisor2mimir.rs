@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use async_compression::tokio::bufread::GzipDecoder;
 use fafnir::mimir::build_admin_geofinder;
 use fafnir::sources::tripadvisor::{build_id, read_reviews, TripAdvisorWeightSettings};
-
 use futures::future;
 use futures::stream::StreamExt;
 use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
@@ -144,10 +143,10 @@ async fn load_and_index_tripadvisor(settings: Settings) {
                 )
             })
             .filter(|(ta_id, _)| future::ready(indexed_documents.contains(ta_id)))
-            .map(|(ta_id, reviews)| {
+            .map(|(ta_id, er)| {
                 let op = UpdateOperation::Set {
-                    ident: "ta:reviews".to_string(),
-                    value: reviews,
+                    ident: "properties.ta_reviews".to_string(),
+                    value: er,
                 };
 
                 count_ok += 1;
