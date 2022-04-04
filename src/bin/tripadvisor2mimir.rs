@@ -145,7 +145,7 @@ async fn load_and_index_tripadvisor(settings: Settings) {
             .filter(|(ta_id, _)| future::ready(indexed_documents.contains(ta_id)))
             .map(|(ta_id, er)| {
                 let op = UpdateOperation::Set {
-                    ident: "properties.ta_reviews".to_string(),
+                    ident: r#"properties["ta:reviews"]"#.to_string(),
                     value: er,
                 };
 
