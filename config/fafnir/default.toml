@@ -31,6 +31,7 @@
 [tripadvisor]
   properties = "propertylist.xml.gz"
   photos = "photolist.xml.gz"
+  reviews = "reviewlist.xml.gz"
 
   [tripadvisor.weight]
     # An arbitrary high number of review for which the weight is 1 with a

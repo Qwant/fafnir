@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use async_compression::tokio::bufread::GzipDecoder;
 use fafnir::mimir::build_admin_geofinder;
-use fafnir::sources::tripadvisor::{build_id, TripAdvisorWeightSettings};
+use fafnir::sources::tripadvisor::{build_id, read_reviews, TripAdvisorWeightSettings};
 use futures::future;
 use futures::stream::StreamExt;
 use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
@@ -26,6 +26,7 @@ const XML_BUFFER_SIZE: usize = 1024 * 1024;
 struct TripAdvisorSettings {
     properties: PathBuf,
     photos: PathBuf,
+    reviews: PathBuf,
     weight: TripAdvisorWeightSettings,
 }
 
@@ -124,6 +125,41 @@ async fn load_and_index_tripadvisor(settings: Settings) {
 
         info!("Parsed {} Photos", count_ok);
         info!("Skipped Photos: {:?}", count_errors);
+        index_generator
+    };
+
+    // Insert Reviews
+    let index_generator = {
+        let raw_xml = read_gzip_file(&settings.tripadvisor.reviews).await;
+        let mut count_ok: u64 = 0;
+        let mut count_errors: HashMap<_, u64> = HashMap::new();
+
+        let reviews = read_reviews(raw_xml)
+            .filter_map(|reviews| {
+                future::ready(
+                    reviews
+                        .map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
+                        .ok(),
+                )
+            })
+            .filter(|(ta_id, _)| future::ready(indexed_documents.contains(ta_id)))
+            .map(|(ta_id, er)| {
+                let op = UpdateOperation::Set {
+                    ident: r#"properties["ta:reviews"]"#.to_string(),
+                    value: er,
+                };
+
+                count_ok += 1;
+                (build_id(ta_id), op)
+            });
+
+        let index_generator = index_generator
+            .update_documents(reviews)
+            .await
+            .expect("could not update documents from index");
+
+        info!("Parsed {} Reviews", count_ok);
+        info!("Skipped Reviews: {:?}", count_errors);
         index_generator
     };
 

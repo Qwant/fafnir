@@ -1,8 +1,7 @@
 pub mod parse;
 pub mod photos;
 pub mod pois;
-
-use std::sync::Arc;
+pub mod reviews;
 
 use futures::stream::StreamExt;
 use futures::Stream;
@@ -10,6 +9,7 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use std::sync::Arc;
 use tokio::io::AsyncBufRead;
 
 /// Number of tokio's blocking thread that can be spawned to parse XML. Keeping
@@ -83,4 +83,10 @@ pub fn read_photos(
     input: impl AsyncBufRead + Unpin,
 ) -> impl Stream<Item = Result<(u32, String), photos::convert::BuildError>> {
     parse_properties(input, photos::convert::build_photo)
+}
+
+pub fn read_reviews(
+    input: impl AsyncBufRead + Unpin,
+) -> impl Stream<Item = Result<(u32, String), reviews::convert::BuildError>> {
+    parse_properties(input, reviews::convert::build_review)
 }
