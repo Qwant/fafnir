@@ -34,7 +34,7 @@ struct Settings {
 
 async fn load_and_index_pois(settings: Settings) {
     // Local Elasticsearch client
-    let es = &Elasticsearch::new(
+    let es = Elasticsearch::new(
         Transport::single_node(settings.elasticsearch.url.as_str())
             .expect("failed to initialize Elasticsearch transport"),
     );
@@ -46,7 +46,7 @@ async fn load_and_index_pois(settings: Settings) {
 
     // If addresses have not changed since last update of POIs, it is not
     // necessary to perform a reverse again for POIs that don't have an address.
-    let addr_updated = address_updated_after_pois(es).await;
+    let addr_updated = address_updated_after_pois(&es).await;
     let try_skip_reverse = settings.fafnir.skip_reverse && !addr_updated;
 
     if try_skip_reverse {
@@ -57,7 +57,7 @@ async fn load_and_index_pois(settings: Settings) {
     }
 
     // Fetch admins
-    let admins_geofinder = &build_admin_geofinder(&mimir_es).await;
+    let admins_geofinder = build_admin_geofinder(&mimir_es).await;
 
     // Spawn tasks that will build indexes. These tasks will provide a single
     // stream to mimirsbrunn which is built from data sent into async channels.
