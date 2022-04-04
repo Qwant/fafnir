@@ -31,15 +31,4 @@ pub struct Review {
     pub text: Option<String>,
     #[serde(rename = "TripType")]
     pub trip_type: Option<String>,
-    #[serde(rename = "Author")]
-    pub author: Author,
-    // TODO do we add sub_rating and photos ?
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Author {
-    #[serde(rename = "AuthorName")]
-    pub name: Option<String>,
-    #[serde(rename = "SmallAvatarURL")]
-    pub small_avatar_url: Option<String>,
 }
