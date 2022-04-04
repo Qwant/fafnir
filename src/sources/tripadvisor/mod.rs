@@ -11,6 +11,7 @@ use futures::Stream;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use tokio::io::AsyncBufRead;
 
 /// Number of tokio's blocking thread that can be spawned to parse XML. Keeping
@@ -20,6 +21,12 @@ const PARSER_THREADS: usize = 8;
 
 /// Number of <Property /> items that are sent to spawned threads for parsing.
 const PARSER_CHUNK_SIZE: usize = 1000;
+
+#[derive(Clone, Copy, Debug, Deserialize)]
+pub struct TripAdvisorWeightSettings {
+    pub high_review_count: f64,
+    pub boost: f64,
+}
 
 /// Compute the actual Elasticsearch ID of a document given TripAdvisor's
 /// property ID.
@@ -67,9 +74,10 @@ where
 pub fn read_pois(
     input: impl AsyncBufRead + Unpin,
     geofinder: AdminGeoFinder,
+    weight_settings: TripAdvisorWeightSettings,
 ) -> impl Stream<Item = Result<(u32, Poi), pois::convert::BuildError>> {
     parse_properties(input, move |property| {
-        pois::convert::build_poi(property, &geofinder)
+        pois::convert::build_poi(property, &geofinder, weight_settings)
     })
 }
 

@@ -16,13 +16,13 @@ COPY . ./
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/srv/fafnir/target        \
-    cargo build --release
+    cargo build --profile production
 
 # Move binary out of cache
 RUN mkdir bin
 RUN --mount=type=cache,target=/srv/fafnir/target             \
-    cp /srv/fafnir/target/release/openmaptiles2mimir bin/ && \
-    cp /srv/fafnir/target/release/tripadvisor2mimir bin/
+    cp /srv/fafnir/target/production/openmaptiles2mimir bin/ && \
+    cp /srv/fafnir/target/production/tripadvisor2mimir bin/
 
 
 FROM debian:buster-slim

@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 
 use async_compression::tokio::bufread::GzipDecoder;
 use fafnir::mimir::build_admin_geofinder;
-use fafnir::sources::tripadvisor::{build_id, read_reviews};
+use fafnir::sources::tripadvisor::{build_id, read_reviews, TripAdvisorWeightSettings};
+
 use futures::future;
 use futures::stream::StreamExt;
 use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
@@ -27,6 +28,7 @@ struct TripAdvisorSettings {
     properties: PathBuf,
     photos: PathBuf,
     reviews: PathBuf,
+    weight: TripAdvisorWeightSettings,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,7 +71,7 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         let mut count_ok: u64 = 0;
         let mut count_errors: HashMap<_, u64> = HashMap::new();
 
-        let pois = read_pois(raw_xml, admin_geofinder)
+        let pois = read_pois(raw_xml, admin_geofinder, settings.tripadvisor.weight)
             .filter_map(|poi| {
                 future::ready(
                     poi.map_err(|err| *count_errors.entry(err).or_insert(0) += 1)

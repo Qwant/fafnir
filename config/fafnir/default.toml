@@ -33,6 +33,14 @@
   photos = "photolist.xml.gz"
   reviews = "reviewlist.xml.gz"
 
+  [tripadvisor.weight]
+    # An arbitrary high number of review for which the weight is 1 with a
+    # maximal rating.
+    high_review_count = 5000
+
+    # Adds a weight offset to all tripadvisor POIs.
+    boost = 0.3
+
 # Container configuration for searchable POIs.
 [container-search]
   name = "poi"

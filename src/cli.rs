@@ -26,6 +26,7 @@ struct Args {
 }
 
 pub async fn run<S: DeserializeOwned, R: Future>(f: impl FnOnce(S) -> R) -> R::Output {
+    let _log_guard = logger_init().expect("could not init logger");
     let args = Args::from_args();
 
     let raw_config = config_from(
@@ -36,13 +37,6 @@ pub async fn run<S: DeserializeOwned, R: Future>(f: impl FnOnce(S) -> R) -> R::O
         args.settings,
     )
     .expect("could not build fafnir config");
-
-    let settings: S = raw_config
-        .clone()
-        .try_into()
-        .expect("invalid fafnir config");
-
-    let _log_guard = logger_init().expect("could not init logger");
 
     info!(
         "Full configuration:\n{}",
@@ -55,5 +49,6 @@ pub async fn run<S: DeserializeOwned, R: Future>(f: impl FnOnce(S) -> R) -> R::O
         .expect("could not serialize config"),
     );
 
+    let settings: S = raw_config.try_into().expect("invalid fafnir config");
     f(settings).await
 }
