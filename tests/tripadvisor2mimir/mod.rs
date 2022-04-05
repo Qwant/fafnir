@@ -162,6 +162,17 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     assert_eq!(&pois.len(), &1);
     let b_eat = pois[0].poi().unwrap();
 
+    // This POI should have reviews
+    assert_eq!(b_eat.properties["ta:reviews/0/title"], "Wirtewechsel");
+    assert_eq!(
+        b_eat.properties["ta:reviews/0/date"],
+        "2019-12-09T14:33:23.000+0000"
+    );
+    assert_eq!(
+        b_eat.properties["ta:reviews/1/title"],
+        "Unkomplizierter Mittagslunch"
+    );
+
     // Cuisine should match a OpenstreetMap cuisine tag
     assert_eq!(b_eat.poi_type.id, "class_restaurant:subclass_sit_down");
     assert_eq!(

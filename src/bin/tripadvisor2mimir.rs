@@ -163,10 +163,10 @@ async fn load_and_index_tripadvisor(settings: Settings) {
                             .flat_map(move |(key, value)| {
                                 let ident = format!("properties['ta:reviews/{review_idx}/{key}']");
 
-                                Some(dbg!(UpdateOperation::Set {
+                                Some(UpdateOperation::Set {
                                     ident,
                                     value: value?,
-                                }))
+                                })
                             })
                         })
                         .map(move |op| (id.clone(), op)),
