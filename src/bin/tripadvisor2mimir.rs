@@ -147,7 +147,7 @@ async fn load_and_index_tripadvisor(settings: Settings) {
                 count_ok += 1;
                 futures::stream::iter(reviews.into_iter().enumerate().map(
                     move |(review_id, review)| {
-                        let ident = format!("properties['ta:reviews:{review_id}']");
+                        let ident = format!("properties.ta:reviews:{review_id}");
                         let op = UpdateOperation::Set {
                             ident,
                             value: review,

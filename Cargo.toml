@@ -23,9 +23,9 @@ tracing-futures = "0.2"
 tracing = { version = "0.1", default_features = false, features = ["release_max_level_info"] }
 url = { version = "2", features = ["serde"] }
 
-mimirsbrunn = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "73f368b" }
-mimir = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "73f368b" }
-places = { git = "https://github.com/CanalTP/mimirsbrunn.git", rev = "73f368b" }
+mimirsbrunn = { git = "https://github.com/remi-dupre/mimirsbrunn.git", branch = "dot-key-updates" }
+mimir = { git = "https://github.com/remi-dupre/mimirsbrunn.git", branch = "dot-key-updates" }
+places = { git = "https://github.com/remi-dupre/mimirsbrunn.git", branch = "dot-key-updates" }
 
 [dev-dependencies]
 cosmogony = "0.11"
