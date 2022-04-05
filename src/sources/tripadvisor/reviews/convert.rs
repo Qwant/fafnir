@@ -5,10 +5,18 @@ pub enum BuildError {
     NotFound,
 }
 
-pub fn build_review(property: Property) -> Result<(u32, String), BuildError> {
-    let reviews_json_string = match serde_json::to_string(&property.reviews) {
-        Ok(string) => string,
-        Err(_e) => return Err(BuildError::NotFound),
-    };
-    Ok((property.id, reviews_json_string))
+pub fn build_reviews(property: Property) -> Result<(u32, Vec<String>), BuildError> {
+    let reviews = property
+        .reviews
+        .inner
+        .iter()
+        .map(|review| {
+            serde_json::to_string(&review)
+                .map_err(|_err| BuildError::NotFound)
+                .ok()
+                .unwrap()
+        })
+        .collect();
+
+    Ok((property.id, reviews))
 }
