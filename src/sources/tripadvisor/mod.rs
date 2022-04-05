@@ -12,6 +12,8 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::io::AsyncBufRead;
 
+use self::reviews::models::Review;
+
 /// Number of tokio's blocking thread that can be spawned to parse XML. Keeping
 /// a rather low constant value is fine as the input will be provided by a GZip
 /// decoder, which only runs on a single thread.
@@ -87,6 +89,6 @@ pub fn read_photos(
 
 pub fn read_reviews(
     input: impl AsyncBufRead + Unpin,
-) -> impl Stream<Item = Result<(u32, String), reviews::convert::BuildError>> {
+) -> impl Stream<Item = Result<(u32, Vec<Review>), reviews::convert::BuildError>> {
     parse_properties(input, reviews::convert::build_review)
 }
