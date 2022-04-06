@@ -31,4 +31,12 @@ pub struct Review {
     pub text: Option<String>,
     #[serde(rename = "TripType")]
     pub trip_type: Option<String>,
+    #[serde(rename = "Author")]
+    pub author: Option<Author>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Author {
+    #[serde(rename = "AuthorName")]
+    pub name: Option<String>,
 }
