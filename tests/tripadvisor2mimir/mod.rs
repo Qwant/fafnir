@@ -162,6 +162,10 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     assert_eq!(&pois.len(), &1);
     let b_eat = pois[0].poi().unwrap();
 
+    // This POI should have reviews
+    assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:0"]).is_ok());
+    assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:1"]).is_ok());
+
     // Cuisine should match a OpenstreetMap cuisine tag
     assert_eq!(b_eat.poi_type.id, "class_restaurant:subclass_sit_down");
     assert_eq!(
