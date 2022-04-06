@@ -385,8 +385,8 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "2.5.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=73f368b#73f368bc72fb0cfacd1b14b9c823af69a5524291"
+version = "2.6.0"
+source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=dot-key-updates#06c4934c735fafe98067ed6856b723862797c62a"
 dependencies = [
  "config",
  "serde",
@@ -1478,8 +1478,8 @@ dependencies = [
 
 [[package]]
 name = "mimir"
-version = "2.5.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=73f368b#73f368bc72fb0cfacd1b14b9c823af69a5524291"
+version = "2.6.0"
+source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=dot-key-updates#06c4934c735fafe98067ed6856b723862797c62a"
 dependencies = [
  "async-trait",
  "bollard",
@@ -1515,8 +1515,8 @@ dependencies = [
 
 [[package]]
 name = "mimirsbrunn"
-version = "2.5.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=73f368b#73f368bc72fb0cfacd1b14b9c823af69a5524291"
+version = "2.6.0"
+source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=dot-key-updates#06c4934c735fafe98067ed6856b723862797c62a"
 dependencies = [
  "address-formatter",
  "anyhow",
@@ -2005,8 +2005,8 @@ checksum = "58893f751c9b0412871a09abd62ecd2a00298c6c83befa223ef98c52aef40cbe"
 
 [[package]]
 name = "places"
-version = "2.5.0"
-source = "git+https://github.com/CanalTP/mimirsbrunn.git?rev=73f368b#73f368bc72fb0cfacd1b14b9c823af69a5524291"
+version = "2.6.0"
+source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=dot-key-updates#06c4934c735fafe98067ed6856b723862797c62a"
 dependencies = [
  "chrono-tz",
  "common",
