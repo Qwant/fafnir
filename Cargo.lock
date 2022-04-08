@@ -386,7 +386,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "2.6.0"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=dot-key-updates#06c4934c735fafe98067ed6856b723862797c62a"
+source = "git+https://github.com/remi-dupre/mimirsbrunn.git?rev=13861dcabfba68d94a3cbc92d3b77262e1a8a7b6#13861dcabfba68d94a3cbc92d3b77262e1a8a7b6"
 dependencies = [
  "config",
  "serde",
@@ -1479,7 +1479,7 @@ dependencies = [
 [[package]]
 name = "mimir"
 version = "2.6.0"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=dot-key-updates#06c4934c735fafe98067ed6856b723862797c62a"
+source = "git+https://github.com/remi-dupre/mimirsbrunn.git?rev=13861dcabfba68d94a3cbc92d3b77262e1a8a7b6#13861dcabfba68d94a3cbc92d3b77262e1a8a7b6"
 dependencies = [
  "async-trait",
  "bollard",
@@ -1516,7 +1516,7 @@ dependencies = [
 [[package]]
 name = "mimirsbrunn"
 version = "2.6.0"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=dot-key-updates#06c4934c735fafe98067ed6856b723862797c62a"
+source = "git+https://github.com/remi-dupre/mimirsbrunn.git?rev=13861dcabfba68d94a3cbc92d3b77262e1a8a7b6#13861dcabfba68d94a3cbc92d3b77262e1a8a7b6"
 dependencies = [
  "address-formatter",
  "anyhow",
@@ -2006,7 +2006,7 @@ checksum = "58893f751c9b0412871a09abd62ecd2a00298c6c83befa223ef98c52aef40cbe"
 [[package]]
 name = "places"
 version = "2.6.0"
-source = "git+https://github.com/remi-dupre/mimirsbrunn.git?branch=dot-key-updates#06c4934c735fafe98067ed6856b723862797c62a"
+source = "git+https://github.com/remi-dupre/mimirsbrunn.git?rev=13861dcabfba68d94a3cbc92d3b77262e1a8a7b6#13861dcabfba68d94a3cbc92d3b77262e1a8a7b6"
 dependencies = [
  "chrono-tz",
  "common",
