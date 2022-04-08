@@ -115,7 +115,7 @@ async fn load_and_index_tripadvisor(settings: Settings) {
                 };
 
                 count_ok += 1;
-                (build_id(ta_id), op)
+                (build_id(ta_id), vec![op])
             });
 
         let index_generator = index_generator
@@ -143,18 +143,20 @@ async fn load_and_index_tripadvisor(settings: Settings) {
                 )
             })
             .filter(|(ta_id, _)| future::ready(indexed_documents.contains(ta_id)))
-            .flat_map(|(ta_id, reviews)| {
+            .map(|(ta_id, reviews)| {
                 count_ok += 1;
-                futures::stream::iter(reviews.into_iter().enumerate().map(
-                    move |(review_id, review)| {
+                let update_operations = reviews
+                    .into_iter()
+                    .enumerate()
+                    .map(|(review_id, review)| {
                         let ident = format!("properties.ta:reviews:{review_id}");
-                        let op = UpdateOperation::Set {
+                        UpdateOperation::Set {
                             ident,
                             value: review,
-                        };
-                        (build_id(ta_id), op)
-                    },
-                ))
+                        }
+                    })
+                    .collect();
+                (build_id(ta_id), update_operations)
             });
 
         let index_generator = index_generator
