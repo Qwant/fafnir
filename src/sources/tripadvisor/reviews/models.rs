@@ -23,6 +23,10 @@ pub struct Review {
     pub date: Option<String>,
     #[serde(rename = "ReviewURL")]
     pub url: Option<String>,
+    #[serde(rename = "MoreReviewsURL")]
+    pub more_reviews_url: Option<String>,
+    #[serde(rename = "Rating")]
+    pub rating: Option<f64>,
     #[serde(rename = "Language")]
     pub language: Option<String>,
     #[serde(rename = "Title")]
