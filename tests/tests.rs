@@ -37,13 +37,13 @@ impl<'a> PostgresWrapper<'a> {
     pub async fn get_conn(&self) -> tokio_postgres::Client {
         start_postgres_session(&format!("postgres://test@{}/test", &self.host()))
             .await
-            .unwrap_or_else(|err| panic!("Unable to connect to postgres: {}", err))
+            .unwrap_or_else(|err| panic!("Unable to connect to postgres: {err}"))
     }
 
     pub async fn get_rows(&self, table: &str) -> Vec<tokio_postgres::row::Row> {
         self.get_conn()
             .await
-            .query(&*format!("SELECT * FROM {}", table), &[])
+            .query(&*format!("SELECT * FROM {table}"), &[])
             .await
             .unwrap()
     }
@@ -180,7 +180,7 @@ impl ElasticSearchWrapper {
         self.es
             .search_documents(indices, Query::QueryString(word.to_string()), 100, None)
             .await
-            .unwrap_or_else(|err| panic!("could not search for {}: {}", word, err))
+            .unwrap_or_else(|err| panic!("could not search for {word}: {err}"))
             .into_iter()
             .map(|val| serde_json::from_value(val).unwrap())
             .filter(predicate)
@@ -193,12 +193,12 @@ async fn launch_and_assert(cmd: &'static str, args: Vec<std::string::String>) {
     let output = command.output().await.unwrap();
 
     if !output.status.success() {
-        eprintln!("=== stdout for {}", cmd);
+        eprintln!("=== stdout for {cmd}");
         eprintln!("{}", String::from_utf8(output.stdout).unwrap());
-        eprintln!("=== stderr for {}", cmd);
+        eprintln!("=== stderr for {cmd}");
         eprintln!("{}", String::from_utf8(output.stderr).unwrap());
         eprintln!("===");
-        panic!("`{}` failed {}", cmd, output.status);
+        panic!("`{cmd}` failed {}", output.status);
     }
 }
 

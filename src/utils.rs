@@ -11,7 +11,7 @@ pub async fn start_postgres_session(
     // and must be spawned inside of tokio.
     tokio::spawn(async move {
         if let Err(err) = connection.await {
-            panic!("Postgres connection error: {}", err);
+            panic!("Postgres connection error: {err}");
         }
     });
 
@@ -26,13 +26,13 @@ pub async fn get_index_creation_date(es: &Elasticsearch, index: impl AsRef<str>)
         .h(&["creation.date"])
         .send()
         .await
-        .map_err(|err| warn!("failed to query ES for creation date: {:?}", err))
+        .map_err(|err| warn!("failed to query ES for creation date: {err:?}"))
         .ok()?;
 
     let raw = res
         .text()
         .await
-        .map_err(|err| warn!("failed to load ES response for creation date: {:?}", err))
+        .map_err(|err| warn!("failed to load ES response for creation date: {err:?}"))
         .ok()?;
 
     if raw.is_empty() {
@@ -41,6 +41,6 @@ pub async fn get_index_creation_date(es: &Elasticsearch, index: impl AsRef<str>)
 
     raw.trim()
         .parse()
-        .map_err(|err| warn!("invalid index creation timestamp: {:?}", err))
+        .map_err(|err| warn!("invalid index creation timestamp: {err:?}"))
         .ok()
 }

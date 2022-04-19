@@ -152,20 +152,20 @@ impl TableQuery {
             class = self
                 .override_class
                 .as_ref()
-                .map_or_else(|| "class".to_string(), |name| format!("{} AS class", name)),
+                .map_or_else(|| "class".to_string(), |name| format!("{name} AS class")),
             mapping_key = self.override_class.as_ref().map_or_else(
                 || "mapping_key".to_string(),
-                |name| format!("{} AS mapping_key", name)
+                |name| format!("{name} AS mapping_key")
             ),
             subclass = self.override_subclass.as_ref().map_or_else(
                 || "subclass".to_string(),
-                |name| format!("{} AS subclass", name)
+                |name| format!("{name} AS subclass")
             ),
             geometry_point = "ST_Transform(ST_PointOnSurface(geometry), 4326)",
         );
 
         if let Some(ref filter) = self.filter {
-            result.push_str(&format!(" WHERE {}", filter));
+            result.push_str(&format!(" WHERE {filter}"));
         }
 
         result
