@@ -52,7 +52,7 @@ where
                     .into_iter()
                     .map(|raw| {
                         let property = quick_xml::de::from_reader(raw.as_slice())
-                            .expect("failed to poi property");
+                            .expect("failed parse to poi property");
 
                         parse(property)
                     })

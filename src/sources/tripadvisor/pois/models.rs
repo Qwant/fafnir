@@ -71,8 +71,8 @@ pub struct SubCategory {
 }
 
 #[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "PascalCase")]
 pub struct Hours {
+    #[serde(rename = "Day")]
     pub inner: Vec<Day>,
 }
 

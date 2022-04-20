@@ -163,7 +163,7 @@ async fn load_and_index_tripadvisor(settings: Settings) {
             .await
             .expect("could not update documents from index");
 
-        info!("Parsed {count_ok} Reviews");
+        info!("Parsed {count_ok} reviews");
         info!("Skipped Reviews: {count_errors:?}");
         index_generator
     };
