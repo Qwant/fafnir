@@ -29,16 +29,8 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
         {
             if buffer.ends_with(END_TOKEN) {
                 // The first buffer may contain some extra information
-                let token_start = {
-                    if let Some(start) = find_naive(&buffer, START_TOKEN) {
-                        start
-                    } else {
-                        panic!(
-                            "Found a property which didn't start with pattern `{}`",
-                            std::str::from_utf8(START_TOKEN).unwrap()
-                        );
-                    }
-                };
+                let token_start = find_naive(&buffer, START_TOKEN)
+                    .expect("found a property which didn't start with expected pattern");
 
                 if token_start > 0 {
                     debug!(

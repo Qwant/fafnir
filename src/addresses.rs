@@ -156,7 +156,7 @@ fn build_new_addr(
     let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
     if !house_number_tag.is_empty() {
         Address::Addr(Addr {
-            id: format!("{}{}", FAFNIR_ADDR_NAMESPACE, &poi.id),
+            id: format!("{FAFNIR_ADDR_NAMESPACE}{}", &poi.id),
             house_number: house_number_tag.into(),
             name: addr_name,
             street: Street {
@@ -181,7 +181,7 @@ fn build_new_addr(
         })
     } else {
         Address::Street(Street {
-            id: format!("{}{}", FAFNIR_STREET_NAMESPACE, &poi.id),
+            id: format!("{FAFNIR_STREET_NAMESPACE}{}", &poi.id),
             name: street_tag.to_string(),
             label: street_label,
             administrative_regions: admins,

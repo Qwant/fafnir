@@ -16,8 +16,8 @@ pub const MIMIR_PREFIX: &str = "munin";
 /// Check if poi index is more recent than addresses.
 pub async fn address_updated_after_pois(es: &Elasticsearch) -> bool {
     let (poi_creation_date, addr_creation_date) = join!(
-        get_index_creation_date(es, format!("{}_poi", MIMIR_PREFIX)),
-        get_index_creation_date(es, format!("{}_addr", MIMIR_PREFIX))
+        get_index_creation_date(es, format!("{MIMIR_PREFIX}_poi")),
+        get_index_creation_date(es, format!("{MIMIR_PREFIX}_addr"))
     );
 
     match (poi_creation_date, addr_creation_date) {

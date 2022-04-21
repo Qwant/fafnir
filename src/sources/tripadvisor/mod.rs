@@ -4,7 +4,7 @@ pub mod pois;
 pub mod reviews;
 
 use futures::stream::StreamExt;
-use futures::Stream;
+use futures::{FutureExt, Stream};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use serde::de::DeserializeOwned;
@@ -29,41 +29,39 @@ pub struct TripAdvisorWeightSettings {
 /// Compute the actual Elasticsearch ID of a document given TripAdvisor's
 /// property ID.
 pub fn build_id(ta_id: u32) -> String {
-    format!("ta:poi:{}", ta_id)
+    format!("ta:poi:{ta_id}")
 }
 
 fn parse_properties<P, R>(
     input: impl AsyncBufRead + Unpin,
-    parse: impl Fn(P) -> R + Sync + Send + 'static,
+    convert: impl Fn(P) -> R + Sync + Send + 'static,
 ) -> impl Stream<Item = R>
 where
     P: DeserializeOwned,
     R: Send + 'static,
 {
-    let parse = Arc::new(parse);
+    let parse = Arc::new(convert);
 
     parse::split_raw_properties(input)
         .chunks(PARSER_CHUNK_SIZE)
         .map(move |chunk| {
             let parse = parse.clone();
 
-            async move {
-                let chunk_parsed: Vec<_> = tokio::spawn(async move {
-                    chunk
-                        .into_iter()
-                        .map(|raw| {
-                            let property = quick_xml::de::from_reader(raw.as_slice())
-                                .expect("failed to poi property");
+            let task = async move {
+                let chunk_parsed: Vec<_> = chunk
+                    .into_iter()
+                    .map(|raw| {
+                        let property = quick_xml::de::from_reader(raw.as_slice())
+                            .expect("failed parse to poi property");
 
-                            parse(property)
-                        })
-                        .collect()
-                })
-                .await
-                .expect("blocking task panicked");
+                        parse(property)
+                    })
+                    .collect();
 
                 futures::stream::iter(chunk_parsed)
-            }
+            };
+
+            tokio::spawn(task).map(|res| res.expect("blocking task panicked"))
         })
         .buffered(PARSER_THREADS)
         .flatten()

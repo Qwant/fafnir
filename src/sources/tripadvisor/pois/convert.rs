@@ -136,16 +136,14 @@ pub fn build_poi(
     let poi_type_name = cuisine
         .map(|cuisine| {
             format!(
-                "class_{} subclass_{} cuisine:{}",
-                category,
-                sub_category,
+                "class_{category} subclass_{sub_category} cuisine:{}",
                 cuisine.to_lowercase()
             )
         })
-        .unwrap_or_else(|| format!("class_{} subclass_{}", category, sub_category));
+        .unwrap_or_else(|| format!("class_{category} subclass_{sub_category}"));
 
     let poi_type = PoiType {
-        id: format!("class_{}:subclass_{}", category, sub_category),
+        id: format!("class_{category}:subclass_{sub_category}"),
         name: poi_type_name,
     };
 
@@ -172,7 +170,7 @@ pub fn build_poi(
                         .join(",")
                 })
                 .map(|opening_times| {
-                    format!("{} {}", day.name.get(0..2).unwrap_or(""), opening_times)
+                    format!("{} {opening_times}", day.day_name.get(0..2).unwrap_or(""))
                 })
         })
         .join("; ");

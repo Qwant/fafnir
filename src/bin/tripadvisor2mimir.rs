@@ -41,7 +41,7 @@ struct Settings {
 async fn read_gzip_file(path: &Path) -> impl AsyncBufRead {
     let file = File::open(path)
         .await
-        .unwrap_or_else(|err| panic!("could not open `{}`: {}", path.display(), err));
+        .unwrap_or_else(|err| panic!("could not open `{}`: {err}", path.display()));
 
     let raw = BufReader::with_capacity(XML_BUFFER_SIZE, file);
     BufReader::new(GzipDecoder::new(raw))
@@ -88,8 +88,8 @@ async fn load_and_index_tripadvisor(settings: Settings) {
             .await
             .expect("could not insert POIs into index");
 
-        info!("Parsed {} POIs", count_ok);
-        info!("Skipped POIs: {:?}", count_errors);
+        info!("Parsed {count_ok} POIs");
+        info!("Skipped POIs: {count_errors:?}");
         index_generator
     };
 
@@ -123,8 +123,8 @@ async fn load_and_index_tripadvisor(settings: Settings) {
             .await
             .expect("could not update documents from index");
 
-        info!("Parsed {} Photos", count_ok);
-        info!("Skipped Photos: {:?}", count_errors);
+        info!("Parsed {count_ok} Photos");
+        info!("Skipped Photos: {count_errors:?}");
         index_generator
     };
 
@@ -145,17 +145,16 @@ async fn load_and_index_tripadvisor(settings: Settings) {
             .filter(|(ta_id, _)| future::ready(indexed_documents.contains(ta_id)))
             .map(|(ta_id, reviews)| {
                 count_ok += 1;
+
                 let update_operations = reviews
                     .into_iter()
                     .enumerate()
-                    .map(|(review_id, review)| {
-                        let ident = format!("properties.ta:reviews:{review_id}");
-                        UpdateOperation::Set {
-                            ident,
-                            value: review,
-                        }
+                    .map(|(review_id, review)| UpdateOperation::Set {
+                        ident: format!("properties.ta:reviews:{review_id}"),
+                        value: review,
                     })
                     .collect();
+
                 (build_id(ta_id), update_operations)
             });
 
@@ -164,8 +163,8 @@ async fn load_and_index_tripadvisor(settings: Settings) {
             .await
             .expect("could not update documents from index");
 
-        info!("Parsed {} Reviews", count_ok);
-        info!("Skipped Reviews: {:?}", count_errors);
+        info!("Parsed {count_ok} reviews");
+        info!("Skipped Reviews: {count_errors:?}");
         index_generator
     };
 

@@ -131,7 +131,7 @@ async fn load_and_index_pois(settings: Settings) {
                 total_nb_pois += 1;
 
                 if total_nb_pois % settings.fafnir.log_indexed_count_interval == 0 {
-                    info!("Number of indexed POIs: {}", total_nb_pois)
+                    info!("Number of indexed POIs: {total_nb_pois}")
                 }
             }
         })
@@ -143,9 +143,9 @@ async fn load_and_index_pois(settings: Settings) {
         try_join!(index_search_task, index_nosearch_task, fetch_pois_task)
             .expect("failed to index POIs");
 
-    info!("Created index {:?} for searchable POIs", index_search);
-    info!("Created index {:?} for non-searchable POIs", index_nosearch);
-    info!("Total number of pois: {}", total_nb_pois);
+    info!("Created index {index_search:?} for searchable POIs");
+    info!("Created index {index_nosearch:?} for non-searchable POIs");
+    info!("Total number of pois: {total_nb_pois}");
 }
 
 #[tokio::main]

@@ -11,6 +11,7 @@ pub struct Property {
     pub longitude: Option<f64>,
     pub average_rating: Option<f64>,
     pub review_count: u64,
+    pub hours: Hours,
 
     #[serde(rename = "id")]
     pub id: u32,
@@ -41,9 +42,6 @@ pub struct Property {
 
     #[serde(rename = "PhoneNumber")]
     pub phone: Option<String>,
-
-    #[serde(rename = "Hours")]
-    pub hours: Hours,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -79,20 +77,16 @@ pub struct Hours {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Day {
-    #[serde(rename = "DayName")]
-    pub name: String,
-
-    #[serde(rename = "Time")]
+    pub day_name: String,
     pub time: Option<Vec<Time>>,
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Time {
-    #[serde(rename = "OpenTime")]
     pub open_time: String,
-
-    #[serde(rename = "CloseTime")]
     pub close_time: String,
 }
 

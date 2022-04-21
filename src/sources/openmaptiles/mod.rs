@@ -35,7 +35,7 @@ pub async fn fetch_pois<'a>(
         .await
         .expect("could not query postgres")
         .map(|row| {
-            row.unwrap_or_else(|err| panic!("error while fetching row from postgres: {}", err))
+            row.unwrap_or_else(|err| panic!("error while fetching row from postgres: {err}"))
         })
         .filter_map(move |row| {
             let poi = IndexedPoi::from_row(row, langs);

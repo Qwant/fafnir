@@ -34,12 +34,12 @@ impl PostgresDocker {
                 "POSTGRES_HOST_AUTH_METHOD=trust",
                 "-P",
                 "-d",
-                &format!("--name={}", name),
+                &format!("--name={name}"),
                 img,
             ])
             .status()?;
         if !status.success() {
-            return Err(format!("`docker run` failed {}", &status).into());
+            return Err(format!("`docker run` failed {status}").into());
         }
 
         // we need to get the ip of the container if the container has been run on another machine
@@ -49,7 +49,7 @@ impl PostgresDocker {
 
         let container_ip = ::std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.trim();
 
-        info!("container ip = {:?}", container_ip);
+        info!("container ip = {container_ip:?}");
         self.ip = container_ip.to_string();
         info!("Waiting for Postgres in docker to be up and running...");
 
@@ -68,21 +68,21 @@ impl PostgresDocker {
             tokio::time::sleep(Duration::from_millis(1000)).await;
         }
 
-        info!("{} docker is up and running", name);
+        info!("{name} docker is up and running");
         Ok(())
     }
 }
 
 fn docker_command(args: &[&'static str]) {
-    info!("Running docker {:?}", args);
+    info!("Running docker {args:?}");
     let status = Command::new("docker").args(args).status();
     match status {
         Ok(s) => {
             if !s.success() {
-                warn!("`docker {:?}` failed {}", args, s)
+                warn!("`docker {args:?}` failed {s}")
             }
         }
-        Err(e) => warn!("command `docker {:?}` failed {}", args, e),
+        Err(e) => warn!("command `docker {args:?}` failed {e}"),
     }
 }
 
