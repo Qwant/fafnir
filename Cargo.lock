@@ -740,6 +740,7 @@ dependencies = [
  "once_cell",
  "places",
  "quick-xml 0.22.0",
+ "reqwest",
  "serde",
  "serde_derive",
  "serde_json",

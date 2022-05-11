@@ -64,3 +64,10 @@
   visibility = "private"
   number_of_shards = 1
   number_of_replicas = 0
+
+[container-taginfo]
+  name = "brand"
+  dataset = "taginfo"
+  visibility = "private"
+  number_of_shards = 1
+  number_of_replicas = 0

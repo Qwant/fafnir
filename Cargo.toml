@@ -22,6 +22,7 @@ tokio = { version = "1.14", features = ["macros", "rt-multi-thread", "time", "sy
 tracing-futures = "0.2"
 tracing = { version = "0.1", default_features = false, features = ["release_max_level_info"] }
 url = { version = "2", features = ["serde"] }
+reqwest = { version = "0.11.9", features = ["json"] }
 
 mimirsbrunn = { git = "https://github.com/remi-dupre/mimirsbrunn.git", rev="13861dcabfba68d94a3cbc92d3b77262e1a8a7b6"}
 mimir = { git = "https://github.com/remi-dupre/mimirsbrunn.git", rev="13861dcabfba68d94a3cbc92d3b77262e1a8a7b6" }
@@ -36,3 +37,15 @@ approx = "0.5.0"
 inherits = "release"
 lto = "fat"
 codegen-units = 1
+
+[[bin]]
+name = "taginfo"
+path = "src/bin/taginfo2mimir.rs"
+
+[[bin]]
+name = "tripadvisor"
+path = "src/bin/tripadvisor2mimir.rs"
+
+[[bin]]
+name = "openmaptiles"
+path = "src/bin/openmaptiles2mimir.rs"
