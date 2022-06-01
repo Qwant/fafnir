@@ -128,46 +128,6 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         index_generator
     };
 
-    // Insert Reviews
-    let index_generator = {
-        let raw_xml = read_gzip_file(&settings.tripadvisor.reviews).await;
-        let mut count_ok: u64 = 0;
-        let mut count_errors: HashMap<_, u64> = HashMap::new();
-
-        let reviews = read_reviews(raw_xml)
-            .filter_map(|reviews| {
-                future::ready(
-                    reviews
-                        .map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
-                        .ok(),
-                )
-            })
-            .filter(|(ta_id, _)| future::ready(indexed_documents.contains(ta_id)))
-            .map(|(ta_id, reviews)| {
-                count_ok += 1;
-
-                let update_operations = reviews
-                    .into_iter()
-                    .enumerate()
-                    .map(|(review_id, review)| UpdateOperation::Set {
-                        ident: format!("properties.ta:reviews:{review_id}"),
-                        value: review,
-                    })
-                    .collect();
-
-                (build_id(ta_id), update_operations)
-            });
-
-        let index_generator = index_generator
-            .update_documents(reviews)
-            .await
-            .expect("could not update documents from index");
-
-        info!("Parsed {count_ok} reviews");
-        info!("Skipped Reviews: {count_errors:?}");
-        index_generator
-    };
-
     // Publish index
     index_generator
         .publish()
