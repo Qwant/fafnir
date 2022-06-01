@@ -18,10 +18,10 @@ const PHOTO_LIST: &str = concat!(
     "/tests/tripadvisor2mimir/data/photolist_liechtenstein.xml.gz"
 );
 
-const REVIEW_LIST: &str = concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/tests/tripadvisor2mimir/data/reviewlist_liechtenstein.xml.gz"
-);
+// const REVIEW_LIST: &str = concat!(
+//     env!("CARGO_MANIFEST_DIR"),
+//     "/tests/tripadvisor2mimir/data/reviewlist_liechtenstein.xml.gz"
+// );
 
 async fn init_tests(es_wrapper: &mut ElasticSearchWrapper, country_code: &str) {
     join!(load_es_data(es_wrapper, country_code),);
@@ -116,8 +116,8 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
             format!(r#"tripadvisor.properties="{}""#, PROPERTY_LIST),
             "-s".to_string(),
             format!(r#"tripadvisor.photos="{}""#, PHOTO_LIST),
-            "-s".to_string(),
-            format!(r#"tripadvisor.reviews="{}""#, REVIEW_LIST),
+            // "-s".to_string(),
+            // format!(r#"tripadvisor.reviews="{}""#, REVIEW_LIST),
         ],
     )
     .await;
@@ -163,8 +163,8 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     let b_eat = pois[0].poi().unwrap();
 
     // This POI should have reviews
-    assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:0"]).is_ok());
-    assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:1"]).is_ok());
+    // assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:0"]).is_ok());
+    // assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:1"]).is_ok());
 
     // Cuisine should match a OpenstreetMap cuisine tag
     assert_eq!(b_eat.poi_type.id, "class_restaurant:subclass_sit_down");
