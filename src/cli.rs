@@ -43,12 +43,12 @@ pub async fn run<S: DeserializeOwned, R: Future>(f: impl FnOnce(S) -> R) -> R::O
         serde_json::to_string_pretty(
             &raw_config
                 .clone()
-                .try_into::<serde_json::Value>()
+                .try_deserialize::<serde_json::Value>()
                 .expect("could not convert config to json"),
         )
         .expect("could not serialize config"),
     );
 
-    let settings: S = raw_config.try_into().expect("invalid fafnir config");
+    let settings: S = raw_config.try_deserialize().expect("invalid fafnir config");
     f(settings).await
 }
