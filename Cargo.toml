@@ -9,10 +9,10 @@ async-compression = { version = "0.3.8", features = [ "gzip", "tokio" ] }
 elasticsearch = "7.14.0-alpha.1"
 futures = { version = "0.3.16", default_features = false }
 geo-types = "0.7"
-itertools = "0.9"
+itertools = "0.10"
 num_cpus = "1.13"
 once_cell = "1.4"
-quick-xml = { version = "0.22.0", features = ["serialize"] }
+quick-xml = { version = "0.23", features = ["serialize"] }
 serde_json = { version = "1", features = ["raw_value"] }
 serde = { version = "1", default_features = false }
 structopt = "0.3"
@@ -23,12 +23,12 @@ tracing-futures = "0.2"
 tracing = { version = "0.1", default_features = false, features = ["release_max_level_info"] }
 url = { version = "2", features = ["serde"] }
 
-mimirsbrunn = { git = "https://github.com/remi-dupre/mimirsbrunn.git", rev="13861dcabfba68d94a3cbc92d3b77262e1a8a7b6"}
-mimir = { git = "https://github.com/remi-dupre/mimirsbrunn.git", rev="13861dcabfba68d94a3cbc92d3b77262e1a8a7b6" }
-places = { git = "https://github.com/remi-dupre/mimirsbrunn.git", rev="13861dcabfba68d94a3cbc92d3b77262e1a8a7b6" }
+mimirsbrunn = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "update-deps" }
+mimir = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "update-deps" }
+places = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "update-deps" }
 
 [dev-dependencies]
-cosmogony = "0.11"
+cosmogony = "0.12"
 serde_derive = "1"
 approx = "0.5.0"
 
