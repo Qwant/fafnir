@@ -19,20 +19,27 @@ use mimir::domain::ports::secondary::storage::Storage;
 use mimir::utils::docker;
 use places::poi::Poi;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tokio::process::Command;
 
 // Dataset name used for tests.
 static DATASET: &str = "test";
 static TRIPADVISOR_DATASET: &str = "tripadvisor";
 
-pub struct PostgresWrapper {
-    host: String,
-    // docker_wrpper: &'a PostgresDocker,
+#[derive(Clone)]
+pub enum PostgresWrapper {
+    /// Connect to an existing Postgres
+    External(String),
+    /// Manage a Postgres that was spawned in docker by the test suite
+    Managed(Arc<PostgresDocker>),
 }
 
 impl PostgresWrapper {
     pub fn host(&self) -> String {
-        self.host.to_string()
+        match self {
+            PostgresWrapper::External(host) => host.to_string(),
+            PostgresWrapper::Managed(docker) => docker.host(),
+        }
     }
 
     pub async fn get_conn(&self) -> tokio_postgres::Client {
@@ -48,19 +55,6 @@ impl PostgresWrapper {
             .await
             .unwrap()
     }
-
-    pub async fn new() -> PostgresWrapper {
-        let host = match std::env::var("FAFNIR_TEST_POSTGRES_URL") {
-            Ok(host) => host,
-            Err(_) => {
-                let pg_docker = PostgresDocker::new().await
-                    .expect("could not initialize Postgres Docker");
-                pg_docker.host()
-            }
-        };
-
-        PostgresWrapper { host }
-    }
 }
 
 pub struct ElasticSearchWrapper {
@@ -70,7 +64,6 @@ pub struct ElasticSearchWrapper {
 
 impl ElasticSearchWrapper {
     pub async fn new() -> ElasticSearchWrapper {
-
         let host = match std::env::var("FAFNIR_TEST_ELASTICSEARCH_URL") {
             Ok(host) => host,
             Err(_) => {
@@ -220,34 +213,29 @@ async fn launch_and_assert(cmd: &'static str, args: Vec<std::string::String>) {
 
 #[tokio::test]
 async fn fafnir_test() {
+    let pg_wrapper = match std::env::var("FAFNIR_TEST_POSTGRES_URL") {
+        Ok(host) => PostgresWrapper::External(host),
+        Err(_) => {
+            let pg_docker = PostgresDocker::new()
+                .await
+                .expect("could not initialize Postgres Docker");
 
-    openmaptiles2mimir::main_test(
-        ElasticSearchWrapper::new().await,
-        PostgresWrapper::new().await,
-    )
-    .await;
+            PostgresWrapper::Managed(Arc::new(pg_docker))
+        }
+    };
 
-    openmaptiles2mimir::bbox_test(
-        ElasticSearchWrapper::new().await,
-        PostgresWrapper::new().await,
-    )
-    .await;
+    openmaptiles2mimir::main_test(ElasticSearchWrapper::new().await, pg_wrapper.clone()).await;
+    openmaptiles2mimir::bbox_test(ElasticSearchWrapper::new().await, pg_wrapper.clone()).await;
 
-    openmaptiles2mimir::test_with_langs(
-        ElasticSearchWrapper::new().await,
-        PostgresWrapper::new().await,
-    )
-    .await;
+    openmaptiles2mimir::test_with_langs(ElasticSearchWrapper::new().await, pg_wrapper.clone())
+        .await;
 
-    openmaptiles2mimir::test_address_format(
-        ElasticSearchWrapper::new().await,
-        PostgresWrapper::new().await,
-    )
-    .await;
+    openmaptiles2mimir::test_address_format(ElasticSearchWrapper::new().await, pg_wrapper.clone())
+        .await;
 
     openmaptiles2mimir::test_current_country_label(
         ElasticSearchWrapper::new().await,
-        PostgresWrapper::new().await,
+        pg_wrapper.clone(),
     )
     .await;
 
