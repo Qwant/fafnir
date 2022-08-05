@@ -221,6 +221,7 @@ pub fn build_poi(
             labels,
             distance: None,
             context: None,
+            full_label: vec![],
         },
     ))
 }
