@@ -404,10 +404,7 @@ pub async fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
     );
 }
 
-pub async fn test_with_langs(
-    mut es_wrapper: ElasticSearchWrapper,
-    pg_wrapper: PostgresWrapper,
-) {
+pub async fn test_with_langs(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     super::launch_and_assert(
         OPENMAPTILES2MIMIR_BIN,
