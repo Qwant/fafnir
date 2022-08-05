@@ -220,7 +220,6 @@ async fn launch_and_assert(cmd: &'static str, args: Vec<std::string::String>) {
 
 #[tokio::test]
 async fn fafnir_test() {
-    let pg_docker = PostgresDocker::new().await.unwrap();
 
     openmaptiles2mimir::main_test(
         ElasticSearchWrapper::new().await,
