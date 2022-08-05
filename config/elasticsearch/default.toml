@@ -40,6 +40,9 @@
   # Number of segments to merge to.
   max_number_segments = 1
 
+  # Force refresh before force_merge
+  refresh = true
+
 # Setup a backoff to wait after a bulk operation fail and retry the operation,
 # each successive retry will wait twice as long as the previous one.
 [elasticsearch.bulk_backoff]
