@@ -122,6 +122,8 @@ pub fn build_poi(
         .replace(' ', "_")
         .to_lowercase();
 
+    let full_label = vec![category.clone(), administrative_regions.get(0).unwrap().label.clone()];
+
     let cuisine = (property.cuisine.inner)
         .iter()
         .filter_map(|item| get_local_string(&["us".to_string()], &item.name))
@@ -221,7 +223,7 @@ pub fn build_poi(
             labels,
             distance: None,
             context: None,
-            full_label: vec![],
+            full_label,
         },
     ))
 }
