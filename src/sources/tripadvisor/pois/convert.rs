@@ -122,7 +122,10 @@ pub fn build_poi(
         .replace(' ', "_")
         .to_lowercase();
 
-    let full_label = vec![category.clone(), administrative_regions.get(0).unwrap().label.clone()];
+    let full_label = vec![
+        category.clone(),
+        administrative_regions.get(0).unwrap().label.clone(),
+    ];
 
     let cuisine = (property.cuisine.inner)
         .iter()
