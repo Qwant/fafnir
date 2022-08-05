@@ -122,7 +122,7 @@ pub fn build_poi(
         .replace(' ', "_")
         .to_lowercase();
 
-    let full_label = vec![
+    let full_label_extra = vec![
         category.clone(),
         administrative_regions.get(0).unwrap().label.clone(),
     ];
@@ -226,7 +226,7 @@ pub fn build_poi(
             labels,
             distance: None,
             context: None,
-            full_label,
+            full_label_extra,
         },
     ))
 }

@@ -395,7 +395,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "2.10.0"
-source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=update_rustup_version#02d356fc84bf1513c1f7c1088ef3d5c1b0575971"
+source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=update_to_full_label_extra#b2fd0d0460f455a34b35ca62dcff73ed11591f88"
 dependencies = [
  "config",
  "serde",
@@ -1479,7 +1479,7 @@ dependencies = [
 [[package]]
 name = "mimir"
 version = "2.10.0"
-source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=update_rustup_version#02d356fc84bf1513c1f7c1088ef3d5c1b0575971"
+source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=update_to_full_label_extra#b2fd0d0460f455a34b35ca62dcff73ed11591f88"
 dependencies = [
  "async-trait",
  "bollard",
@@ -1516,7 +1516,7 @@ dependencies = [
 [[package]]
 name = "mimirsbrunn"
 version = "2.10.0"
-source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=update_rustup_version#02d356fc84bf1513c1f7c1088ef3d5c1b0575971"
+source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=update_to_full_label_extra#b2fd0d0460f455a34b35ca62dcff73ed11591f88"
 dependencies = [
  "address-formatter",
  "anyhow",
@@ -2002,7 +2002,7 @@ checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
 [[package]]
 name = "places"
 version = "2.10.0"
-source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=update_rustup_version#02d356fc84bf1513c1f7c1088ef3d5c1b0575971"
+source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=update_to_full_label_extra#b2fd0d0460f455a34b35ca62dcff73ed11591f88"
 dependencies = [
  "chrono-tz",
  "common",

@@ -192,8 +192,8 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     assert_eq!(&suecka_poi.properties.get("opening_hours"), &None);
     assert_eq!(&suecka_poi.properties.get("average_rating"), &None);
 
-    // Full label is pre filled with category and administration
-    assert_eq!(suecka_poi.full_label, ["hotel", "bob's town"]);
+    // Full label is filled with category and administration
+    assert_eq!(suecka_poi.full_label_extra, ["hotel", "bob's town"]);
 
     // Hotel subclass should match a OpenstreetMap category tag
     let poi_type = &suecka_poi.poi_type;
@@ -218,6 +218,6 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     // There is no image in the feed for this POI
     assert!(!bartolotta.properties.contains_key("image"));
 
-    // Full label is pre filled with category and administration
-    assert_eq!(bartolotta.full_label, ["restaurant", "bob's town"]);
+    // Full label extra is filled with category and administration
+    assert_eq!(bartolotta.full_label_extra, ["restaurant", "bob's town"]);
 }
