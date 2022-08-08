@@ -262,7 +262,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
         .search_and_filter("name:4 gusto", |_| true)
         .await
         .collect();
-    assert_eq!(&gusto_query.len(), &1);
+    assert_eq!(&gusto_query.len(), &2);
     let gusto = &gusto_query[0];
     assert!(&gusto.is_poi());
     let gusto = &gusto.poi().unwrap();
