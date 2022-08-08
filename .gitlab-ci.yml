@@ -58,7 +58,7 @@ test:
   before_script:
     - source ci/bootstrap.sh
   script:
-    - make test
+    - cargo test
   cache:
     key: $CI_PROJECT_NAME-$CI_JOB_STAGE
     paths:
