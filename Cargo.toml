@@ -28,9 +28,9 @@ tracing-futures = "0.2"
 tracing = { version = "0.1", default_features = false, features = ["release_max_level_info"] }
 url = { version = "2", features = ["serde"] }
 
-mimirsbrunn = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "master" }
-mimir = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "master" }
-places = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "master" }
+mimirsbrunn = { path = "vendor/mimirsbrunn" }
+mimir = { path = "vendor/mimirsbrunn/libs/mimir" }
+places = { path = "vendor/mimirsbrunn/libs/places" }
 
 [dev-dependencies]
 cosmogony = "0.12"

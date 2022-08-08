@@ -1,0 +1,6 @@
+[submodule "ci/bootstrap"]
+	path = ci/bootstrap
+	url = ../../../continuous-integration/gitlab-runner-bootstrap.git
+[submodule "vendor/mimirsbrunn"]
+	path = vendor/mimirsbrunn
+	url = ../../../product/maps/mimirsbrunn.git
