@@ -223,10 +223,16 @@ impl IndexedPoi {
                 }
             }
             res.poi.zip_codes = zip_codes;
-            res.poi.full_label_extra.insert(
-                1,
-                res.poi.administrative_regions.get(0).unwrap().label.clone(),
-            );
+
+            let full_label_admins: Vec<String> = res
+                .poi
+                .administrative_regions
+                .iter()
+                .filter(|admin| admin.level == 8 || admin.level == 6)
+                .map(|admin| admin.name.clone())
+                .collect();
+
+            res.poi.full_label_extra.extend(full_label_admins);
             res.poi.country_codes = country_codes;
             Some(res)
         })
