@@ -96,23 +96,19 @@ build mimirsbrunn:
     ARGOAPP_REPO_BASEDIR: "deployments"
     ARGOAPP_REPO_URL_SSH: "git@git.qwant.ninja:teams/search-apps/argo_apps.git"
     ARGOCD_APP_ENVIRONMENT: "$CI_ENVIRONMENT_NAME"
+    ARGOAPP_REPO_PATH: "maps/mimirsbrunn"
+    ARGOAPP_REPO_BRANCH: "QMAPS-2829"
+    IMAGE_VERSION_FILE: "overlays/${CI_JOB_STAGE}/kustomization.yaml"
+  resource_group: "fafnir-$CI_JOB_STAGE"
+  script:
+    - sync-version-argocd 
+      --docker-image "$CI_COMMIT_SHORT_SHA"
+      --image-version-object-path "(.images[] | select(.name == \"$CI_REGISTRY_IMAGE\") | .newTag)"
   before_script:
     - source ci/bootstrap.sh
   when: manual
   tags:
     - docker
-
-.deploy:mimir:
-  extends: .deploy
-  variables:
-    ARGOAPP_REPO_PATH: "maps/mimirsbrunn"
-    ARGOAPP_REPO_BRANCH: "QMAPS-2829"
-    IMAGE_VERSION_FILE: "overlays/${CI_JOB_STAGE}/kustomization.yaml"
-  resource_group: "mimir-$CI_JOB_STAGE"
-  script:
-    - sync-version-argocd 
-      --docker-image "$CI_COMMIT_SHORT_SHA"
-      --image-version-object-path "(.images[] | select(.name == \"$CI_REGISTRY_IMAGE\") | .newTag)"
 
 #
 # Deploy Mimir docker image
