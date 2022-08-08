@@ -32,7 +32,7 @@ lint:
   extends: .lint
   variables:
     CLIPPY_PACKAGES: "-p fafnir"
-    CLIPPY_EXTRA: "--warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings"
+    CLIPPY_EXTRA: "--allow clippy::multiple_crate_versions --deny warnings"
   before_script:
     - source ci/bootstrap.sh
     - rustup component add clippy
