@@ -54,7 +54,7 @@ test:
     CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
     GIT_SUBMODULE_STRATEGY: recursive
     FAFNIR_TEST_ELASTICSEARCH__URL: 'http://elasticsearch:9200'
-    FAFNIR_TEST_POSTGRES__URL: 'psql://postgres:9200'
+    FAFNIR_TEST_POSTGRES_URL: 'psql://postgres:9200'
   before_script:
     - source ci/bootstrap.sh
   script:
