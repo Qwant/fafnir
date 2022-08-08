@@ -122,10 +122,15 @@ pub fn build_poi(
         .replace(' ', "_")
         .to_lowercase();
 
-    let full_label_extra = vec![
-        category.clone(),
-        administrative_regions.get(0).unwrap().label.clone(),
-    ];
+    // Get only city and department admin for the full label
+    let full_label_admins: Vec<String> = administrative_regions
+        .iter()
+        .filter(|admin| admin.level == 8 || admin.level == 6)
+        .map(|admin| admin.name.clone())
+        .collect();
+
+    let mut full_label_extra = vec![category.clone()];
+    full_label_extra.extend(full_label_admins);
 
     let cuisine = (property.cuisine.inner)
         .iter()
