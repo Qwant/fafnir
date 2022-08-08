@@ -53,7 +53,7 @@ test:
   variables:
     CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
     GIT_SUBMODULE_STRATEGY: recursive
-    FAFNIR_TEST_ELASTICSEARCH__URL: 'http://elasticsearch:9200'
+    FAFNIR_TEST_ELASTICSEARCH_URL: 'http://elasticsearch:9200'
     FAFNIR_TEST_POSTGRES_URL: 'psql://postgres:9200'
   before_script:
     - source ci/bootstrap.sh
@@ -90,9 +90,9 @@ test:
 build mimirsbrunn:
   extends: .build
   variables:
-    DOCKER_CONFIG: "$CI_PROJECT_DIR/mimirsbrunn/.docker"
+    DOCKER_CONFIG: "$CI_PROJECT_DIR/.docker"
   script:
-    - docker-compose build mimirsbrunn
+    - docker-compose build
     - docker-compose push
 
 .deploy:
