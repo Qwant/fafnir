@@ -83,10 +83,11 @@ impl PoisQuery {
         );
 
         if let Some([lat1, lon1, lat2, lon2]) = self.bbox {
-            result.push_str(&format!(
+            result += format!(
                 "WHERE ST_MakeEnvelope({lat1}, {lon1}, {lat2}, {lon2}, 4326)
-                    && st_transform(geometry, 4326)",
-            ));
+                    && st_transform(geometry, 4326)"
+            )
+            .as_str();
         }
 
         result
@@ -165,7 +166,7 @@ impl TableQuery {
         );
 
         if let Some(ref filter) = self.filter {
-            result.push_str(&format!(" WHERE {filter}"));
+            result += format!(" WHERE {filter}").as_str();
         }
 
         result

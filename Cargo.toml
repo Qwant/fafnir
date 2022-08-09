@@ -2,6 +2,11 @@
 name = "fafnir"
 version = "0.3.12"
 authors = ["Adrien Matissart <a.matissart@qwantresearch.com>"]
+description = "Tripadvisor and OSM elasticsearch importer"
+keywords = [ "fafnir", "elasticsearch", "pipeline", "importer" ]
+license = "AGPLv3"
+repository = "https://github.com/Qwant/fafnir"
+categories = [ "application" ]
 edition = "2021"
 
 [dependencies]
@@ -23,9 +28,9 @@ tracing-futures = "0.2"
 tracing = { version = "0.1", default_features = false, features = ["release_max_level_info"] }
 url = { version = "2", features = ["serde"] }
 
-mimirsbrunn = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "update_to_full_label_extra" }
-mimir = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "update_to_full_label_extra" }
-places = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "update_to_full_label_extra" }
+mimirsbrunn = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "master" }
+mimir = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "master" }
+places = { git = "https://github.com/Qwant/mimirsbrunn.git", branch = "master" }
 
 [dev-dependencies]
 cosmogony = "0.12"
