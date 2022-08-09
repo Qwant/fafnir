@@ -189,6 +189,9 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
         &"class_cafe subclass_cafe cuisine:japanese cuisine:coffee_shop"
     );
 
+    // Full label is filled with category and all administration
+    assert_eq!(&ocean_poi.full_label_extra, &vec!["cafe", "bob's town"]);
+
     // Test Properties: the amenity property for this POI should be "cafe"
     let properties_ocean_poi = &ocean_poi.properties;
     let amenity_tag = properties_ocean_poi
@@ -259,7 +262,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
         .search_and_filter("name:4 gusto", |_| true)
         .await
         .collect();
-    assert_eq!(&gusto_query.len(), &1);
+    assert_eq!(&gusto_query.len(), &2);
     let gusto = &gusto_query[0];
     assert!(&gusto.is_poi());
     let gusto = &gusto.poi().unwrap();

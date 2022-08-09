@@ -106,6 +106,8 @@ impl IndexedPoi {
         let is_searchable =
             !name.is_empty() && !NON_SEARCHABLE_ITEMS.contains(&(mapping_key, subclass));
 
+        let full_label_extra = vec![class.clone()];
+
         let poi = Poi {
             id,
             coord: poi_coord,
@@ -120,6 +122,7 @@ impl IndexedPoi {
             weight,
             names,
             labels: I18nProperties::default(),
+            full_label_extra,
             ..Default::default()
         };
 
@@ -220,6 +223,16 @@ impl IndexedPoi {
                 }
             }
             res.poi.zip_codes = zip_codes;
+
+            let full_label_admins: Vec<String> = res
+                .poi
+                .administrative_regions
+                .iter()
+                .filter(|admin| admin.level == 8 || admin.level == 6)
+                .map(|admin| admin.name.clone())
+                .collect();
+
+            res.poi.full_label_extra.extend(full_label_admins);
             res.poi.country_codes = country_codes;
             Some(res)
         })
