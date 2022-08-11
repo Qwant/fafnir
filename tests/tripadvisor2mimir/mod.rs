@@ -11,16 +11,16 @@ const TRIPADVISOR2MIMIR_BIN: &str = concat!(env!("OUT_DIR"), "/../../../tripadvi
 const CONFIG_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/config");
 const PROPERTY_LIST: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/tests/tripadvisor2mimir/data/propertylist_liechtenstein.xml.gz"
+    "/tests/tripadvisor2mimir/data/propertylist_liechtenstein.json.gz"
 );
 const PHOTO_LIST: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/tests/tripadvisor2mimir/data/photolist_liechtenstein.xml.gz"
+    "/tests/tripadvisor2mimir/data/photolist_liechtenstein.json.gz"
 );
 
 const REVIEW_LIST: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/tests/tripadvisor2mimir/data/reviewlist_liechtenstein.xml.gz"
+    "/tests/tripadvisor2mimir/data/reviewlist_liechtenstein.json.gz"
 );
 
 async fn init_tests(es_wrapper: &mut ElasticSearchWrapper, country_code: &str) {
