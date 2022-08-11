@@ -1,0 +1,637 @@
+{
+  "Name" : [ {
+    "lang" : "de_AT"
+  }, {
+    "lang" : "de"
+  }, {
+    "lang" : "it_CH"
+  }, {
+    "lang" : "pt"
+  }, {
+    "lang" : "en_PH"
+  }, {
+    "lang" : "hu"
+  }, {
+    "lang" : "es_MX"
+  }, {
+    "lang" : "en_HK"
+  }, {
+    "lang" : "nl_BE"
+  }, {
+    "lang" : "es_VE"
+  }, {
+    "lang" : "in"
+  }, {
+    "lang" : "es_AR"
+  }, {
+    "lang" : "el"
+  }, {
+    "lang" : "en",
+    "value" : "Bergrestaurant Suecka"
+  }, {
+    "lang" : "it"
+  }, {
+    "lang" : "zh"
+  }, {
+    "lang" : "en_UK"
+  }, {
+    "lang" : "iw"
+  }, {
+    "lang" : "es"
+  }, {
+    "lang" : "en_IE"
+  }, {
+    "lang" : "ar"
+  }, {
+    "lang" : "vi"
+  }, {
+    "lang" : "ja"
+  }, {
+    "lang" : "en_IN"
+  }, {
+    "lang" : "nl"
+  }, {
+    "lang" : "en_ZA"
+  }, {
+    "lang" : "en_MY"
+  }, {
+    "lang" : "no"
+  }, {
+    "lang" : "fi"
+  }, {
+    "lang" : "ru",
+    "value" : "Бергрештаурант Зюка"
+  }, {
+    "lang" : "fr_BE"
+  }, {
+    "lang" : "en_AU"
+  }, {
+    "lang" : "fr"
+  }, {
+    "lang" : "zh_TW"
+  }, {
+    "lang" : "zh_HK"
+  }, {
+    "lang" : "de_CH"
+  }, {
+    "lang" : "sk"
+  }, {
+    "lang" : "es_CO"
+  }, {
+    "lang" : "es_CL"
+  }, {
+    "lang" : "sr"
+  }, {
+    "lang" : "en_NZ"
+  }, {
+    "lang" : "es_PE"
+  }, {
+    "lang" : "fr_CA"
+  }, {
+    "lang" : "sv"
+  }, {
+    "lang" : "ko"
+  }, {
+    "lang" : "en_SG"
+  }, {
+    "lang" : "fr_CH"
+  }, {
+    "lang" : "cs"
+  }, {
+    "lang" : "th"
+  }, {
+    "lang" : "en_CA"
+  }, {
+    "lang" : "zh_CN"
+  }, {
+    "lang" : "pl"
+  }, {
+    "lang" : "da"
+  }, {
+    "lang" : "ar_AE"
+  }, {
+    "lang" : "tr"
+  }, {
+    "lang" : "pt_PT"
+  } ],
+  "TripAdvisorURL" : "https://www.tripadvisor.com/Hotel_Review-g190370-d1700084-Reviews-Bergrestaurant_Suecka-Triesenberg.html?m=66562",
+  "ViewPhotosURL" : "https://www.tripadvisor.com/Hotel_Review-g190370-d1700084-Reviews-Bergrestaurant_Suecka-Triesenberg.html?m=66562#photos",
+  "BookingURL" : "https://www.tripadvisor.com/Hotel_Review-g190370-d1700084-Reviews-Bergrestaurant_Suecka-Triesenberg.html?m=66562",
+  "WriteReviewURL" : "https://www.tripadvisor.com/UserReview-g190370-d1700084-Bergrestaurant_Suecka-Triesenberg.html?m=66562",
+  "Category" : [ {
+    "lang" : "de_AT"
+  }, {
+    "lang" : "de",
+    "value" : "Hotel"
+  }, {
+    "lang" : "it_CH"
+  }, {
+    "lang" : "pt",
+    "value" : "Hotel"
+  }, {
+    "lang" : "en_PH"
+  }, {
+    "lang" : "hu",
+    "value" : "Hotel"
+  }, {
+    "lang" : "es_MX"
+  }, {
+    "lang" : "en_HK"
+  }, {
+    "lang" : "nl_BE"
+  }, {
+    "lang" : "es_VE"
+  }, {
+    "lang" : "in",
+    "value" : "Hotel"
+  }, {
+    "lang" : "es_AR"
+  }, {
+    "lang" : "el",
+    "value" : "Ξενοδοχείο"
+  }, {
+    "lang" : "en",
+    "value" : "Hotel"
+  }, {
+    "lang" : "it",
+    "value" : "Hotel"
+  }, {
+    "lang" : "zh",
+    "value" : "酒店"
+  }, {
+    "lang" : "en_UK",
+    "value" : "Hotel"
+  }, {
+    "lang" : "iw",
+    "value" : "מלון"
+  }, {
+    "lang" : "es",
+    "value" : "Hotel"
+  }, {
+    "lang" : "en_IE",
+    "value" : "Hotel"
+  }, {
+    "lang" : "ar",
+    "value" : "فندق"
+  }, {
+    "lang" : "vi",
+    "value" : "Khách sạn"
+  }, {
+    "lang" : "ja",
+    "value" : "ホテル"
+  }, {
+    "lang" : "en_IN"
+  }, {
+    "lang" : "nl",
+    "value" : "Hotel"
+  }, {
+    "lang" : "en_ZA"
+  }, {
+    "lang" : "en_MY"
+  }, {
+    "lang" : "no",
+    "value" : "Hotell"
+  }, {
+    "lang" : "fi",
+    "value" : "Hotelli"
+  }, {
+    "lang" : "ru",
+    "value" : "Отель"
+  }, {
+    "lang" : "fr_BE"
+  }, {
+    "lang" : "en_AU"
+  }, {
+    "lang" : "fr",
+    "value" : "Hôtel"
+  }, {
+    "lang" : "zh_TW",
+    "value" : "飯店"
+  }, {
+    "lang" : "zh_HK"
+  }, {
+    "lang" : "de_CH"
+  }, {
+    "lang" : "sk",
+    "value" : "Hotel"
+  }, {
+    "lang" : "es_CO"
+  }, {
+    "lang" : "es_CL"
+  }, {
+    "lang" : "sr",
+    "value" : "Hotel"
+  }, {
+    "lang" : "en_NZ"
+  }, {
+    "lang" : "es_PE"
+  }, {
+    "lang" : "fr_CA"
+  }, {
+    "lang" : "sv",
+    "value" : "Hotell"
+  }, {
+    "lang" : "ko",
+    "value" : "호텔"
+  }, {
+    "lang" : "en_SG"
+  }, {
+    "lang" : "fr_CH"
+  }, {
+    "lang" : "cs",
+    "value" : "Hotel"
+  }, {
+    "lang" : "th",
+    "value" : "โรงแรม"
+  }, {
+    "lang" : "en_CA"
+  }, {
+    "lang" : "zh_CN",
+    "value" : "酒店"
+  }, {
+    "lang" : "pl",
+    "value" : "Hotel"
+  }, {
+    "lang" : "da",
+    "value" : "Hotel"
+  }, {
+    "lang" : "ar_AE"
+  }, {
+    "lang" : "tr",
+    "value" : "Otel"
+  }, {
+    "lang" : "pt_PT",
+    "value" : "Hotel"
+  } ],
+  "Address" : [ {
+    "lang" : "en",
+    "value" : "Alp Sucka Sueckastrasse 41 Sückastrasse 41, Triesenberg 9497 Liechtenstein"
+  } ],
+  "GeoHierarchy" : "1:9999:World|4:10000:Europe|190357:10001:Liechtenstein|190370:10004:Triesenberg",
+  "PhoneNumber" : {
+    "type" : "main",
+    "Number" : "+423 263 25 79"
+  },
+  "PropertyURL" : "http://www.tourismus.li",
+  "Latitude" : 47.1163,
+  "Longitude" : 9.56505,
+  "GeoCodes" : [ {
+    "GeoCodeSource" : "tripadvisor",
+    "Latitude" : 47.1163,
+    "Longitude" : 9.56505
+  } ],
+  "AverageRating" : 4.5,
+  "ReviewCount" : 5,
+  "Hours" : {
+    "Day" : [ {
+      "DayName" : "Sunday"
+    }, {
+      "DayName" : "Monday"
+    }, {
+      "DayName" : "Tuesday"
+    }, {
+      "DayName" : "Wednesday"
+    }, {
+      "DayName" : "Thursday"
+    }, {
+      "DayName" : "Friday"
+    }, {
+      "DayName" : "Saturday"
+    } ],
+    "TimeZone" : "Europe/Vaduz"
+  },
+  "Closed" : false,
+  "LocationString" : [ {
+    "lang" : "de",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "de_AT",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "pt",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "it_CH",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "en_PH",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "hu",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "es_MX",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "en_HK",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "es_VE",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "nl_BE",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "in",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "es_AR",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "el",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "en",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "it",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "es",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "en_UK",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "iw",
+    "value" : "טריזנברג"
+  }, {
+    "lang" : "zh",
+    "value" : "特里森贝格"
+  }, {
+    "lang" : "en_IE",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "ar",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "vi",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "ja",
+    "value" : "トリーゼンベルク"
+  }, {
+    "lang" : "en_IN",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "nl",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "en_ZA",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "en_MY",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "no",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "fi",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "ru",
+    "value" : "Тризенберг"
+  }, {
+    "lang" : "fr_BE",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "en_AU",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "fr",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "de_CH",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "zh_HK",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "zh_TW",
+    "value" : "特里森貝格"
+  }, {
+    "lang" : "sk",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "es_CO",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "es_CL",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "sr",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "en_NZ",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "es_PE",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "sv",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "fr_CA",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "ko",
+    "value" : "트리젠베르크"
+  }, {
+    "lang" : "en_SG",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "fr_CH",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "cs",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "th",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "en_CA",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "zh_CN",
+    "value" : "特里森贝格"
+  }, {
+    "lang" : "pl",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "da",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "tr",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "ar_AE",
+    "value" : "Triesenberg"
+  }, {
+    "lang" : "pt_PT",
+    "value" : "Triesenberg"
+  } ],
+  "AttractionTypes" : { },
+  "id" : 1700084,
+  "geoid" : 190370,
+  "SubCategories" : [ {
+    "Name" : [ {
+      "lang" : "de_AT",
+      "value" : "B&B"
+    }, {
+      "lang" : "de",
+      "value" : "B&B"
+    }, {
+      "lang" : "it_CH",
+      "value" : "Bed & Breakfast"
+    }, {
+      "lang" : "pt",
+      "value" : "Pousada (B&B)"
+    }, {
+      "lang" : "en_PH"
+    }, {
+      "lang" : "hu",
+      "value" : "B&B"
+    }, {
+      "lang" : "es_MX",
+      "value" : "Bed and breakfast"
+    }, {
+      "lang" : "en_HK"
+    }, {
+      "lang" : "nl_BE",
+      "value" : "Bed and breakfast"
+    }, {
+      "lang" : "es_VE",
+      "value" : "Bed and breakfast"
+    }, {
+      "lang" : "in",
+      "value" : "B & B"
+    }, {
+      "lang" : "es_AR",
+      "value" : "Bed and breakfast"
+    }, {
+      "lang" : "el",
+      "value" : "B&B (Δωμάτιο με πρωινό)"
+    }, {
+      "lang" : "en",
+      "value" : "Bed and Breakfast"
+    }, {
+      "lang" : "it",
+      "value" : "Bed & Breakfast"
+    }, {
+      "lang" : "zh",
+      "value" : "B&B"
+    }, {
+      "lang" : "en_UK",
+      "value" : "Bed and Breakfast"
+    }, {
+      "lang" : "iw",
+      "value" : "B&B"
+    }, {
+      "lang" : "es",
+      "value" : "Hostal"
+    }, {
+      "lang" : "en_IE",
+      "value" : "Bed and Breakfast"
+    }, {
+      "lang" : "ar",
+      "value" : "فندق مبيت وإفطار"
+    }, {
+      "lang" : "vi",
+      "value" : "B&B"
+    }, {
+      "lang" : "ja",
+      "value" : "B＆B"
+    }, {
+      "lang" : "en_IN"
+    }, {
+      "lang" : "nl",
+      "value" : "Bed and breakfast"
+    }, {
+      "lang" : "en_ZA"
+    }, {
+      "lang" : "en_MY"
+    }, {
+      "lang" : "no",
+      "value" : "Bed & Breakfast"
+    }, {
+      "lang" : "fi",
+      "value" : "B&B"
+    }, {
+      "lang" : "ru",
+      "value" : "B&B/мини-отель"
+    }, {
+      "lang" : "fr_BE",
+      "value" : "Chambre d'hôtes"
+    }, {
+      "lang" : "en_AU"
+    }, {
+      "lang" : "fr",
+      "value" : "Chambre d'hôtes"
+    }, {
+      "lang" : "zh_TW",
+      "value" : "民宿"
+    }, {
+      "lang" : "zh_HK",
+      "value" : "民宿"
+    }, {
+      "lang" : "de_CH",
+      "value" : "B&B"
+    }, {
+      "lang" : "sk",
+      "value" : "Nocľah s raňajkami"
+    }, {
+      "lang" : "es_CO",
+      "value" : "Bed and breakfast"
+    }, {
+      "lang" : "es_CL",
+      "value" : "Bed and breakfast"
+    }, {
+      "lang" : "sr",
+      "value" : "Noćenje s doručkom"
+    }, {
+      "lang" : "en_NZ"
+    }, {
+      "lang" : "es_PE",
+      "value" : "Bed and breakfast"
+    }, {
+      "lang" : "fr_CA",
+      "value" : "Gîte touristique"
+    }, {
+      "lang" : "sv",
+      "value" : "Bed and breakfast"
+    }, {
+      "lang" : "ko",
+      "value" : "비엔비"
+    }, {
+      "lang" : "en_SG"
+    }, {
+      "lang" : "fr_CH",
+      "value" : "Chambre d'hôtes"
+    }, {
+      "lang" : "cs",
+      "value" : "Nocleh se snídaní"
+    }, {
+      "lang" : "th",
+      "value" : "ที่พักพร้อมอาหารเช้า"
+    }, {
+      "lang" : "en_CA"
+    }, {
+      "lang" : "zh_CN",
+      "value" : "B&B"
+    }, {
+      "lang" : "pl",
+      "value" : "Pensjonat B&B"
+    }, {
+      "lang" : "da",
+      "value" : "Bed and Breakfast"
+    }, {
+      "lang" : "ar_AE"
+    }, {
+      "lang" : "tr",
+      "value" : "Pansiyon"
+    }, {
+      "lang" : "pt_PT",
+      "value" : "Estalagem"
+    } ]
+  } ]
+}
