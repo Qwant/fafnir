@@ -1,4 +1,4 @@
-//! Models for TripAdvisor's XML PropertyList feed structure.
+//! Models for TripAdvisor's JSON PropertyList feed structure.
 
 use serde::{Deserialize, Deserializer};
 
@@ -26,7 +26,7 @@ pub struct Property {
     pub address: I18nProperties,
 
     #[serde(default)]
-    pub sub_categories: SubCategories,
+    pub sub_categories: Vec<SubCategory>,
 
     #[serde(default)]
     pub cuisine: Cuisine,
@@ -41,8 +41,18 @@ pub struct Property {
     pub url: Option<String>,
 
     #[serde(rename = "PhoneNumber")]
-    pub phone: Option<String>,
+    pub phone: Phone,
 }
+
+
+#[derive(Debug, Default, Deserialize)]
+pub struct Phone {
+    #[serde(rename = "type")]
+    pub _type: Option<String>,
+    #[serde(rename = "Number")]
+    pub number: Option<String>,
+}
+
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Cuisine {
@@ -57,18 +67,13 @@ pub struct Item {
     pub name: I18nProperties,
 }
 
-#[derive(Debug, Default, Deserialize)]
-pub struct SubCategories {
-    #[serde(rename = "SubCategory")]
-    pub inner: Vec<SubCategory>,
-}
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct SubCategory {
     #[serde(deserialize_with = "deserialize_i18n")]
     pub name: I18nProperties,
 }
+
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Hours {
@@ -92,23 +97,27 @@ pub struct Time {
 
 /// Serialize i18n info into mimirsbrunn's I18nProperty:
 ///
-/// <Key lang="fr"/>
-/// <Key lang="en"/>
+/// [{
+///     "lang": "el"
+/// },
+/// {
+///     "lang": "en",
+///     "value": "Bergrestaurant Suecka2"
+/// }]
 /// ...
 pub fn deserialize_i18n<'de, D>(deserializer: D) -> Result<I18nProperties, D::Error>
 where
     D: Deserializer<'de>,
 {
     #[derive(Deserialize)]
-    pub struct XmlI18nProperty {
+    pub struct JsonI18nProperty {
         pub lang: String,
-        #[serde(rename = "$value")]
         pub value: Option<String>,
     }
 
-    let xml_i18n: Vec<XmlI18nProperty> = Deserialize::deserialize(deserializer)?;
+    let json_i18n: Vec<JsonI18nProperty> = Deserialize::deserialize(deserializer)?;
 
-    let properties = xml_i18n
+    let properties = json_i18n
         .into_iter()
         .filter_map(|prop| {
             Some(places::Property {
