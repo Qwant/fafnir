@@ -116,7 +116,7 @@ pub fn build_poi(
         .ok_or(BuildError::MissingField("category"))?
         .to_lowercase();
 
-    let sub_category = (property.sub_categories.inner)
+    let sub_category = (property.sub_categories)
         .iter()
         .find_map(|sub_category| get_local_string(&["us".to_string()], &sub_category.name))
         .unwrap_or(&category)
@@ -189,7 +189,7 @@ pub fn build_poi(
     let properties = [
         ("name", Some(name.clone())),
         ("website", property.url),
-        ("phone", property.phone),
+        ("phone", property.phone.number),
         (
             "opening_hours",
             Some(opening_hours).filter(|x| !x.is_empty()),

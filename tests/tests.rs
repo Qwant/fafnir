@@ -204,37 +204,37 @@ async fn launch_and_assert(cmd: &'static str, args: Vec<std::string::String>) {
 
 #[tokio::test]
 async fn fafnir_test() {
-    // let pg_docker = PostgresDocker::new().await.unwrap();
-    //
-    // openmaptiles2mimir::main_test(
-    //     ElasticSearchWrapper::new().await,
-    //     PostgresWrapper::new(&pg_docker),
-    // )
-    // .await;
-    //
-    // openmaptiles2mimir::bbox_test(
-    //     ElasticSearchWrapper::new().await,
-    //     PostgresWrapper::new(&pg_docker),
-    // )
-    // .await;
-    //
-    // openmaptiles2mimir::test_with_langs(
-    //     ElasticSearchWrapper::new().await,
-    //     PostgresWrapper::new(&pg_docker),
-    // )
-    // .await;
-    //
-    // openmaptiles2mimir::test_address_format(
-    //     ElasticSearchWrapper::new().await,
-    //     PostgresWrapper::new(&pg_docker),
-    // )
-    // .await;
-    //
-    // openmaptiles2mimir::test_current_country_label(
-    //     ElasticSearchWrapper::new().await,
-    //     PostgresWrapper::new(&pg_docker),
-    // )
-    // .await;
+    let pg_docker = PostgresDocker::new().await.unwrap();
+
+    openmaptiles2mimir::main_test(
+        ElasticSearchWrapper::new().await,
+        PostgresWrapper::new(&pg_docker),
+    )
+    .await;
+
+    openmaptiles2mimir::bbox_test(
+        ElasticSearchWrapper::new().await,
+        PostgresWrapper::new(&pg_docker),
+    )
+    .await;
+
+    openmaptiles2mimir::test_with_langs(
+        ElasticSearchWrapper::new().await,
+        PostgresWrapper::new(&pg_docker),
+    )
+    .await;
+
+    openmaptiles2mimir::test_address_format(
+        ElasticSearchWrapper::new().await,
+        PostgresWrapper::new(&pg_docker),
+    )
+    .await;
+
+    openmaptiles2mimir::test_current_country_label(
+        ElasticSearchWrapper::new().await,
+        PostgresWrapper::new(&pg_docker),
+    )
+    .await;
 
     tripadvisor2mimir::main_test(ElasticSearchWrapper::new().await).await;
 }
