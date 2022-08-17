@@ -8,7 +8,6 @@ pub enum BuildError {
 pub fn build_reviews(property: Property) -> Result<(u32, Vec<String>), BuildError> {
     let reviews = property
         .reviews
-        .inner
         .iter()
         .map(|review| {
             serde_json::to_string(&review)

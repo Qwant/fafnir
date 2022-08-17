@@ -6,25 +6,26 @@ use serde::Deserialize;
 pub struct Property {
     pub id: u32,
     #[serde(rename = "Photos")]
-    pub photos: Photos,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Photos {
-    #[serde(rename = "Photo")]
-    pub inner: Vec<Photo>,
+    pub photos: Vec<Photo>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Photo {
     #[serde(rename = "OriginalSizeURL")]
-    pub original_size_url: Option<String>,
+    pub original_size: PhotoDetail,
     #[serde(rename = "StandardSizeURL")]
-    pub standard_size_url: Option<String>,
+    pub standard_size: PhotoDetail,
     #[serde(rename = "FullSizeURL")]
-    pub full_size_url: Option<String>,
+    pub full_size: PhotoDetail,
     #[serde(rename = "LargeThumbnailURL")]
-    pub large_thumbnail_url: Option<String>,
+    pub large_thumbnail: PhotoDetail,
     #[serde(rename = "ThumbnailURL")]
-    pub thumbnail_url: Option<String>,
+    pub thumbnail: PhotoDetail,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PhotoDetail {
+    pub height: Option<u32>,
+    pub width: Option<u32>,
+    pub url: Option<String>,
 }
