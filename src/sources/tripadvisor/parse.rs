@@ -1,18 +1,19 @@
 //! Parsing utilities for TripAdvisor XML feed.
 
-use std::io;
-use std::io::Read;
 use futures::stream::Stream;
 use serde::de::DeserializeOwned;
 use serde_json::Deserializer;
+use std::io;
+use std::io::Read;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 use tracing::debug;
 
 /// Expected string at start of a { item.
-const START_TOKEN: &[u8] = b"{";
+const START_TOKEN: &[u8] = b"  {";
 
 /// Expected string at the end of a } item.
-const END_TOKEN: &[u8] = b"]\n}";
+const END_TOKEN: &[u8] = b"\n  },\n";
+const FINAL_END_TOKEN: &[u8] = b"\n  }\n";
 
 pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Item = Vec<u8>> {
     futures::stream::unfold(input, |mut input| async {
@@ -26,10 +27,19 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
         {
             if buffer.ends_with(END_TOKEN) {
                 // The first buffer may contain some extra information
-                // let token_start = find_naive(&buffer, START_TOKEN)
-                //     .expect("found a property which didn't start with expected pattern");
+                let token_start = find_naive(&buffer, START_TOKEN)
+                    .expect("found a property which didn't start with expected pattern");
 
-                // buffer = buffer[2..].to_vec();
+                buffer = buffer[token_start + 2..buffer.len() - 2].to_vec();
+
+                return Some((buffer, input));
+            }
+            if buffer.ends_with(FINAL_END_TOKEN) {
+                // The first buffer may contain some extra information
+                let token_start = find_naive(&buffer, START_TOKEN)
+                    .expect("found a property which didn't start with expected pattern");
+
+                buffer = buffer[token_start + 2..buffer.len() - 1].to_vec();
 
                 return Some((buffer, input));
             }

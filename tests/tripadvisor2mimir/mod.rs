@@ -122,7 +122,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     )
     .await;
 
-    assert_eq!(es_wrapper.get_all_tripadvisor_pois().await.count(), 4);
+    assert_eq!(es_wrapper.get_all_tripadvisor_pois().await.count(), 2);
 
     // Test that the place "Gasthof Au" has been imported in the elastic wrapper
     let pois: Vec<places::Place> = es_wrapper
@@ -199,25 +199,4 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     let poi_type = &suecka_poi.poi_type;
     assert_eq!(poi_type.id, "class_hotel:subclass_bed_and_breakfast");
     assert_eq!(poi_type.name, "class_hotel subclass_bed_and_breakfast");
-
-    // Test that the place "Mr B's - A Bartolotta Steakhouse - Brookfield" has been imported in the elastic wrapper
-    let pois: Vec<places::Place> = es_wrapper
-        .search_and_filter("name:Bartolotta*", |_| true)
-        .await
-        .collect();
-    assert_eq!(&pois.len(), &1);
-    let bartolotta = &pois[0].poi().unwrap();
-
-    // TA cuisine tag should be converted to OSM (steakhouse -> steak_house)
-    assert_eq!(bartolotta.poi_type.id, "class_restaurant:subclass_sit_down");
-    assert_eq!(
-        bartolotta.poi_type.name,
-        "class_restaurant subclass_sit_down cuisine:steak_house"
-    );
-
-    // There is no image in the feed for this POI
-    assert!(!bartolotta.properties.contains_key("image"));
-
-    // Full label extra is filled with category and administration
-    assert_eq!(bartolotta.full_label_extra, ["restaurant", "bob's town"]);
 }

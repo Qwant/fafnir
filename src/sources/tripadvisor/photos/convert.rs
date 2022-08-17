@@ -7,12 +7,12 @@ pub enum BuildError {
 }
 
 pub fn build_photo(property: Property) -> Result<(u32, String), BuildError> {
-    let mut all_urls = property.photos.inner.into_iter().filter_map(|photo| {
-        (photo.original_size_url)
-            .or(photo.standard_size_url)
-            .or(photo.full_size_url)
-            .or(photo.large_thumbnail_url)
-            .or(photo.thumbnail_url)
+    let mut all_urls = property.photos.into_iter().filter_map(|photo| {
+        (photo.original_size.url)
+            .or(photo.standard_size.url)
+            .or(photo.full_size.url)
+            .or(photo.large_thumbnail.url)
+            .or(photo.thumbnail.url)
     });
 
     let photo_url = all_urls.next().ok_or(BuildError::NotFound)?;

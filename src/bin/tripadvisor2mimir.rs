@@ -13,7 +13,6 @@ use mimir::domain::model::update::UpdateOperation;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimir::domain::ports::secondary::remote::Remote;
 use serde::Deserialize;
-use serde_json::Value;
 use tokio::fs::File;
 use tokio::io::{AsyncBufRead, BufReader};
 use tracing::info;
