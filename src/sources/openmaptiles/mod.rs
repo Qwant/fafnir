@@ -3,7 +3,6 @@
 pub mod pois;
 pub mod postgres;
 
-
 use elasticsearch::Elasticsearch;
 use futures::stream::{Stream, StreamExt};
 use futures::{future, stream};
