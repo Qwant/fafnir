@@ -13,6 +13,7 @@ use mimir::domain::model::update::UpdateOperation;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimir::domain::ports::secondary::remote::Remote;
 use serde::Deserialize;
+use serde_json::Value;
 use tokio::fs::File;
 use tokio::io::{AsyncBufRead, BufReader};
 use tracing::info;
@@ -49,6 +50,7 @@ async fn read_gzip_file(path: &Path) -> impl AsyncBufRead {
 
 async fn load_and_index_tripadvisor(settings: Settings) {
     // Connect to mimir ES
+
     let mimir_es = connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
