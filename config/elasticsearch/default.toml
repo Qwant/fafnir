@@ -1,5 +1,5 @@
 [elasticsearch]
-  url = "http://localhost:9200"
+  url = "http://localhost:9202"
 
   # Timeout in milliseconds on client calls to Elasticsearch.
   timeout = 10000
