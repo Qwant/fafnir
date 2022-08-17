@@ -141,7 +141,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     // OriginalSizeURL is available for image
     assert_eq!(
         gasthof_au.properties.get("image"),
-        Some(&"https://media-cdn.tripadvisor.com/media/photo-o/15/33/ff/4a/europe.jpg".to_string())
+        Some(&"https://media-cdn.tripadvisor.com/media/photo-o/1b/b6/b0/50/photo4jpg.jpg".to_string())
     );
 
     assert_eq!(
@@ -151,32 +151,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
 
     assert_eq!(
         gasthof_au.properties.get("opening_hours"),
-        Some(&"Mo 11:00-00:00; Tu 11:00-00:00; We 11:00-00:00; Th 11:00-00:00; Fr 11:00-00:00; Sa 11:00-12:30,14:00-18:00".to_string())
-    );
-
-    // Test that the place "b'eat Restaurant & Bar" has been imported in the elastic wrapper
-    let pois: Vec<places::Place> = es_wrapper
-        .search_and_filter("name:Restaurant*", |_| true)
-        .await
-        .collect();
-    assert_eq!(&pois.len(), &1);
-    let b_eat = pois[0].poi().unwrap();
-
-    // This POI should have reviews
-    assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:0"]).is_ok());
-    assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:1"]).is_ok());
-
-    // Cuisine should match a OpenstreetMap cuisine tag
-    assert_eq!(b_eat.poi_type.id, "class_restaurant:subclass_sit_down");
-    assert_eq!(
-        b_eat.poi_type.name,
-        "class_restaurant subclass_sit_down cuisine:italian"
-    );
-
-    // Image should have fallback to StandardSizeURL
-    assert_eq!(
-        b_eat.properties.get("image"),
-        Some(&"https://media-cdn.tripadvisor.com/media/photo-s/01/9a/8a/54/asia.jpg".to_string())
+        Some(&"Mo 11:00-00:00; Tu 11:00-00:00; We 11:00-00:00; Th 11:00-00:00; Fr 11:00-00:00; Sa 11:00-00:00".to_string())
     );
 
     // Test that the place "Bergrestaurant Suecka" has been imported in the elastic wrapper
