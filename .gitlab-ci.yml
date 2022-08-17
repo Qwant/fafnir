@@ -32,14 +32,14 @@ lint:
   extends: .lint
   variables:
     CLIPPY_PACKAGES: "-p fafnir"
-    CLIPPY_EXTRA: "--allow clippy::multiple_crate_versions"
+    CLIPPY_EXTRA: ""
   before_script:
     - source ci/bootstrap.sh
     - rustup component add clippy
   script:
-    - cargo clippy ${CLIPPY_PACKAGES} --all-targets -- ${CLIPPY_EXTRA}
-    - cargo clippy ${CLIPPY_PACKAGES} --bins --all-features -- ${CLIPPY_EXTRA}
-    - cargo clippy ${CLIPPY_PACKAGES} --all-targets --no-default-features -- ${CLIPPY_EXTRA}
+    - cargo clippy
+    - cargo clippy
+    - cargo clippy
 
 test:
   stage: test
