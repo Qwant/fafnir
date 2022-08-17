@@ -29,9 +29,9 @@
   max_query_batch_size = 100
 
 [tripadvisor]
-  properties = "propertylist.xml.gz"
-  photos = "photolist.xml.gz"
-  reviews = "reviewlist.xml.gz"
+  properties = "propertylist.json.gz"
+  photos = "photolist.json.gz"
+  reviews = "reviewlist.json.gz"
 
   [tripadvisor.weight]
     # An arbitrary high number of review for which the weight is 1 with a
