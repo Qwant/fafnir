@@ -44,7 +44,6 @@ pub struct Property {
     pub phone: Phone,
 }
 
-
 #[derive(Debug, Default, Deserialize)]
 pub struct Phone {
     #[serde(rename = "type")]
@@ -52,7 +51,6 @@ pub struct Phone {
     #[serde(rename = "Number")]
     pub number: Option<String>,
 }
-
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Cuisine {
@@ -73,7 +71,6 @@ pub struct SubCategory {
     #[serde(deserialize_with = "deserialize_i18n")]
     pub name: I18nProperties,
 }
-
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Hours {

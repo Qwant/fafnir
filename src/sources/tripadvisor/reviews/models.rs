@@ -7,13 +7,7 @@ use serde::Serialize;
 pub struct Property {
     pub id: u32,
     #[serde(rename = "Reviews")]
-    pub reviews: Reviews,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Reviews {
-    #[serde(rename = "Review")]
-    pub inner: Vec<Review>,
+    pub reviews: Vec<Review>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
