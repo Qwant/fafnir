@@ -3,7 +3,6 @@
 pub mod pois;
 pub mod postgres;
 
-use std::sync::Arc;
 
 use elasticsearch::Elasticsearch;
 use futures::stream::{Stream, StreamExt};
