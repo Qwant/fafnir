@@ -96,35 +96,35 @@ fn unwrap_street(address: &Address) -> &Street {
     }
 }
 
-fn make_test_address(city: places::admin::Admin) -> places::addr::Addr {
-    let country_codes = places::admin::find_country_codes(std::iter::once(&city));
-
-    let street = places::street::Street {
-        id: "1234".to_string(),
-        name: "test".to_string(),
-        label: "test (bob's town)".to_string(),
-        administrative_regions: vec![Arc::new(city)],
-        weight: 50.0,
-        zip_codes: vec!["12345".to_string()],
-        coord: places::coord::Coord::new(1., 1.),
-        country_codes: country_codes.clone(),
-        ..Default::default()
-    };
-    places::addr::Addr {
-        id: format!("addr:{};{}", 1., 1.),
-        house_number: "1234".to_string(),
-        name: "1234 test".to_string(),
-        street,
-        label: "1234 test (bob's town)".to_string(),
-        coord: places::coord::Coord::new(1., 1.),
-        weight: 50.0,
-        zip_codes: vec!["12345".to_string()],
-        distance: None,
-        approx_coord: None,
-        country_codes,
-        context: None,
-    }
-}
+// fn make_test_address(city: places::admin::Admin) -> places::addr::Addr {
+//     let country_codes = places::admin::find_country_codes(std::iter::once(&city));
+//
+//     let street = places::street::Street {
+//         id: "1234".to_string(),
+//         name: "test".to_string(),
+//         label: "test (bob's town)".to_string(),
+//         administrative_regions: vec![Arc::new(city)],
+//         weight: 50.0,
+//         zip_codes: vec!["12345".to_string()],
+//         coord: places::coord::Coord::new(1., 1.),
+//         country_codes: country_codes.clone(),
+//         ..Default::default()
+//     };
+//     places::addr::Addr {
+//         id: format!("addr:{};{}", 1., 1.),
+//         house_number: "1234".to_string(),
+//         name: "1234 test".to_string(),
+//         street,
+//         label: "1234 test (bob's town)".to_string(),
+//         coord: places::coord::Coord::new(1., 1.),
+//         weight: 50.0,
+//         zip_codes: vec!["12345".to_string()],
+//         distance: None,
+//         approx_coord: None,
+//         country_codes,
+//         context: None,
+//     }
+// }
 
 pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
