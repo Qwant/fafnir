@@ -43,8 +43,8 @@ async fn load_pg_data(pg_wrapper: &PostgresWrapper) {
 
 async fn load_es_data(es_wrapper: &mut ElasticSearchWrapper, country_code: &str) {
     let city = make_test_admin("bob's town", country_code);
-    let test_address = make_test_address(city.clone());
-    let addresses = std::iter::once(test_address);
+    // let test_address = make_test_address(city.clone());
+    // let addresses = std::iter::once(test_address);
     // es_wrapper.index(DATASET, addresses).await;
 
     let cities = std::iter::once(city);
