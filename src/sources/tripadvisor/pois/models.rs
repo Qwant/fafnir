@@ -41,7 +41,7 @@ pub struct Property {
     pub url: Option<String>,
 
     #[serde(rename = "PhoneNumber")]
-    pub phone: Phone,
+    pub phone: Option<Phone>,
 }
 
 #[derive(Debug, Default, Deserialize)]
