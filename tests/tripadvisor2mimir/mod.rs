@@ -138,15 +138,6 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
         "class_restaurant subclass_sit_down"
     );
 
-    // OriginalSizeURL is available for image
-    assert_eq!(
-        gasthof_au.properties.get("image"),
-        Some(
-            &"https://media-cdn.tripadvisor.com/media/photo-o/1b/b6/b0/50/photo4jpg.jpg"
-                .to_string()
-        )
-    );
-
     assert_eq!(
         gasthof_au.properties.get("phone"),
         Some(&"+423 232 11 17".to_string())
@@ -172,6 +163,15 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
 
     // Full label is filled with category and administration
     assert_eq!(suecka_poi.full_label_extra, ["hotel", "bob's town"]);
+
+    // OriginalSizeURL is available for image
+    assert_eq!(
+        suecka_poi.properties.get("image"),
+        Some(
+            &"https://media-cdn.tripadvisor.com/media/photo-o/0f/c3/45/a1/june-150-largejpg.jpg"
+                .to_string()
+        )
+    );
 
     // Hotel subclass should match a OpenstreetMap category tag
     let poi_type = &suecka_poi.poi_type;
