@@ -13,6 +13,7 @@ use std::collections::HashMap;
 
 use super::models::Property;
 use crate::langs::COUNTRIES_LANGS;
+use crate::sources::tripadvisor::pois::models::Phone;
 use crate::sources::tripadvisor::{build_id, TripAdvisorWeightSettings};
 
 /// Maximal rating possible
@@ -189,7 +190,16 @@ pub fn build_poi(
     let properties = [
         ("name", Some(name.clone())),
         ("website", property.url),
-        ("phone", property.phone.number),
+        (
+            "phone",
+            property
+                .phone
+                .unwrap_or(Phone {
+                    _type: None,
+                    number: None,
+                })
+                .number,
+        ),
         (
             "opening_hours",
             Some(opening_hours).filter(|x| !x.is_empty()),
