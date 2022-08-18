@@ -141,7 +141,10 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     // OriginalSizeURL is available for image
     assert_eq!(
         gasthof_au.properties.get("image"),
-        Some(&"https://media-cdn.tripadvisor.com/media/photo-o/1b/b6/b0/50/photo4jpg.jpg".to_string())
+        Some(
+            &"https://media-cdn.tripadvisor.com/media/photo-o/1b/b6/b0/50/photo4jpg.jpg"
+                .to_string()
+        )
     );
 
     assert_eq!(
