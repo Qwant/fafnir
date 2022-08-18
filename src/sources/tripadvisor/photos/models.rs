@@ -1,4 +1,4 @@
-//! Models for TripAdvisor's XML PhotoList feed structure.
+//! Models for TripAdvisor's JSON PhotoList feed structure.
 
 use serde::Deserialize;
 
@@ -12,15 +12,15 @@ pub struct Property {
 #[derive(Debug, Deserialize)]
 pub struct Photo {
     #[serde(rename = "OriginalSizeURL")]
-    pub original_size: PhotoDetail,
+    pub original_size: Option<PhotoDetail>,
     #[serde(rename = "StandardSizeURL")]
-    pub standard_size: PhotoDetail,
+    pub standard_size: Option<PhotoDetail>,
     #[serde(rename = "FullSizeURL")]
-    pub full_size: PhotoDetail,
+    pub full_size: Option<PhotoDetail>,
     #[serde(rename = "LargeThumbnailURL")]
-    pub large_thumbnail: PhotoDetail,
+    pub large_thumbnail: Option<PhotoDetail>,
     #[serde(rename = "ThumbnailURL")]
-    pub thumbnail: PhotoDetail,
+    pub thumbnail: Option<PhotoDetail>,
 }
 
 #[derive(Debug, Deserialize)]
