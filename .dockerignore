@@ -2,5 +2,6 @@
 !src/
 !tests/
 !config/
+!vendor/
 !Cargo*
 !build.rs

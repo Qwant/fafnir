@@ -16,7 +16,7 @@ const CONFIG_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/config");
 
 async fn init_tests(
     es_wrapper: &mut ElasticSearchWrapper,
-    pg_wrapper: &PostgresWrapper<'_>,
+    pg_wrapper: &PostgresWrapper,
     country_code: &str,
 ) {
     join!(
@@ -25,7 +25,7 @@ async fn init_tests(
     );
 }
 
-async fn load_pg_data(pg_wrapper: &PostgresWrapper<'_>) {
+async fn load_pg_data(pg_wrapper: &PostgresWrapper) {
     let conn = pg_wrapper.get_conn().await;
 
     conn.batch_execute(include_str!("data/tables.sql"))
@@ -126,7 +126,7 @@ fn make_test_address(city: places::admin::Admin) -> places::addr::Addr {
     }
 }
 
-pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper<'_>) {
+pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
 
     super::launch_and_assert(
@@ -368,7 +368,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
     assert_eq!(res.count(), 1);
 }
 
-pub async fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper<'_>) {
+pub async fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     super::launch_and_assert(
         OPENMAPTILES2MIMIR_BIN,
@@ -404,10 +404,7 @@ pub async fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
     );
 }
 
-pub async fn test_with_langs(
-    mut es_wrapper: ElasticSearchWrapper,
-    pg_wrapper: PostgresWrapper<'_>,
-) {
+pub async fn test_with_langs(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: PostgresWrapper) {
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     super::launch_and_assert(
         OPENMAPTILES2MIMIR_BIN,
@@ -463,7 +460,7 @@ pub async fn test_with_langs(
 
 pub async fn test_address_format(
     mut es_wrapper: ElasticSearchWrapper,
-    pg_wrapper: PostgresWrapper<'_>,
+    pg_wrapper: PostgresWrapper,
 ) {
     // Import data with DE as country code in admins
     init_tests(&mut es_wrapper, &pg_wrapper, "DE").await;
@@ -502,7 +499,7 @@ pub async fn test_address_format(
 
 pub async fn test_current_country_label(
     mut es_wrapper: ElasticSearchWrapper,
-    pg_wrapper: PostgresWrapper<'_>,
+    pg_wrapper: PostgresWrapper,
 ) {
     init_tests(&mut es_wrapper, &pg_wrapper, "FR").await;
     super::launch_and_assert(
