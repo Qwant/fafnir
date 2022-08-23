@@ -51,8 +51,6 @@ where
                 let chunk_parsed: Vec<_> = chunk
                     .into_iter()
                     .map(|raw| {
-                        let s = String::from_utf8_lossy(&raw);
-                        println!("{:?}", s);
                         let property = serde_json::from_reader(raw.as_slice())
                             .expect("failed parse to poi property");
 
