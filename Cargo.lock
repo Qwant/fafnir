@@ -395,7 +395,6 @@ dependencies = [
 [[package]]
 name = "common"
 version = "2.10.0"
-source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=master#c18169594e3cadd79c8f84767ae2129daca9da64"
 dependencies = [
  "config",
  "serde",
@@ -1479,7 +1478,6 @@ dependencies = [
 [[package]]
 name = "mimir"
 version = "2.10.0"
-source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=master#c18169594e3cadd79c8f84767ae2129daca9da64"
 dependencies = [
  "async-trait",
  "bollard",
@@ -1516,7 +1514,6 @@ dependencies = [
 [[package]]
 name = "mimirsbrunn"
 version = "2.10.0"
-source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=master#c18169594e3cadd79c8f84767ae2129daca9da64"
 dependencies = [
  "address-formatter",
  "anyhow",
@@ -2002,7 +1999,6 @@ checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
 [[package]]
 name = "places"
 version = "2.10.0"
-source = "git+https://github.com/Qwant/mimirsbrunn.git?branch=master#c18169594e3cadd79c8f84767ae2129daca9da64"
 dependencies = [
  "chrono-tz",
  "common",
