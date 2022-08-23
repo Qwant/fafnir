@@ -69,7 +69,6 @@ pub fn build_poi(
     geofinder: &AdminGeoFinder,
     weight_settings: TripAdvisorWeightSettings,
 ) -> Result<(u32, Poi), BuildError> {
-
     let coord = Coord::new(
         property
             .longitude
