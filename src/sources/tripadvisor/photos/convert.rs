@@ -23,5 +23,5 @@ pub fn build_photo(property: Property) -> Result<(u32, String), BuildError> {
         warn!("found several URLs for a TripAdvisor property: only one will be included");
     }
 
-    Ok((property.id, photo_detail.url.unwrap_or("".to_string())))
+    Ok((property.id, photo_detail.url.unwrap_or_else(|| "".to_string())))
 }
