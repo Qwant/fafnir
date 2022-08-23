@@ -25,6 +25,6 @@ pub fn build_photo(property: Property) -> Result<(u32, String), BuildError> {
 
     Ok((
         property.id,
-        photo_detail.url.unwrap_or_else(|| "".to_string())
+        photo_detail.url.unwrap_or_else(|| "".to_string()),
     ))
 }
