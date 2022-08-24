@@ -11,16 +11,16 @@ const TRIPADVISOR2MIMIR_BIN: &str = concat!(env!("OUT_DIR"), "/../../../tripadvi
 const CONFIG_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/config");
 const PROPERTY_LIST: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/tests/tripadvisor2mimir/data/propertylist_liechtenstein.xml.gz"
+    "/tests/tripadvisor2mimir/data/propertylist_liechtenstein.json.gz"
 );
 const PHOTO_LIST: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/tests/tripadvisor2mimir/data/photolist_liechtenstein.xml.gz"
+    "/tests/tripadvisor2mimir/data/photolist_liechtenstein.json.gz"
 );
 
 const REVIEW_LIST: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/tests/tripadvisor2mimir/data/reviewlist_liechtenstein.xml.gz"
+    "/tests/tripadvisor2mimir/data/reviewlist_liechtenstein.json.gz"
 );
 
 async fn init_tests(es_wrapper: &mut ElasticSearchWrapper, country_code: &str) {
@@ -122,7 +122,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     )
     .await;
 
-    assert_eq!(es_wrapper.get_all_tripadvisor_pois().await.count(), 4);
+    assert_eq!(es_wrapper.get_all_tripadvisor_pois().await.count(), 2);
 
     // Test that the place "Gasthof Au" has been imported in the elastic wrapper
     let pois: Vec<places::Place> = es_wrapper
@@ -138,12 +138,6 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
         "class_restaurant subclass_sit_down"
     );
 
-    // OriginalSizeURL is available for image
-    assert_eq!(
-        gasthof_au.properties.get("image"),
-        Some(&"https://media-cdn.tripadvisor.com/media/photo-o/15/33/ff/4a/europe.jpg".to_string())
-    );
-
     assert_eq!(
         gasthof_au.properties.get("phone"),
         Some(&"+423 232 11 17".to_string())
@@ -151,32 +145,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
 
     assert_eq!(
         gasthof_au.properties.get("opening_hours"),
-        Some(&"Mo 11:00-00:00; Tu 11:00-00:00; We 11:00-00:00; Th 11:00-00:00; Fr 11:00-00:00; Sa 11:00-12:30,14:00-18:00".to_string())
-    );
-
-    // Test that the place "b'eat Restaurant & Bar" has been imported in the elastic wrapper
-    let pois: Vec<places::Place> = es_wrapper
-        .search_and_filter("name:Restaurant*", |_| true)
-        .await
-        .collect();
-    assert_eq!(&pois.len(), &1);
-    let b_eat = pois[0].poi().unwrap();
-
-    // This POI should have reviews
-    assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:0"]).is_ok());
-    assert!(serde_json::from_str::<serde_json::Value>(&*b_eat.properties["ta:reviews:1"]).is_ok());
-
-    // Cuisine should match a OpenstreetMap cuisine tag
-    assert_eq!(b_eat.poi_type.id, "class_restaurant:subclass_sit_down");
-    assert_eq!(
-        b_eat.poi_type.name,
-        "class_restaurant subclass_sit_down cuisine:italian"
-    );
-
-    // Image should have fallback to StandardSizeURL
-    assert_eq!(
-        b_eat.properties.get("image"),
-        Some(&"https://media-cdn.tripadvisor.com/media/photo-s/01/9a/8a/54/asia.jpg".to_string())
+        Some(&"Mo 11:00-00:00; Tu 11:00-00:00; We 11:00-00:00; Th 11:00-00:00; Fr 11:00-00:00; Sa 11:00-00:00".to_string())
     );
 
     // Test that the place "Bergrestaurant Suecka" has been imported in the elastic wrapper
@@ -195,29 +164,17 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper) {
     // Full label is filled with category and administration
     assert_eq!(suecka_poi.full_label_extra, ["hotel", "bob's town"]);
 
+    // OriginalSizeURL is available for image
+    assert_eq!(
+        suecka_poi.properties.get("image"),
+        Some(
+            &"https://media-cdn.tripadvisor.com/media/photo-o/0f/c3/45/a1/june-150-largejpg.jpg"
+                .to_string()
+        )
+    );
+
     // Hotel subclass should match a OpenstreetMap category tag
     let poi_type = &suecka_poi.poi_type;
     assert_eq!(poi_type.id, "class_hotel:subclass_bed_and_breakfast");
     assert_eq!(poi_type.name, "class_hotel subclass_bed_and_breakfast");
-
-    // Test that the place "Mr B's - A Bartolotta Steakhouse - Brookfield" has been imported in the elastic wrapper
-    let pois: Vec<places::Place> = es_wrapper
-        .search_and_filter("name:Bartolotta*", |_| true)
-        .await
-        .collect();
-    assert_eq!(&pois.len(), &1);
-    let bartolotta = &pois[0].poi().unwrap();
-
-    // TA cuisine tag should be converted to OSM (steakhouse -> steak_house)
-    assert_eq!(bartolotta.poi_type.id, "class_restaurant:subclass_sit_down");
-    assert_eq!(
-        bartolotta.poi_type.name,
-        "class_restaurant subclass_sit_down cuisine:steak_house"
-    );
-
-    // There is no image in the feed for this POI
-    assert!(!bartolotta.properties.contains_key("image"));
-
-    // Full label extra is filled with category and administration
-    assert_eq!(bartolotta.full_label_extra, ["restaurant", "bob's town"]);
 }
