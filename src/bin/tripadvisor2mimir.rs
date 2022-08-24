@@ -19,8 +19,8 @@ use tracing::info;
 
 use fafnir::sources::tripadvisor::{read_photos, read_pois};
 
-/// Buffer size use for IO over XML files
-const XML_BUFFER_SIZE: usize = 1024 * 1024;
+/// Buffer size use for IO over JSON files
+const JSON_BUFFER_SIZE: usize = 1024 * 1024;
 
 #[derive(Debug, Deserialize)]
 struct TripAdvisorSettings {
@@ -43,12 +43,13 @@ async fn read_gzip_file(path: &Path) -> impl AsyncBufRead {
         .await
         .unwrap_or_else(|err| panic!("could not open `{}`: {err}", path.display()));
 
-    let raw = BufReader::with_capacity(XML_BUFFER_SIZE, file);
+    let raw = BufReader::with_capacity(JSON_BUFFER_SIZE, file);
     BufReader::new(GzipDecoder::new(raw))
 }
 
 async fn load_and_index_tripadvisor(settings: Settings) {
     // Connect to mimir ES
+
     let mimir_es = connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
@@ -66,11 +67,11 @@ async fn load_and_index_tripadvisor(settings: Settings) {
     let mut indexed_documents = HashSet::new();
 
     let index_generator = {
-        let raw_xml = read_gzip_file(&settings.tripadvisor.properties).await;
+        let raw_json = read_gzip_file(&settings.tripadvisor.properties).await;
         let mut count_ok: u64 = 0;
         let mut count_errors: HashMap<_, u64> = HashMap::new();
 
-        let pois = read_pois(raw_xml, admin_geofinder, settings.tripadvisor.weight)
+        let pois = read_pois(raw_json, admin_geofinder, settings.tripadvisor.weight)
             .filter_map(|poi| {
                 future::ready(
                     poi.map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
