@@ -101,7 +101,7 @@ pub fn json_array_iter(reader: impl Read + Send + 'static) -> impl Iterator<Item
             S: SeqAccess<'de>,
         {
             while let Some(value) = seq.next_element()? {
-                if let Err(_) = self.0.send(value) {
+                if self.0.send(value).is_err() {
                     // Error is ignored because it just means that the caller dropped the returned
                     // iterator.
                     break;

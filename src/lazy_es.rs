@@ -16,6 +16,8 @@ const BACKOFF_DELAY: Duration = Duration::from_secs(1);
 // --- LazyEs
 // ---
 
+type FnCallback<'p, T> = Box<dyn FnOnce(Vec<EsHit<&RawValue>>) -> LazyEs<'p, T> + 'p + Send>;
+
 /// Computation result that may lazily rely on an elasticsearch "search"
 /// request.
 pub enum LazyEs<'p, T> {
@@ -28,7 +30,7 @@ pub enum LazyEs<'p, T> {
         // TODO: Isn't RawValue enough ?
         header: serde_json::Value,
         query: serde_json::Value,
-        progress: Box<dyn FnOnce(Vec<EsHit<&RawValue>>) -> LazyEs<'p, T> + 'p + Send>,
+        progress: FnCallback<'p, T>,
     },
 }
 
