@@ -1,7 +1,9 @@
-pub mod parse;
 pub mod photos;
 pub mod pois;
 pub mod reviews;
+
+use std::io::Read;
+use std::sync::Arc;
 
 use futures::stream::StreamExt;
 use futures::{FutureExt, Stream};
@@ -9,8 +11,8 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use std::sync::Arc;
-use tokio::io::AsyncBufRead;
+
+use crate::utils::json_array_iter;
 
 /// Number of tokio's blocking thread that can be spawned to parse XML. Keeping
 /// a rather low constant value is fine as the input will be provided by a GZip
@@ -33,7 +35,7 @@ pub fn build_id(ta_id: u32) -> String {
 }
 
 fn parse_properties<P, R>(
-    input: impl AsyncBufRead + Unpin,
+    input: impl Read + Send + 'static,
     convert: impl Fn(P) -> R + Sync + Send + 'static,
 ) -> impl Stream<Item = R>
 where
@@ -42,7 +44,7 @@ where
 {
     let parse = Arc::new(convert);
 
-    parse::split_raw_properties(input)
+    futures::stream::iter(json_array_iter(input))
         .chunks(PARSER_CHUNK_SIZE)
         .map(move |chunk| {
             let parse = parse.clone();
@@ -51,8 +53,8 @@ where
                 let chunk_parsed: Vec<_> = chunk
                     .into_iter()
                     .map(|raw| {
-                        let property = serde_json::from_reader(raw.as_slice())
-                            .expect("failed parse to poi property");
+                        let property =
+                            serde_json::from_str(raw.get()).expect("failed to parse poi property");
 
                         parse(property)
                     })
@@ -68,7 +70,7 @@ where
 }
 
 pub fn read_pois(
-    input: impl AsyncBufRead + Unpin,
+    input: impl Read + Send + 'static,
     geofinder: AdminGeoFinder,
     weight_settings: TripAdvisorWeightSettings,
 ) -> impl Stream<Item = Result<(u32, Poi), pois::convert::BuildError>> {
@@ -78,13 +80,13 @@ pub fn read_pois(
 }
 
 pub fn read_photos(
-    input: impl AsyncBufRead + Unpin,
+    input: impl Read + Send + 'static,
 ) -> impl Stream<Item = Result<(u32, String), photos::convert::BuildError>> {
     parse_properties(input, photos::convert::build_photo)
 }
 
 pub fn read_reviews(
-    input: impl AsyncBufRead + Unpin,
+    input: impl Read + Send + 'static,
 ) -> impl Stream<Item = Result<(u32, Vec<String>), reviews::convert::BuildError>> {
     parse_properties(input, reviews::convert::build_reviews)
 }

@@ -1,9 +1,11 @@
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
-use async_compression::tokio::bufread::GzipDecoder;
 use fafnir::mimir::build_admin_geofinder;
 use fafnir::sources::tripadvisor::{build_id, read_reviews, TripAdvisorWeightSettings};
+use flate2::read::GzDecoder;
 use futures::future;
 use futures::stream::StreamExt;
 use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
@@ -13,8 +15,6 @@ use mimir::domain::model::update::UpdateOperation;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimir::domain::ports::secondary::remote::Remote;
 use serde::Deserialize;
-use tokio::fs::File;
-use tokio::io::{AsyncBufRead, BufReader};
 use tracing::info;
 
 use fafnir::sources::tripadvisor::{read_photos, read_pois};
@@ -38,13 +38,12 @@ struct Settings {
     container_tripadvisor: ContainerConfig,
 }
 
-async fn read_gzip_file(path: &Path) -> impl AsyncBufRead {
-    let file = File::open(path)
-        .await
-        .unwrap_or_else(|err| panic!("could not open `{}`: {err}", path.display()));
+async fn read_gzip_file(path: &Path) -> impl BufRead {
+    let file =
+        File::open(path).unwrap_or_else(|err| panic!("could not open `{}`: {err}", path.display()));
 
     let raw = BufReader::with_capacity(JSON_BUFFER_SIZE, file);
-    BufReader::new(GzipDecoder::new(raw))
+    BufReader::new(GzDecoder::new(raw))
 }
 
 async fn load_and_index_tripadvisor(settings: Settings) {

@@ -736,9 +736,9 @@ name = "fafnir"
 version = "0.3.12"
 dependencies = [
  "approx 0.5.1",
- "async-compression",
  "cosmogony",
  "elasticsearch",
+ "flate2",
  "futures 0.3.21",
  "geo-types 0.7.5",
  "itertools",
