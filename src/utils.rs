@@ -59,6 +59,31 @@ pub async fn get_index_creation_date(es: &Elasticsearch, index: impl AsRef<str>)
 /// JSON values yielded in streaming.
 ///
 /// Inspired from https://serde.rs/stream-array.html
+///
+/// # Example
+///
+/// ```
+/// use fafnir::utils::json_array_iter;
+///
+/// let json = r#"[
+///     "a",
+///     false,
+///     54,
+///     {
+///         "b": 3,
+///         "c": "d"
+///     }
+/// ]"#;
+///
+/// let mut splited = json_array_iter(json.as_bytes());
+/// assert_eq!(splited.next().unwrap().get(), r#""a""#);
+/// assert_eq!(splited.next().unwrap().get(), "false");
+/// assert_eq!(splited.next().unwrap().get(), "54");
+/// assert_eq!(splited.next().unwrap().get(), r#"{
+///         "b": 3,
+///         "c": "d"
+///     }"#);
+/// ```
 pub fn json_array_iter(reader: impl Read + Send + 'static) -> impl Iterator<Item = Box<RawValue>> {
     // Define a custom visitor that fills a channel instead of outputing the result in a local
     // variable.
