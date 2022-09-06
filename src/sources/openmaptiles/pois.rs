@@ -17,7 +17,7 @@ use tracing::{debug, warn};
 
 use once_cell::sync::Lazy;
 
-const TAGS_TO_INDEX_AS_POI_TYPE_NAME: &[&str] = &["cuisine"];
+const TAGS_TO_INDEX_AS_POI_TYPE_NAME: &[&str] = &["cuisine", "aerodrome"];
 
 static NON_SEARCHABLE_ITEMS: Lazy<HashSet<(String, String)>> = Lazy::new(|| {
     [

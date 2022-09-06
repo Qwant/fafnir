@@ -186,7 +186,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
     let poi_type_ocean_poi = &ocean_poi.poi_type.name;
     assert_eq!(
         poi_type_ocean_poi,
-        &"class_cafe subclass_cafe cuisine:japanese cuisine:coffee_shop"
+        &"class_cafe subclass_cafe cuisine:japanese cuisine:coffee_shop aerodrome:"
     );
 
     // Full label is filled with category and all administration
