@@ -57,7 +57,7 @@ impl PostgresDocker {
         let mut retries = 0;
 
         while start_postgres_session(PostgresSettings {
-            host: format!(r#"{}""#, &self.host()),
+            host: format!(r#"{}"#, &self.host()),
             port: 5432,
             user: "test".to_string(),
             password: "".to_string(),
