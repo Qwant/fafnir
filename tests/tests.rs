@@ -47,11 +47,11 @@ impl PostgresWrapper {
 
     pub async fn get_conn(&self) -> tokio_postgres::Client {
         start_postgres_session(PostgresSettings {
-            host: format!(r#"{}""#, &self.host),
+            host: format!(r#"{}""#, &self.host()),
             port: 5432,
-            user: format!("test"),
-            password: format!(""),
-            database: format!("test"),
+            user: "test".to_string(),
+            password: "".to_string(),
+            database: "test".to_string(),
         })
         .await
         .unwrap_or_else(|err| panic!("Unable to connect to postgres: {err}"))
