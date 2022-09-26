@@ -139,10 +139,11 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
             "-s".to_string(),
             format!(r#"elasticsearch.url="{}""#, &es_wrapper.host()),
             "-s".to_string(),
-            format!(
-                r#"postgres.url="postgres://test@{}/test""#,
-                &pg_wrapper.host()
-            ),
+            format!(r#"postgres.host="{}""#, &pg_wrapper.host()),
+            "-s".to_string(),
+            format!("postgres.user=test"),
+            "-s".to_string(),
+            format!("postgres.database=test"),
         ],
     )
     .await;

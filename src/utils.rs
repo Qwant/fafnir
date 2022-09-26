@@ -1,11 +1,20 @@
+use crate::settings::PostgresSettings;
 use elasticsearch::cat::CatIndicesParts;
 use elasticsearch::Elasticsearch;
+use tokio_postgres::{Config, NoTls};
 use tracing::warn;
 
 pub async fn start_postgres_session(
-    config: &str,
+    settings: PostgresSettings,
 ) -> Result<tokio_postgres::Client, tokio_postgres::Error> {
-    let (client, connection) = tokio_postgres::connect(config, tokio_postgres::NoTls).await?;
+    let (client, connection) = Config::new()
+        .host(&settings.host)
+        .user(&settings.user)
+        .port(settings.port)
+        .password(&settings.password)
+        .dbname(&settings.database)
+        .connect(NoTls)
+        .await?;
 
     // The connection object performs the actual communication with the database
     // and must be spawned inside of tokio.

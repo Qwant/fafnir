@@ -15,5 +15,9 @@ pub struct FafnirSettings {
 
 #[derive(Debug, Deserialize)]
 pub struct PostgresSettings {
-    pub url: String,
+    pub host: String,
+    pub user: String,
+    pub password: String,
+    pub database: String,
+    pub port: u16,
 }

@@ -1,3 +1,4 @@
+use fafnir::settings::PostgresSettings;
 use fafnir::utils::start_postgres_session;
 use std::error::Error;
 use std::process::Command;
@@ -55,9 +56,15 @@ impl PostgresDocker {
 
         let mut retries = 0;
 
-        while start_postgres_session(&format!("postgres://test@{}/test", &self.host()))
-            .await
-            .is_err()
+        while start_postgres_session(PostgresSettings {
+            host: format!(r#"{}""#, &self.host),
+            port: 5432,
+            user: format!("test"),
+            password: format!(""),
+            database: format!("test"),
+        })
+        .await
+        .is_err()
         {
             retries += 1;
 

@@ -3,6 +3,7 @@ pub mod openmaptiles2mimir;
 pub mod tripadvisor2mimir;
 
 use docker_wrapper::PostgresDocker;
+use fafnir::settings::PostgresSettings;
 use fafnir::utils::start_postgres_session;
 use futures::stream::TryStreamExt;
 use mimir::adapters::primary::templates;
@@ -45,9 +46,15 @@ impl PostgresWrapper {
     }
 
     pub async fn get_conn(&self) -> tokio_postgres::Client {
-        start_postgres_session(&format!("postgres://test@{}/test", &self.host()))
-            .await
-            .unwrap_or_else(|err| panic!("Unable to connect to postgres: {err}"))
+        start_postgres_session(PostgresSettings {
+            host: format!(r#"{}""#, &self.host),
+            port: 5432,
+            user: format!("test"),
+            password: format!(""),
+            database: format!("test"),
+        })
+        .await
+        .unwrap_or_else(|err| panic!("Unable to connect to postgres: {err}"))
     }
 
     pub async fn get_rows(&self, table: &str) -> Vec<tokio_postgres::row::Row> {

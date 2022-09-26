@@ -1,6 +1,10 @@
 [postgres]
   # Connection string to the postgreSQL containing POI data.
-  url = "postgresql://gis:gis@localhost"
+  host = "localhost"
+  user = "gis"
+  password = "gis"
+  database = "gis"
+  port = 5432
 
 [fafnir]
   # If defined, only POIs inside of the bouding box will be imported.

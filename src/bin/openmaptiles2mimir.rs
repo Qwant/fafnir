@@ -94,7 +94,7 @@ async fn load_and_index_pois(settings: Settings) {
         MIMIR_PREFIX, &settings.container_nosearch.dataset
     );
 
-    let pg_client = start_postgres_session(&settings.postgres.url)
+    let pg_client = start_postgres_session(settings.postgres)
         .await
         .expect("Unable to connect to postgres");
 
