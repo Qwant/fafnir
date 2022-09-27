@@ -46,9 +46,8 @@ impl PostgresWrapper {
     }
 
     pub async fn get_conn(&self) -> tokio_postgres::Client {
-
         start_postgres_session(PostgresSettings {
-            host: format!(r#"{}"#, &self.host()),
+            host: (&self.host()).to_string(),
             port: 5432,
             user: "test".to_string(),
             password: "".to_string(),
