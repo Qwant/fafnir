@@ -126,7 +126,7 @@ pub fn build_poi(
     // Get only city and department admin for the full label
     let full_label_admins: Vec<String> = administrative_regions
         .iter()
-        .filter(|admin| admin.level == 8 || admin.level == 6)
+        .filter(|admin| admin.level >=4 && admin.level <= 8)
         .map(|admin| admin.name.clone())
         .collect();
 
