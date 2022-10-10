@@ -266,10 +266,15 @@ fn build_poi_type_text(
     */
     [format!("class_{class}"), format!("subclass_{subclass}")]
         .into_iter()
-        .chain(TAGS_TO_INDEX_AS_POI_TYPE_NAME.iter().flat_map(|tag| {
-            let values = tags.get(*tag).and_then(|x| x.as_deref()).unwrap_or("");
-            values.split(';').map(move |v| format!("{tag}:{v}"))
-        }))
+        .chain(
+            TAGS_TO_INDEX_AS_POI_TYPE_NAME
+                .iter()
+                .filter_map(|tag| {
+                    let values = tags.get(*tag).and_then(|x| x.as_deref())?;
+                    Some(values.split(';').map(move |v| format!("{tag}:{v}")))
+                })
+                .flatten(),
+        )
         .join(" ")
 }
 
