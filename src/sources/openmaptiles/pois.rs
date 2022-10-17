@@ -82,20 +82,18 @@ impl IndexedPoi {
             .try_get("lat")
             .map_err(|e| warn!("impossible to get lat for {id} because {e}"))
             .ok()?;
+
         let lon = row
             .try_get("lon")
             .map_err(|e| warn!("impossible to get lon for {id} because {e}"))
             .ok()?;
 
-        let poi_coord = Coord::new(lon, lat);
-
-        if !poi_coord.is_valid() {
-            // Ignore PoI if its coords from db are invalid.
-            // Especially, NaN values may exist because of projection
-            // transformations around poles.
-            warn!("Got invalid coord for {id} lon={lon},lat={lat}");
-            return None;
-        }
+        // Ignore PoI if its coords from db are invalid.
+        // Especially, NaN values may exist because of projection
+        // transformations around poles.
+        let poi_coord = Coord::new(lon, lat)
+            .map_err(|_| warn!("Got invalid coord for {id} lon={lon},lat={lat}"))
+            .ok()?;
 
         let poi_type_id = format!("class_{class}:subclass_{subclass}");
         let poi_type_text = build_poi_type_text(&class, &subclass, &tags);

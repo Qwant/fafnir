@@ -4,7 +4,7 @@ use itertools::Itertools;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use once_cell::sync::Lazy;
 use places::admin::find_country_codes;
-use places::coord::Coord;
+use places::coord::{Coord, CoordError};
 use places::i18n_properties::I18nProperties;
 use places::poi::{Poi, PoiType};
 use places::street::Street;
@@ -61,6 +61,7 @@ static CUISINE_CONVERTER: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub enum BuildError {
     MissingField(&'static str),
+    InvalidCoord(CoordError),
     EmptyAdmins,
 }
 
@@ -69,15 +70,15 @@ pub fn build_poi(
     geofinder: &AdminGeoFinder,
     weight_settings: TripAdvisorWeightSettings,
 ) -> Result<(u32, Poi), BuildError> {
-    let coord = Coord::new(
-        property
-            .longitude
-            .ok_or(BuildError::MissingField("longitude"))?,
-        property
-            .latitude
-            .ok_or(BuildError::MissingField("latitude"))?,
-    );
+    let lon = property
+        .longitude
+        .ok_or(BuildError::MissingField("longitude"))?;
 
+    let lat = property
+        .latitude
+        .ok_or(BuildError::MissingField("latitude"))?;
+
+    let coord = Coord::new(lon, lat).map_err(BuildError::InvalidCoord)?;
     let administrative_regions = geofinder.get(&coord);
 
     if administrative_regions.is_empty() {
@@ -268,6 +269,8 @@ impl std::fmt::Display for BuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BuildError::MissingField(field) => write!(f, "missing field `{}`", field),
+            BuildError::InvalidCoord(CoordError::InvalidLon) => write!(f, "invalid longitude"),
+            BuildError::InvalidCoord(CoordError::InvalidLat) => write!(f, "invalid latitude"),
             BuildError::EmptyAdmins => write!(f, "empty admins"),
         }
     }
