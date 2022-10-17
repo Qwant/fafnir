@@ -2,11 +2,6 @@
 
 use elasticsearch::Elasticsearch;
 use futures::join;
-use futures::stream::StreamExt;
-use places::admin::Admin;
-
-use mimir::domain::ports::primary::list_documents::ListDocuments;
-use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 
 use crate::utils::get_index_creation_date;
 
@@ -24,15 +19,4 @@ pub async fn address_updated_after_pois(es: &Elasticsearch) -> bool {
         (Some(poi_ts), Some(addr_ts)) => addr_ts > poi_ts,
         _ => true,
     }
-}
-
-/// Fetch administrative regions.
-pub async fn build_admin_geofinder<G: ListDocuments<Admin>>(mimir: &G) -> AdminGeoFinder {
-    mimir
-        .list_documents()
-        .await
-        .expect("administratives regions not found in es db")
-        .map(|admin| admin.expect("could not parse admin"))
-        .collect()
-        .await
 }
