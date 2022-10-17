@@ -31,7 +31,6 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
                     .expect("found a property which didn't start with expected pattern");
 
                 buffer = buffer[token_start..buffer.len() - 2].to_vec();
-
                 return Some((buffer, input));
             }
             if buffer.ends_with(FINAL_END_TOKEN) {
@@ -40,15 +39,12 @@ pub fn split_raw_properties(input: impl AsyncBufRead + Unpin) -> impl Stream<Ite
                     .expect("found a property which didn't start with expected pattern");
 
                 buffer = buffer[token_start..buffer.len() - 1].to_vec();
-
                 return Some((buffer, input));
             }
         }
-
         if !buffer.is_empty() {
             debug!("Ignored end of file: {}", String::from_utf8_lossy(&buffer));
         }
-
         None
     })
 }

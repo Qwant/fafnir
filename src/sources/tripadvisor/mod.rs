@@ -5,6 +5,7 @@ pub mod reviews;
 
 use futures::stream::StreamExt;
 use futures::{FutureExt, Stream};
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use serde::de::DeserializeOwned;
@@ -41,12 +42,10 @@ where
     R: Send + 'static,
 {
     let parse = Arc::new(convert);
-
     parse::split_raw_properties(input)
         .chunks(PARSER_CHUNK_SIZE)
         .map(move |chunk| {
             let parse = parse.clone();
-
             let task = async move {
                 let chunk_parsed: Vec<_> = chunk
                     .into_iter()
@@ -57,7 +56,6 @@ where
                         parse(property)
                     })
                     .collect();
-
                 futures::stream::iter(chunk_parsed)
             };
 
@@ -68,12 +66,13 @@ where
 }
 
 pub fn read_pois(
+    mimir_es: ElasticsearchStorage,
     input: impl AsyncBufRead + Unpin,
     geofinder: AdminGeoFinder,
     weight_settings: TripAdvisorWeightSettings,
 ) -> impl Stream<Item = Result<(u32, Poi), pois::convert::BuildError>> {
     parse_properties(input, move |property| {
-        pois::convert::build_poi(property, &geofinder, weight_settings)
+        pois::convert::build_poi(mimir_es.clone(), property, &geofinder, weight_settings)
     })
 }
 

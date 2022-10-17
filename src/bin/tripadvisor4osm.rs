@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use futures::stream::StreamExt;
 use futures::future;
+use futures::stream::StreamExt;
 use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::model::query::Query::QueryDSL;
@@ -26,16 +26,11 @@ async fn load_tripadvisor(settings: Settings) {
         .await
         .expect("failed to open Elasticsearch connection");
 
-    // Init Index
-    let index_container = mimir_es
-        .find_container("munin_poi".to_string())
-        .await
-        .expect("could not get index");
-
     let index_generator = {
-        let update_ta_id = mimir_es.list_documents(Parameters {
-            doc_type: "poi_tripadvisor".to_string(),
-        })
+        let update_ta_id = mimir_es
+            .list_documents(Parameters {
+                doc_type: "poi_tripadvisor".to_string(),
+            })
             .await
             .expect("could not query a list of POIs from ES")
             .filter(
@@ -55,10 +50,10 @@ async fn load_tripadvisor(settings: Settings) {
                     mimir_es.search_documents::<Poi>(
                         vec!["munin_poi".to_string()],
                         QueryDSL(json!({
-                        "query": {
-                            "match": {"name": poi.unwrap().label}
-                        }
-                    })),
+                            "query": {
+                                "match": {"name": poi.unwrap().label}
+                            }
+                        })),
                         1,
                         Option::from(Duration::new(10, 0)),
                     )
@@ -77,19 +72,7 @@ async fn load_tripadvisor(settings: Settings) {
                     }))
                 },
             );
-
-        let index_generator = index_container
-            .update_documents(update_ta_id)
-            .await
-            .expect("could not update documents from index");
-        index_generator
     };
-
-    // Publish index
-    index_generator
-        .publish()
-        .await
-        .expect("could not publish index");
 }
 
 #[tokio::main]

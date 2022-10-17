@@ -1,6 +1,9 @@
 //! Utilities to convert a super::models::Property into mimir's Poi.
 
 use itertools::Itertools;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir::domain::model::query::Query::QueryDSL;
+use mimir::domain::ports::primary::search_documents::SearchDocuments;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use once_cell::sync::Lazy;
 use places::admin::find_country_codes;
@@ -9,7 +12,9 @@ use places::i18n_properties::I18nProperties;
 use places::poi::{Poi, PoiType};
 use places::street::Street;
 use places::Address;
+use serde_json::json;
 use std::collections::HashMap;
+use std::time::Duration;
 
 use super::models::Property;
 use crate::langs::COUNTRIES_LANGS;
@@ -66,6 +71,7 @@ pub enum BuildError {
 }
 
 pub fn build_poi(
+    mimir_es: ElasticsearchStorage,
     property: Property,
     geofinder: &AdminGeoFinder,
     weight_settings: TripAdvisorWeightSettings,
@@ -96,6 +102,33 @@ pub fn build_poi(
         .to_string();
 
     let label = name.clone();
+
+    let future = async move {
+        mimir_es
+            .search_documents::<Poi>(
+                vec!["munin_poi".to_string()],
+                QueryDSL(json!({
+                    "query": {
+                        "match": {"name": ""}
+                    }
+                })),
+                1,
+                Option::from(Duration::new(10, 0)),
+            )
+            .await
+            .unwrap()
+            .first()
+            .map(|osm_poi| osm_poi.clone().id)
+            .unwrap_or_else(|| "".to_string())
+    };
+
+    let osm_id = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(6)
+        .enable_time()
+        .enable_io()
+        .build()
+        .unwrap()
+        .block_on(future);
 
     let zip_codes = administrative_regions
         .iter()
@@ -227,6 +260,7 @@ pub fn build_poi(
         property.id,
         Poi {
             id,
+            osm_id,
             label,
             name,
             coord,

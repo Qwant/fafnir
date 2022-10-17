@@ -74,18 +74,23 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         let mut count_ok: u64 = 0;
         let mut count_errors: HashMap<_, u64> = HashMap::new();
 
-        let pois = read_pois(raw_json, admins_geofinder, settings.tripadvisor.weight)
-            .filter_map(|poi| {
-                future::ready(
-                    poi.map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
-                        .ok(),
-                )
-            })
-            .map(|(ta_id, poi)| {
-                indexed_documents.insert(ta_id);
-                count_ok += 1;
-                poi
-            });
+        let pois = read_pois(
+            mimir_es.clone(),
+            raw_json,
+            admins_geofinder,
+            settings.tripadvisor.weight,
+        )
+        .filter_map(|poi| {
+            future::ready(
+                poi.map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
+                    .ok(),
+            )
+        })
+        .map(|(ta_id, poi)| {
+            indexed_documents.insert(ta_id);
+            count_ok += 1;
+            poi
+        });
 
         let index_generator = index_generator
             .insert_documents(pois)
