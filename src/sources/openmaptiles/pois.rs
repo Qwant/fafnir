@@ -106,11 +106,11 @@ impl IndexedPoi {
         let is_searchable =
             !name.is_empty() && !NON_SEARCHABLE_ITEMS.contains(&(mapping_key, subclass));
 
-        let full_label_extra = vec![class];
-
-        if class == "lodging".to_string() {
+        if class == *"lodging".to_string() {
             class = "hotel".to_string();
         }
+
+        let full_label_extra = vec![class];
 
         let poi = Poi {
             id,
