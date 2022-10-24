@@ -50,7 +50,7 @@ test:
   stage: test
   image: rust:1.60
   services:
-    - name: "openmaptiles/postgis:latest"
+    - name: "openmaptiles/postgis:7.0.0"
       alias: "postgres"
     - name: "docker.elastic.co/elasticsearch/elasticsearch:7.16.3"
       alias: "elasticsearch"
