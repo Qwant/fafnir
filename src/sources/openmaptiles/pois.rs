@@ -70,7 +70,7 @@ impl IndexedPoi {
         let name = row.get::<_, Option<String>>("name").unwrap_or_default();
 
         let mapping_key: String = row.get("mapping_key");
-        let class: String = row.get("class");
+        let mut class: String = row.get("class");
         let subclass = row.get::<_, Option<String>>("subclass").unwrap_or_default();
         let tags = row
             .get::<_, Option<HashMap<_, _>>>("tags")
@@ -103,6 +103,10 @@ impl IndexedPoi {
 
         let is_searchable =
             !name.is_empty() && !NON_SEARCHABLE_ITEMS.contains(&(mapping_key, subclass));
+
+        if class == *"lodging".to_string() {
+            class = "hotel".to_string();
+        }
 
         let full_label_extra = vec![class];
 
