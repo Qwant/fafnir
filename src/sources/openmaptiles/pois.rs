@@ -20,19 +20,15 @@ use once_cell::sync::Lazy;
 const TAGS_TO_INDEX_AS_POI_TYPE_NAME: &[&str] = &["cuisine", "aerodrome"];
 
 // List of (mapping_key, subclass) for POIs that are not indexed at all
-static SKIPPED_ITEMS: Lazy<HashSet<(&'static str, &'static str)>> = Lazy::new(|| {
-    [
-        // Some suburbs are also tourism attractions and are likely to already have been imported
-        // as admins: this is for example the case of "quartier latin" in Paris:
-        // https://www.openstreetmap.org/node/2038017580
-        ("place", "suburb"),
-    ]
-    .into_iter()
-    .collect()
-});
+const SKIPPED_ITEMS: &[(&str, &str)] = &[
+    // Some suburbs are also tourism attractions and are likely to already have been imported
+    // as admins: this is for example the case of "quartier latin" in Paris:
+    // https://www.openstreetmap.org/node/2038017580
+    ("place", "suburb"),
+];
 
 // List of (mapping_key, subclass) for POIs that are put in the nosearch index
-static NON_SEARCHABLE_ITEMS: Lazy<HashSet<(&'static str, &'static str)>> = Lazy::new(|| {
+static NON_SEARCHABLE_ITEMS: Lazy<HashSet<(&str, &str)>> = Lazy::new(|| {
     // List of (mapping_key, subclass)
     [
         // POIs likely to produce lots of duplicates
