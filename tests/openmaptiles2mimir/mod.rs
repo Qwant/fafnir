@@ -148,7 +148,7 @@ pub async fn main_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
     .await;
 
     let rows = &pg_wrapper.get_rows("osm_poi_point").await;
-    assert_eq!(rows.len(), 7);
+    assert_eq!(rows.len(), 8);
     let rows = &pg_wrapper.get_rows("osm_poi_polygon").await;
     assert_eq!(rows.len(), 3);
 
@@ -392,7 +392,7 @@ pub async fn bbox_test(mut es_wrapper: ElasticSearchWrapper, pg_wrapper: Postgre
 
     // We filtered the import by a bounding box, we still have 6 rows in PG
     let rows = &pg_wrapper.get_rows("osm_poi_point").await;
-    assert_eq!(rows.len(), 7);
+    assert_eq!(rows.len(), 8);
     // but there is only 3 elements in the ES now, 'Le nomade' and 'Isla Cristina Agricultural Airstrip'
     // have been filtered
     assert_eq!(

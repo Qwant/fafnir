@@ -19,11 +19,22 @@ use once_cell::sync::Lazy;
 
 const TAGS_TO_INDEX_AS_POI_TYPE_NAME: &[&str] = &["cuisine", "aerodrome"];
 
-static NON_SEARCHABLE_ITEMS: Lazy<HashSet<(String, String)>> = Lazy::new(|| {
+// List of (mapping_key, subclass) for POIs that are not indexed at all
+static SKIPPED_ITEMS: Lazy<HashSet<(&'static str, &'static str)>> = Lazy::new(|| {
     [
-        /*
-            List of (mapping_key, subclass)
-        */
+        // Some suburbs are also tourism attractions and are likely to already have been imported
+        // as admins: this is for example the case of "quartier latin" in Paris:
+        // https://www.openstreetmap.org/node/2038017580
+        ("place", "suburb"),
+    ]
+    .into_iter()
+    .collect()
+});
+
+// List of (mapping_key, subclass) for POIs that are put in the nosearch index
+static NON_SEARCHABLE_ITEMS: Lazy<HashSet<(&'static str, &'static str)>> = Lazy::new(|| {
+    // List of (mapping_key, subclass)
+    [
         // POIs likely to produce lots of duplicates
         ("highway", "bus_stop"),
         ("amenity", "bicycle_rental"),
@@ -53,8 +64,7 @@ static NON_SEARCHABLE_ITEMS: Lazy<HashSet<(String, String)>> = Lazy::new(|| {
         ("barrier", "sally_port"),
         ("barrier", "stile"),
     ]
-    .iter()
-    .map(|(a, b)| (a.to_string(), b.to_string()))
+    .into_iter()
     .collect()
 });
 
@@ -72,6 +82,11 @@ impl IndexedPoi {
         let mapping_key: String = row.get("mapping_key");
         let mut class: String = row.get("class");
         let subclass = row.get::<_, Option<String>>("subclass").unwrap_or_default();
+
+        if SKIPPED_ITEMS.contains(&(&mapping_key, &subclass)) {
+            return None;
+        }
+
         let tags = row
             .get::<_, Option<HashMap<_, _>>>("tags")
             .unwrap_or_default();
@@ -102,7 +117,7 @@ impl IndexedPoi {
         let properties = build_poi_properties(&row, row_properties);
 
         let is_searchable =
-            !name.is_empty() && !NON_SEARCHABLE_ITEMS.contains(&(mapping_key, subclass));
+            !name.is_empty() && !NON_SEARCHABLE_ITEMS.contains(&(&mapping_key, &subclass));
 
         if class == *"lodging".to_string() {
             class = "hotel".to_string();

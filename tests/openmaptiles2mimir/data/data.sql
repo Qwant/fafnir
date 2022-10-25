@@ -126,6 +126,31 @@ INSERT INTO osm_poi_point (
         'amenity',
         ST_GeomFromText('POINT(5.902 5.902)', 4326),
         ''
+    ),
+    -- Not indexed (should be imported as admin because it is a place=suburb)
+    (
+        20380175800,
+        null,
+        null,
+        null,
+        null,
+        'Quartier Latin',
+        'attraction',
+        'tourism',
+        '0101000020110F0000F34021A15ED30F414E5DE3B4C4D65741',
+        '
+            "name" => "Quartier Latin",
+            "place" => "suburb",
+            "name:de" => "Lateinisches Viertel",
+            "name:en" => "Latin Quarter",
+            "name:es" => "Barrio Latino",
+            "name:ru" => "Латинский квартал",
+            "tourism" => "attraction",
+            "name_int" => "Latin Quarter",
+            "wikidata" => "Q321621",
+            "wikipedia" => "en:Latin Quarter, Paris",
+            "name:latin" => "Quartier Latin"
+        '
     );
 
 --
