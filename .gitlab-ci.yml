@@ -1,0 +1,140 @@
+stages:
+  - lint 
+  - test
+  - build
+  - development
+  - integration
+  - production
+
+.lint:
+  stage: lint
+  image: rust:1.60
+  variables:
+    CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+    GIT_SUBMODULE_STRATEGY: recursive
+  cache:
+    key: $CI_PROJECT_NAME-$CI_JOB_STAGE
+    paths:
+      - .cargo
+      - target/
+  tags:
+    - k8s
+
+format:
+  extends: .lint
+  before_script:
+    - source ci/bootstrap.sh
+    - rustup component add rustfmt
+  script:
+    - cargo fmt --all -- --check
+
+lint:
+  extends: .lint
+  variables:
+    CLIPPY_PACKAGES: "-p fafnir"
+    CLIPPY_EXTRA: "--allow clippy::multiple_crate_versions --deny warnings"
+  before_script:
+    - source ci/bootstrap.sh
+    - rustup component add clippy
+  script:
+    - cargo clippy ${CLIPPY_PACKAGES} --all-targets -- ${CLIPPY_EXTRA}
+    - cargo clippy ${CLIPPY_PACKAGES} --bins --all-features -- ${CLIPPY_EXTRA}
+    - cargo clippy ${CLIPPY_PACKAGES} --all-targets --no-default-features -- ${CLIPPY_EXTRA}
+
+variables:
+  POSTGRES_USER: "test"
+  POSTGRES_DB: "test"
+  POSTGRES_HOST_AUTH_METHOD: "trust"
+
+test:
+  stage: test
+  image: rust:1.60
+  services:
+    - name: "openmaptiles/postgis:7.0.0"
+      alias: "postgres"
+    - name: "docker.elastic.co/elasticsearch/elasticsearch:7.16.3"
+      alias: "elasticsearch"
+      command: ["bin/elasticsearch", "-Expack.security.enabled=false", "-Ediscovery.type=single-node"]
+  variables:
+    CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+    GIT_SUBMODULE_STRATEGY: recursive
+    FAFNIR_TEST_ELASTICSEARCH_URL: 'http://elasticsearch:9200'
+    MIMIR_TEST_ELASTICSEARCH__URL: 'http://elasticsearch:9200'
+    FAFNIR_TEST_POSTGRES_URL: 'postgres'
+  before_script:
+    - source ci/bootstrap.sh
+  script:
+    - cargo test
+  cache:
+    key: $CI_PROJECT_NAME-$CI_JOB_STAGE
+    paths:
+      - .cargo
+      - target/
+  tags:
+    - k8s
+
+.build:
+  stage: build
+  before_script:
+    - source ci/bootstrap.sh
+    - docker login
+        --username "$CI_REGISTRY_USER"
+        --password-stdin "$CI_REGISTRY" <<< "$CI_REGISTRY_PASSWORD"
+  variables:
+    COMPOSE_DOCKER_CLI_BUILD: "1"
+    COMPOSE_FILE: "ci/docker-compose.build.yml"
+    DOCKER_BUILDKIT: "1"
+    DOCKER_CONFIG: "$CI_PROJECT_DIR/.docker"
+    GIT_SUBMODULE_STRATEGY: recursive
+    IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+  artifacts:
+    paths:
+      - "ci/"
+  tags:
+    - light
+
+build fafnir:
+  extends: .build
+  variables:
+    DOCKER_CONFIG: "$CI_PROJECT_DIR/.docker"
+  script:
+    - docker-compose build
+    - docker-compose push
+
+.deploy:
+  image: registry.qwant.ninja/docker/kubectl:1.19.1
+  variables:
+    ARGOAPP_REPO_BASEDIR: "deployments"
+    ARGOAPP_REPO_URL_SSH: "git@git.qwant.ninja:teams/search-apps/argo_apps.git"
+    ARGOCD_APP_ENVIRONMENT: "$CI_ENVIRONMENT_NAME"
+    ARGOAPP_REPO_PATH: "maps/mimirsbrunn"
+    ARGOAPP_REPO_BRANCH: "master"
+    IMAGE_VERSION_FILE: "overlays/${CI_JOB_STAGE}/kustomization.yaml"
+  resource_group: "fafnir-$CI_JOB_STAGE"
+  script:
+    - sync-version-argocd 
+      --docker-image "$CI_COMMIT_SHORT_SHA"
+      --image-version-object-path "(.images[] | select(.name == \"$CI_REGISTRY_IMAGE\") | .newTag)"
+  before_script:
+    - source ci/bootstrap.sh
+  when: manual
+  tags:
+    - docker
+
+#
+# Deploy Mimir docker image
+#
+deploy development:
+  stage: development
+  extends:
+    - .deploy
+
+deploy integration:
+  stage: integration
+  extends:
+    - .deploy
+
+deploy production:
+  stage: production
+  extends:
+    - .deploy

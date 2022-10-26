@@ -57,7 +57,7 @@ fn make_test_admin(name: &str, country_code: &str) -> places::admin::Admin {
         label: name.to_string(),
         zip_codes: vec!["421337".to_string()],
         weight: 0f64,
-        coord: places::coord::Coord::new(9.55, 47.14),
+        coord: places::coord::Coord::new(9.55, 47.14).unwrap(),
         boundary: Some(boundary),
         insee: "outlook".to_string(),
         zone_type: Some(cosmogony::ZoneType::City),
@@ -78,7 +78,7 @@ fn make_test_address(city: places::admin::Admin) -> places::addr::Addr {
         administrative_regions: vec![Arc::new(city)],
         weight: 50.0,
         zip_codes: vec!["12345".to_string()],
-        coord: places::coord::Coord::new(1., 1.),
+        coord: places::coord::Coord::new(1., 1.).unwrap(),
         country_codes: country_codes.clone(),
         ..Default::default()
     };
@@ -88,7 +88,7 @@ fn make_test_address(city: places::admin::Admin) -> places::addr::Addr {
         name: "1234 test".to_string(),
         street,
         label: "1234 test (bob's town)".to_string(),
-        coord: places::coord::Coord::new(1., 1.),
+        coord: places::coord::Coord::new(1., 1.).unwrap(),
         weight: 50.0,
         zip_codes: vec!["12345".to_string()],
         distance: None,

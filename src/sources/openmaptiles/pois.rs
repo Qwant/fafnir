@@ -17,7 +17,7 @@ use tracing::{debug, warn};
 
 use once_cell::sync::Lazy;
 
-const TAGS_TO_INDEX_AS_POI_TYPE_NAME: &[&str] = &["cuisine"];
+const TAGS_TO_INDEX_AS_POI_TYPE_NAME: &[&str] = &["cuisine", "aerodrome"];
 
 static NON_SEARCHABLE_ITEMS: Lazy<HashSet<(String, String)>> = Lazy::new(|| {
     [
@@ -70,7 +70,7 @@ impl IndexedPoi {
         let name = row.get::<_, Option<String>>("name").unwrap_or_default();
 
         let mapping_key: String = row.get("mapping_key");
-        let class: String = row.get("class");
+        let mut class: String = row.get("class");
         let subclass = row.get::<_, Option<String>>("subclass").unwrap_or_default();
         let tags = row
             .get::<_, Option<HashMap<_, _>>>("tags")
@@ -82,20 +82,17 @@ impl IndexedPoi {
             .try_get("lat")
             .map_err(|e| warn!("impossible to get lat for {id} because {e}"))
             .ok()?;
+
         let lon = row
             .try_get("lon")
             .map_err(|e| warn!("impossible to get lon for {id} because {e}"))
             .ok()?;
 
-        let poi_coord = Coord::new(lon, lat);
-
-        if !poi_coord.is_valid() {
-            // Ignore PoI if its coords from db are invalid.
-            // Especially, NaN values may exist because of projection
-            // transformations around poles.
-            warn!("Got invalid coord for {id} lon={lon},lat={lat}");
-            return None;
-        }
+        // Ignore PoI if its coords from db are invalid.
+        // Especially, NaN values may exist because of projection transformations around poles.
+        let poi_coord = Coord::new(lon, lat)
+            .map_err(|_| warn!("Got invalid coord for {id} lon={lon},lat={lat}"))
+            .ok()?;
 
         let poi_type_id = format!("class_{class}:subclass_{subclass}");
         let poi_type_text = build_poi_type_text(&class, &subclass, &tags);
@@ -105,6 +102,10 @@ impl IndexedPoi {
 
         let is_searchable =
             !name.is_empty() && !NON_SEARCHABLE_ITEMS.contains(&(mapping_key, subclass));
+
+        if class == *"lodging".to_string() {
+            class = "hotel".to_string();
+        }
 
         let full_label_extra = vec![class];
 
@@ -266,10 +267,15 @@ fn build_poi_type_text(
     */
     [format!("class_{class}"), format!("subclass_{subclass}")]
         .into_iter()
-        .chain(TAGS_TO_INDEX_AS_POI_TYPE_NAME.iter().flat_map(|tag| {
-            let values = tags.get(*tag).and_then(|x| x.as_deref()).unwrap_or("");
-            values.split(';').map(move |v| format!("{tag}:{v}"))
-        }))
+        .chain(
+            TAGS_TO_INDEX_AS_POI_TYPE_NAME
+                .iter()
+                .filter_map(|tag| {
+                    let values = tags.get(*tag).and_then(|x| x.as_deref())?;
+                    Some(values.split(';').map(move |v| format!("{tag}:{v}")))
+                })
+                .flatten(),
+        )
         .join(" ")
 }
 

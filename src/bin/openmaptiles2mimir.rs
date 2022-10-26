@@ -7,6 +7,8 @@ use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::model::configuration::ContainerConfig;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimir::domain::ports::secondary::remote::Remote;
+use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use mimirsbrunn::settings::admin_settings::AdminSettings;
 use serde::Deserialize;
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
@@ -14,7 +16,7 @@ use tracing::info;
 use tracing::info_span;
 use tracing_futures::Instrument;
 
-use fafnir::mimir::{address_updated_after_pois, build_admin_geofinder, MIMIR_PREFIX};
+use fafnir::mimir::{address_updated_after_pois, MIMIR_PREFIX};
 use fafnir::settings::{FafnirSettings, PostgresSettings};
 use fafnir::sources::openmaptiles;
 use fafnir::utils::start_postgres_session;
@@ -57,7 +59,9 @@ async fn load_and_index_pois(settings: Settings) {
     }
 
     // Fetch admins
-    let admins_geofinder = build_admin_geofinder(&mimir_es).await;
+    let admins_geofinder = AdminGeoFinder::build(&AdminSettings::Elasticsearch, &mimir_es)
+        .await
+        .expect("Could not load ES admins");
 
     // Spawn tasks that will build indexes. These tasks will provide a single
     // stream to mimirsbrunn which is built from data sent into async channels.

@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use async_compression::tokio::bufread::GzipDecoder;
-use fafnir::mimir::build_admin_geofinder;
 use fafnir::sources::tripadvisor::{build_id, read_reviews, TripAdvisorWeightSettings};
 use futures::future;
 use futures::stream::StreamExt;
@@ -12,6 +11,8 @@ use mimir::domain::model::configuration::ContainerConfig;
 use mimir::domain::model::update::UpdateOperation;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimir::domain::ports::secondary::remote::Remote;
+use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use mimirsbrunn::settings::admin_settings::AdminSettings;
 use serde::Deserialize;
 use tokio::fs::File;
 use tokio::io::{AsyncBufRead, BufReader};
@@ -55,7 +56,9 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         .await
         .expect("failed to open Elasticsearch connection");
 
-    let admin_geofinder = build_admin_geofinder(&mimir_es).await;
+    let admins_geofinder = AdminGeoFinder::build(&AdminSettings::Elasticsearch, &mimir_es)
+        .await
+        .expect("Could not load ES admins");
 
     // Init Index
     let index_generator = mimir_es
@@ -70,8 +73,8 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         let raw_json = read_gzip_file(&settings.tripadvisor.properties).await;
         let mut count_ok: u64 = 0;
         let mut count_errors: HashMap<_, u64> = HashMap::new();
-
-        let pois = read_pois(raw_json, admin_geofinder, settings.tripadvisor.weight)
+        
+        let pois = read_pois(raw_json, admins_geofinder, settings.tripadvisor.weight)
             .filter_map(|poi| {
                 future::ready(
                     poi.map_err(|err| *count_errors.entry(err).or_insert(0) += 1)
