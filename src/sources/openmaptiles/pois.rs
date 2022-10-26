@@ -78,14 +78,15 @@ impl IndexedPoi {
         let mapping_key: String = row.get("mapping_key");
         let mut class: String = row.get("class");
         let subclass = row.get::<_, Option<String>>("subclass").unwrap_or_default();
-
-        if SKIPPED_ITEMS.contains(&(&mapping_key, &subclass)) {
-            return None;
-        }
-
         let tags = row
             .get::<_, Option<HashMap<_, _>>>("tags")
             .unwrap_or_default();
+
+        for &(key, val) in SKIPPED_ITEMS {
+            if tags.get(key).map(|x| x.as_deref()) == Some(Some(val)) {
+                return None;
+            }
+        }
 
         let weight = row.get::<_, Option<f64>>("weight").unwrap_or(0.);
 
