@@ -73,7 +73,7 @@ async fn load_and_index_tripadvisor(settings: Settings) {
         let raw_json = read_gzip_file(&settings.tripadvisor.properties).await;
         let mut count_ok: u64 = 0;
         let mut count_errors: HashMap<_, u64> = HashMap::new();
-
+        
         let pois = read_pois(raw_json, admins_geofinder, settings.tripadvisor.weight)
             .filter_map(|poi| {
                 future::ready(
