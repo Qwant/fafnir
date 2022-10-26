@@ -108,7 +108,7 @@ build fafnir:
     ARGOAPP_REPO_URL_SSH: "git@git.qwant.ninja:teams/search-apps/argo_apps.git"
     ARGOCD_APP_ENVIRONMENT: "$CI_ENVIRONMENT_NAME"
     ARGOAPP_REPO_PATH: "maps/mimirsbrunn"
-    ARGOAPP_REPO_BRANCH: "QMAPS-2829"
+    ARGOAPP_REPO_BRANCH: "master"
     IMAGE_VERSION_FILE: "overlays/${CI_JOB_STAGE}/kustomization.yaml"
   resource_group: "fafnir-$CI_JOB_STAGE"
   script:

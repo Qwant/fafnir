@@ -89,8 +89,7 @@ impl IndexedPoi {
             .ok()?;
 
         // Ignore PoI if its coords from db are invalid.
-        // Especially, NaN values may exist because of projection
-        // transformations around poles.
+        // Especially, NaN values may exist because of projection transformations around poles.
         let poi_coord = Coord::new(lon, lat)
             .map_err(|_| warn!("Got invalid coord for {id} lon={lon},lat={lat}"))
             .ok()?;
